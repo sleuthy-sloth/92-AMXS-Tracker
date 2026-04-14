@@ -25,6 +25,8 @@ import {
   where, 
   onSnapshot, 
   addDoc, 
+  updateDoc,
+  deleteDoc,
   serverTimestamp,
   orderBy
 } from 'firebase/firestore';
@@ -1240,62 +1242,102 @@ const MaintenanceLogs: React.FC = () => {
         </div>
       </div>
 
-      <div className={cn("grid gap-6", viewMode === 'grid' ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : "grid-cols-1")}>
-        <AnimatePresence>
-          {filteredLogs.map((log) => (
-            <motion.div 
-              key={log.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className={cn("sleek-card flex flex-col justify-between", viewMode === 'list' && "md:flex-row md:items-center gap-6")}
-            >
-              <div className={cn(viewMode === 'list' && "flex-1 grid grid-cols-1 md:grid-cols-4 gap-4")}>
-                <div className="flex justify-between items-start mb-4 md:mb-0 md:col-span-1">
-                  <div className="flex flex-col">
-                    <span className="text-on-surface-variant text-[10px] font-bold tracking-wider mb-1 uppercase">
-                      {log.jcn ? `JCN: ${log.jcn}` : `Log ID: #${log.id?.slice(0, 6)}`}
-                    </span>
-                    <h3 className="text-xl font-bold text-on-background">{log.tail_number}</h3>
+      {viewMode === 'list' ? (
+        <div className="sleek-card !p-0 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-surface-container-high text-[10px] font-bold text-on-surface-variant tracking-wider uppercase">
+                  <th className="px-4 py-2">Tail / JCN</th>
+                  <th className="px-4 py-2">Date</th>
+                  <th className="px-4 py-2">Personnel</th>
+                  <th className="px-4 py-2">Discrepancy</th>
+                  <th className="px-4 py-2">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-outline">
+                {filteredLogs.map((log) => (
+                  <tr key={log.id} className="hover:bg-surface-container-high transition-colors text-xs">
+                    <td className="px-4 py-2">
+                      <div className="font-bold text-on-background">{log.tail_number}</div>
+                      <div className="text-[10px] text-on-surface-variant">{log.jcn || `ID: #${log.id?.slice(0, 6)}`}</div>
+                    </td>
+                    <td className="px-4 py-2 text-on-surface-variant whitespace-nowrap">
+                      {log.timestamp?.toDate ? format(log.timestamp.toDate(), 'yyyy.MM.dd') : 'Pending'}
+                    </td>
+                    <td className="px-4 py-2 text-on-surface-variant">
+                      {log.technician_name}
+                      {log.personnel && log.personnel.length > 0 && `, ${log.personnel.join(', ')}`}
+                    </td>
+                    <td className="px-4 py-2 text-on-surface-variant max-w-xs truncate" title={log.discrepancy}>
+                      {log.discrepancy}
+                    </td>
+                    <td className="px-4 py-2">
+                      {log.isRedBall ? (
+                        <span className="badge badge-danger text-[9px] px-1.5 py-0.5">RED BALL</span>
+                      ) : (
+                        <span className="badge badge-success text-[9px] px-1.5 py-0.5">NORMAL</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <AnimatePresence>
+            {filteredLogs.map((log) => (
+              <motion.div 
+                key={log.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="sleek-card flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex flex-col">
+                      <span className="text-on-surface-variant text-[10px] font-bold tracking-wider mb-1 uppercase">
+                        {log.jcn ? `JCN: ${log.jcn}` : `Log ID: #${log.id?.slice(0, 6)}`}
+                      </span>
+                      <h3 className="text-xl font-bold text-on-background">{log.tail_number}</h3>
+                    </div>
+                    {log.isRedBall && (
+                      <span className="badge badge-danger">Red Ball</span>
+                    )}
                   </div>
-                  {log.isRedBall && (
-                    <span className="badge badge-danger md:hidden">Red Ball</span>
-                  )}
+                  
+                  <div className="space-y-3 mb-6">
+                    <div className="flex justify-between border-b border-outline pb-2">
+                      <span className="text-on-surface-variant text-[10px] font-semibold uppercase">Personnel</span>
+                      <span className="text-on-surface text-xs font-medium">
+                        {log.technician_name}
+                        {log.personnel && log.personnel.length > 0 && ` + ${log.personnel.length} more`}
+                      </span>
+                    </div>
+                    <div className="flex justify-between border-b border-outline pb-2">
+                      <span className="text-on-surface-variant text-[10px] font-semibold uppercase">Date</span>
+                      <span className="text-on-surface text-xs font-medium">
+                        {log.timestamp?.toDate ? format(log.timestamp.toDate(), 'yyyy.MM.dd') : 'Pending'}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-primary text-[10px] font-bold uppercase">Discrepancy</span>
+                      <p className="text-on-surface text-xs italic leading-relaxed line-clamp-3">{log.discrepancy}</p>
+                    </div>
+                  </div>
                 </div>
                 
-                <div className={cn("space-y-3 mb-6 md:mb-0", viewMode === 'list' && "md:col-span-3 md:grid md:grid-cols-3 md:gap-4 md:space-y-0")}>
-                  <div className="flex justify-between border-b border-outline pb-2 md:border-none md:flex-col md:justify-center">
-                    <span className="text-on-surface-variant text-[10px] font-semibold uppercase">Personnel</span>
-                    <span className="text-on-surface text-xs font-medium">
-                      {log.technician_name}
-                      {log.personnel && log.personnel.length > 0 && ` + ${log.personnel.length} more`}
-                    </span>
-                  </div>
-                  <div className="flex justify-between border-b border-outline pb-2 md:border-none md:flex-col md:justify-center">
-                    <span className="text-on-surface-variant text-[10px] font-semibold uppercase">Date</span>
-                    <span className="text-on-surface text-xs font-medium">
-                      {log.timestamp?.toDate ? format(log.timestamp.toDate(), 'yyyy.MM.dd') : 'Pending'}
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-1 md:col-span-1">
-                    <span className="text-primary text-[10px] font-bold uppercase">Discrepancy</span>
-                    <p className="text-on-surface text-xs italic leading-relaxed line-clamp-3 md:line-clamp-2">{log.discrepancy}</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div className={cn(viewMode === 'list' && "flex flex-col items-end gap-2 min-w-[120px]")}>
-                {log.isRedBall && viewMode === 'list' && (
-                  <span className="badge badge-danger">Red Ball</span>
-                )}
-                <button className={cn("bg-surface-container-high text-on-surface font-semibold py-2 rounded-lg text-xs hover:bg-surface-container-highest transition-all", viewMode === 'grid' ? "w-full" : "px-4")}>
+                <button className="w-full bg-surface-container-high text-on-surface font-semibold py-2 rounded-lg text-xs hover:bg-surface-container-highest transition-all">
                   View Details
                 </button>
-              </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      )}
 
       {/* Entry Modal */}
       <AnimatePresence>
@@ -1540,6 +1582,33 @@ const TrainingTracker: React.FC = () => {
     }
   };
 
+  const handleNotifyUsers = () => {
+    // Find users with expiring or expired training
+    const affectedManNumbers = new Set(
+      filteredTraining
+        .filter(t => t.status === 'expired' || t.status === 'expiring')
+        .map(t => t.man_number)
+    );
+
+    const affectedEmails = personnel
+      .filter(p => affectedManNumbers.has(p.man_number) && p.email)
+      .map(p => p.email);
+
+    if (affectedEmails.length === 0) {
+      alert("No users with expiring or expired training found.");
+      return;
+    }
+
+    const subject = encodeURIComponent("ACTION REQUIRED: Upcoming or Overdue Training");
+    const body = encodeURIComponent(
+      "Please review your training records in the 92 AMXS Tracker. You have training items that are either overdue or expiring within the next 60 days.\n\nThank you."
+    );
+    
+    // Use BCC so users don't see everyone else's email
+    const mailtoLink = `mailto:?bcc=${affectedEmails.join(',')}&subject=${subject}&body=${body}`;
+    window.location.href = mailtoLink;
+  };
+
   const filteredTraining = training.filter(record => {
     const personName = getPersonName(record.man_number);
     const matchesSearch = 
@@ -1588,6 +1657,13 @@ const TrainingTracker: React.FC = () => {
           </div>
           {(profile?.role === 'ncoic' || profile?.role === 'leadership') && (
             <div className="flex gap-2">
+              <button 
+                onClick={handleNotifyUsers}
+                className="sleek-button bg-primary text-on-primary hover:bg-primary/90 flex items-center gap-2"
+                title="Notify Affected Users"
+              >
+                <Send className="w-4 h-4" /> <span className="hidden sm:inline">Notify</span>
+              </button>
               <button 
                 onClick={() => exportTrainingToCSV(filteredTraining, profile.shopId)}
                 className="sleek-button bg-surface-container-high text-on-surface border-outline hover:bg-surface-container-highest flex items-center gap-2"
@@ -1709,31 +1785,31 @@ const TrainingTracker: React.FC = () => {
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="bg-surface-container-high text-[11px] font-bold text-on-surface-variant tracking-wider uppercase">
-                      <th className="px-6 py-4">Course Name</th>
-                      <th className="px-6 py-4">Man #</th>
-                      {profile?.role === 'leadership' && <th className="px-6 py-4">Shop</th>}
-                      <th className="px-6 py-4">Due Date</th>
-                      <th className="px-6 py-4">Status</th>
+                    <tr className="bg-surface-container-high text-[10px] font-bold text-on-surface-variant tracking-wider uppercase">
+                      <th className="px-4 py-2">Course Name</th>
+                      <th className="px-4 py-2">Man #</th>
+                      {profile?.role === 'leadership' && <th className="px-4 py-2">Shop</th>}
+                      <th className="px-4 py-2">Due Date</th>
+                      <th className="px-4 py-2">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-outline">
                     {filteredTraining.map((record) => (
                       <tr 
                         key={record.id} 
-                        className="hover:bg-surface-container-high transition-colors cursor-pointer"
+                        className="hover:bg-surface-container-high transition-colors cursor-pointer text-xs"
                         onClick={() => setSelectedRecord(record)}
                       >
-                        <td className="px-6 py-4">
-                          <p className="font-semibold text-on-background">{record.course_name}</p>
-                          <p className="text-[10px] text-on-surface-variant uppercase font-bold mt-0.5">{getPersonName(record.man_number)}</p>
+                        <td className="px-4 py-2">
+                          <p className="font-bold text-on-background">{record.course_name}</p>
+                          <p className="text-[9px] text-on-surface-variant uppercase font-bold mt-0.5">{getPersonName(record.man_number)}</p>
                         </td>
-                        <td className="px-6 py-4 text-sm text-on-surface-variant">{record.man_number}</td>
-                        {profile?.role === 'leadership' && <td className="px-6 py-4 text-sm text-on-surface-variant font-bold">{record.shopId}</td>}
-                        <td className="px-6 py-4 text-sm text-on-surface-variant">{record.due_date}</td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 py-2 text-on-surface-variant">{record.man_number}</td>
+                        {profile?.role === 'leadership' && <td className="px-4 py-2 text-on-surface-variant font-bold">{record.shopId}</td>}
+                        <td className="px-4 py-2 text-on-surface-variant">{record.due_date}</td>
+                        <td className="px-4 py-2">
                           <span className={cn(
-                            "badge",
+                            "badge text-[9px] px-1.5 py-0.5",
                             record.status === 'current' ? "badge-success" : 
                             record.status === 'expiring' ? "badge-warning" : "badge-danger"
                           )}>
@@ -1895,6 +1971,9 @@ const Personnel: React.FC = () => {
   const [selectedPerson, setSelectedPerson] = useState<UserProfile | null>(null);
   const [personTraining, setPersonTraining] = useState<TrainingRecord[]>([]);
   const [personLogs, setPersonLogs] = useState<MaintenanceLog[]>([]);
+  
+  const [isEditingPerson, setIsEditingPerson] = useState(false);
+  const [editForm, setEditForm] = useState<Partial<UserProfile>>({});
 
   useEffect(() => {
     if (!profile) return;
@@ -1946,6 +2025,41 @@ const Personnel: React.FC = () => {
       unsubLogs();
     };
   }, [selectedPerson, profile]);
+
+  const handleEditClick = () => {
+    if (selectedPerson) {
+      setEditForm(selectedPerson);
+      setIsEditingPerson(true);
+    }
+  };
+
+  const handleUpdatePerson = async () => {
+    if (!selectedPerson || profile?.uid === 'mock-user-123') return;
+    try {
+      await updateDoc(doc(db, 'users', selectedPerson.uid), {
+        ...editForm
+      });
+      setSelectedPerson({ ...selectedPerson, ...editForm } as UserProfile);
+      setIsEditingPerson(false);
+    } catch (error) {
+      console.error("Error updating user:", error);
+    }
+  };
+
+  const handleDeletePerson = async () => {
+    if (!selectedPerson || profile?.uid === 'mock-user-123') return;
+    if (window.confirm(`Are you sure you want to remove ${selectedPerson.name}?`)) {
+      try {
+        await updateDoc(doc(db, 'users', selectedPerson.uid), {
+          status: 'inactive'
+        });
+        setSelectedPerson(null);
+        setIsEditingPerson(false);
+      } catch (error) {
+        console.error("Error deleting user:", error);
+      }
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -2036,17 +2150,110 @@ const Personnel: React.FC = () => {
                     <p className="text-sm text-on-surface-variant mt-1">{selectedPerson.role.toUpperCase()} • MAN #: {selectedPerson.man_number}</p>
                   </div>
                 </div>
-                <button 
-                  onClick={() => setSelectedPerson(null)}
-                  className="p-2 hover:bg-surface-container-high rounded-full transition-colors"
-                >
-                  <X className="w-6 h-6 text-on-surface-variant" />
-                </button>
+                <div className="flex items-center gap-2">
+                  {(profile?.role === 'leadership' || profile?.role === 'ncoic') && (
+                    <>
+                      <button 
+                        onClick={handleEditClick}
+                        className="p-2 hover:bg-surface-container-high rounded-full transition-colors text-primary"
+                        title="Edit User"
+                      >
+                        <Wrench className="w-5 h-5" />
+                      </button>
+                      <button 
+                        onClick={handleDeletePerson}
+                        className="p-2 hover:bg-surface-container-high rounded-full transition-colors text-error"
+                        title="Delete User"
+                      >
+                        <LogOut className="w-5 h-5" />
+                      </button>
+                    </>
+                  )}
+                  <button 
+                    onClick={() => {
+                      setSelectedPerson(null);
+                      setIsEditingPerson(false);
+                    }}
+                    className="p-2 hover:bg-surface-container-high rounded-full transition-colors"
+                  >
+                    <X className="w-6 h-6 text-on-surface-variant" />
+                  </button>
+                </div>
               </div>
 
               <div className="flex-1 overflow-y-auto p-8 space-y-8">
-                {/* Training History */}
-                <section className="space-y-4">
+                {isEditingPerson ? (
+                  <section className="space-y-4">
+                    <h4 className="font-bold text-on-background uppercase tracking-wider text-sm">Edit Personnel</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Name</label>
+                        <input 
+                          type="text" 
+                          value={editForm.name || ''} 
+                          onChange={(e) => setEditForm({...editForm, name: e.target.value})}
+                          className="sleek-input w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Email</label>
+                        <input 
+                          type="email" 
+                          value={editForm.email || ''} 
+                          onChange={(e) => setEditForm({...editForm, email: e.target.value})}
+                          className="sleek-input w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Man #</label>
+                        <input 
+                          type="text" 
+                          value={editForm.man_number || ''} 
+                          onChange={(e) => setEditForm({...editForm, man_number: e.target.value})}
+                          className="sleek-input w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Shop ID</label>
+                        <input 
+                          type="text" 
+                          value={editForm.shopId || ''} 
+                          onChange={(e) => setEditForm({...editForm, shopId: e.target.value})}
+                          className="sleek-input w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Role</label>
+                        <select 
+                          value={editForm.role || 'technician'} 
+                          onChange={(e) => setEditForm({...editForm, role: e.target.value as any})}
+                          className="sleek-input w-full"
+                        >
+                          <option value="technician">Technician</option>
+                          <option value="ncoic">NCOIC</option>
+                          <option value="leadership">Leadership</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2 mt-4">
+                      <button 
+                        onClick={() => setIsEditingPerson(false)}
+                        className="px-4 py-2 rounded-xl text-sm font-bold text-on-surface-variant hover:bg-surface-container-high transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        onClick={handleUpdatePerson}
+                        className="px-4 py-2 rounded-xl text-sm font-bold bg-primary text-on-primary hover:bg-primary/90 transition-colors"
+                      >
+                        Save Changes
+                      </button>
+                    </div>
+                  </section>
+                ) : (
+                  <>
+                    {/* Training History */}
+                    <section className="space-y-4">
                   <div className="flex items-center gap-2">
                     <BarChart3 className="w-5 h-5 text-primary" />
                     <h4 className="font-bold text-on-background uppercase tracking-wider text-sm">Training History</h4>
@@ -2093,20 +2300,20 @@ const Personnel: React.FC = () => {
                     )}
                   </div>
                 </section>
+                  </>
+                )}
               </div>
 
               <div className="p-6 border-t border-outline bg-surface-container-low flex gap-3">
                 <button 
-                  onClick={() => setSelectedPerson(null)}
+                  onClick={() => {
+                    setSelectedPerson(null);
+                    setIsEditingPerson(false);
+                  }}
                   className="sleek-button flex-1 py-3"
                 >
                   Close Profile
                 </button>
-                {profile?.role === 'ncoic' && (
-                  <button className="sleek-button bg-primary text-white px-8">
-                    Edit Personnel
-                  </button>
-                )}
               </div>
             </motion.div>
           </div>
