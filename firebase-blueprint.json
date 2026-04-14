@@ -1,0 +1,63 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Personnel profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "name": { "type": "string", "description": "Full name (Surname, Initial)" },
+        "man_number": { "type": "string", "description": "Maintenance number" },
+        "shopId": { "type": "string", "description": "Assigned shop identifier" },
+        "role": { "type": "string", "enum": ["ncoic", "technician"], "description": "User role" },
+        "email": { "type": "string", "format": "email" },
+        "phone": { "type": "string" }
+      },
+      "required": ["uid", "name", "man_number", "shopId", "role", "email"]
+    },
+    "Log": {
+      "title": "Maintenance Log",
+      "description": "Aircraft maintenance log entry",
+      "type": "object",
+      "properties": {
+        "tail_number": { "type": "string" },
+        "discrepancy": { "type": "string" },
+        "repair": { "type": "string" },
+        "doc_number": { "type": "string", "description": "Optional document number" },
+        "shopId": { "type": "string", "description": "Shop that performed the maintenance" },
+        "technician_name": { "type": "string" },
+        "man_number": { "type": "string", "description": "Technician man number" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "isRedBall": { "type": "boolean", "description": "Urgent maintenance flag" }
+      },
+      "required": ["tail_number", "discrepancy", "repair", "shopId", "technician_name", "man_number", "timestamp"]
+    },
+    "Training": {
+      "title": "Training Record",
+      "description": "Personnel training task record",
+      "type": "object",
+      "properties": {
+        "man_number": { "type": "string" },
+        "course_name": { "type": "string" },
+        "due_date": { "type": "string", "format": "date" },
+        "shopId": { "type": "string" },
+        "status": { "type": "string", "enum": ["current", "expiring", "expired"] }
+      },
+      "required": ["man_number", "course_name", "due_date", "shopId", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/logs/{logId}": {
+      "schema": "Log",
+      "description": "Maintenance logs"
+    },
+    "/training/{trainingId}": {
+      "schema": "Training",
+      "description": "Training records"
+    }
+  }
+}

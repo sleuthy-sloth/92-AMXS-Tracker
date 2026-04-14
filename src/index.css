@@ -1,0 +1,76 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-headline: "Inter", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-label: "Inter", sans-serif;
+
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #ffffff;
+  --color-surface-container: #ffffff;
+  --color-surface-container-high: #f8fafc;
+  --color-surface-container-highest: #f1f5f9;
+  
+  --color-primary: #3b82f6;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #dbeafe;
+  --color-on-primary-container: #1e40af;
+
+  --color-secondary: #64748b;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #e2e8f0;
+  --color-on-secondary-container: #1e293b;
+
+  --color-tertiary: #f59e0b;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #fef3c7;
+  --color-on-tertiary-container: #92400e;
+
+  --color-error: #ef4444;
+  --color-on-error: #ffffff;
+  --color-error-container: #fee2e2;
+  --color-on-error-container: #991b1b;
+
+  --color-background: #f8fafc;
+  --color-on-background: #1e293b;
+  --color-surface: #ffffff;
+  --color-on-surface: #1e293b;
+  --color-surface-variant: #f1f5f9;
+  --color-on-surface-variant: #64748b;
+  --color-outline: #e2e8f0;
+  --color-outline-variant: #cbd5e1;
+  --color-sidebar: #0f172a;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-on-background font-body;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-headline font-semibold;
+  }
+}
+
+.sleek-card {
+  @apply bg-surface border border-outline rounded-xl p-6 shadow-sm transition-all hover:shadow-md;
+}
+
+.sleek-button {
+  @apply bg-primary text-on-primary px-4 py-2 rounded-lg font-medium text-sm transition-all hover:bg-primary/90 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.sleek-input {
+  @apply bg-surface border border-outline rounded-lg text-on-surface placeholder-on-surface-variant/50 px-4 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all;
+}
+
+.badge {
+  @apply px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider;
+}
+
+.badge-info { @apply bg-primary-container text-on-primary-container; }
+.badge-warning { @apply bg-tertiary-container text-on-tertiary-container; }
+.badge-success { @apply bg-emerald-100 text-emerald-800; }
+.badge-danger { @apply bg-error-container text-on-error-container; }
+
