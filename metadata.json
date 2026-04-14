@@ -1,0 +1,6 @@
+{
+  "name": "92nd AMXS Avionics Tracker",
+  "description": "Multi-tenant maintenance logbook and training tracker for 92nd AMXS with automated report parsing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

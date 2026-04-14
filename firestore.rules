@@ -1,0 +1,131 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {uid}
+    // Fields:
+    //   - uid: string (required)
+    //   - name: string (required)
+    //   - man_number: string (required)
+    //   - shopId: string (required)
+    //   - role: string (required, 'ncoic' | 'technician')
+    //   - email: string (required)
+    //   - phone: string (optional)
+    //
+    // Collection: logs
+    // Document ID: {logId}
+    // Fields:
+    //   - tail_number: string (required)
+    //   - discrepancy: string (required)
+    //   - repair: string (required)
+    //   - doc_number: string (optional)
+    //   - shopId: string (required)
+    //   - technician_name: string (required)
+    //   - man_number: string (required)
+    //   - timestamp: timestamp (required)
+    //   - isRedBall: bool (optional)
+    //
+    // Collection: training
+    // Document ID: {trainingId}
+    // Fields:
+    //   - man_number: string (required)
+    //   - course_name: string (required)
+    //   - due_date: string (required, ISO 8601)
+    //   - shopId: string (required)
+    //   - status: string (required, 'current' | 'expiring' | 'expired')
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isNCOIC() {
+      return isAuthenticated() && getUserData().role == 'ncoic' && getUserData().status == 'active';
+    }
+
+    function isTechnician() {
+      return isAuthenticated() && getUserData().role == 'technician' && getUserData().status == 'active';
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (request.auth.token.email == "spkoehl@gmail.com" && request.auth.token.email_verified == true);
+    }
+
+    function isSameShop(shopId) {
+      return isAuthenticated() && getUserData().shopId == shopId && getUserData().status == 'active';
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'name', 'man_number', 'shopId', 'role', 'email', 'status']) &&
+             data.uid is string &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.man_number is string &&
+             data.shopId is string &&
+             data.role in ['ncoic', 'technician', 'pending'] &&
+             data.status in ['active', 'pending', 'rejected'] &&
+             data.email is string;
+    }
+
+    function isValidLog(data) {
+      return data.keys().hasAll(['tail_number', 'discrepancy', 'repair', 'shopId', 'technician_name', 'man_number', 'timestamp']) &&
+             data.tail_number is string && data.tail_number.size() > 0 &&
+             data.discrepancy is string && data.discrepancy.size() > 0 && data.discrepancy.size() < 5000 &&
+             data.repair is string && data.repair.size() > 0 && data.repair.size() < 5000 &&
+             data.shopId is string &&
+             data.technician_name is string &&
+             data.man_number is string &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidTraining(data) {
+      return data.keys().hasAll(['man_number', 'course_name', 'due_date', 'shopId', 'status']) &&
+             data.man_number is string &&
+             data.course_name is string &&
+             data.due_date is string &&
+             data.shopId is string &&
+             data.status in ['current', 'expiring', 'expired'];
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{uid} {
+      allow read: if isAuthenticated() && (request.auth.uid == uid || isNCOIC() || isAdmin());
+      allow create: if isAuthenticated() && isValidUser(request.resource.data) && request.auth.uid == uid && 
+                    request.resource.data.role == 'pending' && request.resource.data.status == 'pending';
+      allow update: if isAuthenticated() && (
+        (request.auth.uid == uid && isValidUser(request.resource.data) && request.resource.data.role == resource.data.role && request.resource.data.status == resource.data.status) ||
+        (isNCOIC() && isValidUser(request.resource.data)) ||
+        isAdmin()
+      );
+    }
+
+    match /logs/{logId} {
+      allow read: if isAuthenticated() && (isSameShop(resource.data.shopId) || isAdmin());
+      allow create: if isAuthenticated() && isValidLog(request.resource.data) && isSameShop(request.resource.data.shopId);
+      allow update: if isAuthenticated() && isValidLog(request.resource.data) && isSameShop(resource.data.shopId) && isNCOIC();
+      allow delete: if isAuthenticated() && isSameShop(resource.data.shopId) && isNCOIC();
+    }
+
+    match /training/{trainingId} {
+      allow read: if isAuthenticated() && (isSameShop(resource.data.shopId) || isAdmin());
+      allow write: if isAuthenticated() && isNCOIC() && isSameShop(request.resource.data.shopId) && isValidTraining(request.resource.data);
+    }
+  }
+}
