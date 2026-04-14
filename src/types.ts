@@ -15,12 +15,14 @@ export interface UserProfile {
 export interface MaintenanceLog {
   id?: string;
   tail_number: string;
+  jcn?: string;
   discrepancy: string;
   repair: string;
   doc_number?: string;
   shopId: string;
   technician_name: string;
   man_number: string;
+  personnel?: string[];
   timestamp: any; // Firestore Timestamp
   isRedBall?: boolean;
 }
