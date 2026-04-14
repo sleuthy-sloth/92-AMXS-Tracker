@@ -126,15 +126,15 @@ const MOCK_LOGS: MaintenanceLog[] = [
 
 const MOCK_PERSONNEL: UserProfile[] = [
   // AVIONICS
-  { uid: 'mock-user-123', name: 'PREVIEW USER', man_number: '99999', shopId: 'AVIONICS', role: 'ncoic', email: 'dev.preview@92amxs.af.mil', phone: '5672016985', status: 'active' },
-  { uid: 'mock-user-2', name: 'DOE, J', man_number: '12345', shopId: 'AVIONICS', role: 'technician', email: 'doe.j@92amxs.af.mil', phone: '5550101', status: 'active' },
-  { uid: 'mock-user-3', name: 'SMITH, A', man_number: '54321', shopId: 'AVIONICS', role: 'technician', email: 'smith.a@92amxs.af.mil', phone: '5550102', status: 'active' },
+  { uid: 'mock-user-123', name: 'PREVIEW USER', man_number: '99999', shopId: 'AVIONICS', role: 'ncoic', email: 'dev.preview@92amxs.af.mil', phone: '5672016985', carrier: 'tmobile', status: 'active' },
+  { uid: 'mock-user-2', name: 'DOE, J', man_number: '12345', shopId: 'AVIONICS', role: 'technician', email: 'doe.j@92amxs.af.mil', phone: '5550101', carrier: 'verizon', status: 'active' },
+  { uid: 'mock-user-3', name: 'SMITH, A', man_number: '54321', shopId: 'AVIONICS', role: 'technician', email: 'smith.a@92amxs.af.mil', phone: '5550102', carrier: 'att', status: 'active' },
   // CREW CHIEFS
-  { uid: 'mock-user-4', name: 'MILLER, R', man_number: '22222', shopId: 'CREW_CHIEFS', role: 'technician', email: 'miller.r@92amxs.af.mil', phone: '5550103', status: 'active' },
-  { uid: 'mock-user-5', name: 'JOHNSON, K', man_number: '22223', shopId: 'CREW_CHIEFS', role: 'ncoic', email: 'johnson.k@92amxs.af.mil', phone: '5550104', status: 'active' },
+  { uid: 'mock-user-4', name: 'MILLER, R', man_number: '22222', shopId: 'CREW_CHIEFS', role: 'technician', email: 'miller.r@92amxs.af.mil', phone: '5550103', carrier: 'tmobile', status: 'active' },
+  { uid: 'mock-user-5', name: 'JOHNSON, K', man_number: '22223', shopId: 'CREW_CHIEFS', role: 'ncoic', email: 'johnson.k@92amxs.af.mil', phone: '5550104', carrier: 'verizon', status: 'active' },
   // JETS
-  { uid: 'mock-user-6', name: 'BROWN, T', man_number: '33333', shopId: 'JETS', role: 'technician', email: 'brown.t@92amxs.af.mil', phone: '5550105', status: 'active' },
-  { uid: 'mock-user-7', name: 'DAVIS, L', man_number: '33334', shopId: 'JETS', role: 'ncoic', email: 'davis.l@92amxs.af.mil', phone: '5550106', status: 'active' }
+  { uid: 'mock-user-6', name: 'BROWN, T', man_number: '33333', shopId: 'JETS', role: 'technician', email: 'brown.t@92amxs.af.mil', phone: '5550105', carrier: 'att', status: 'active' },
+  { uid: 'mock-user-7', name: 'DAVIS, L', man_number: '33334', shopId: 'JETS', role: 'ncoic', email: 'davis.l@92amxs.af.mil', phone: '5550106', carrier: 'sprint', status: 'active' }
 ];
 
 const MOCK_TRAINING: TrainingRecord[] = [
@@ -593,7 +593,8 @@ const Setup: React.FC = () => {
   const { user, refreshProfile } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
-    phone: ''
+    phone: '',
+    carrier: '' as any
   });
   const [loading, setLoading] = useState(false);
 
@@ -607,6 +608,7 @@ const Setup: React.FC = () => {
         email: user.email || '',
         name: formData.name,
         phone: formData.phone,
+        carrier: formData.carrier,
         man_number: 'PENDING',
         shopId: 'PENDING',
         role: 'pending',
@@ -642,14 +644,31 @@ const Setup: React.FC = () => {
                 onChange={e => setFormData({...formData, name: e.target.value})}
               />
             </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Phone Number (Optional)</label>
-              <input 
-                className="sleek-input"
-                placeholder="555-0123"
-                value={formData.phone}
-                onChange={e => setFormData({...formData, phone: e.target.value})}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Phone Number</label>
+                <input 
+                  className="sleek-input"
+                  placeholder="555-0123"
+                  value={formData.phone}
+                  onChange={e => setFormData({...formData, phone: e.target.value})}
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Carrier</label>
+                <select 
+                  className="sleek-input"
+                  value={formData.carrier}
+                  onChange={e => setFormData({...formData, carrier: e.target.value})}
+                >
+                  <option value="">Select Carrier...</option>
+                  <option value="verizon">Verizon</option>
+                  <option value="tmobile">T-Mobile</option>
+                  <option value="att">AT&T</option>
+                  <option value="sprint">Sprint</option>
+                  <option value="googlefi">Google Fi</option>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -1618,19 +1637,26 @@ const TrainingTracker: React.FC = () => {
         .map(t => t.man_number)
     );
 
-    const affectedPhones = personnel
-      .filter(p => affectedManNumbers.has(p.man_number) && p.phone)
-      .map(p => p.phone);
+    const affectedUsers = personnel.filter(p => affectedManNumbers.has(p.man_number) && p.phone && p.carrier);
 
-    if (affectedPhones.length === 0) {
-      alert("No users with phone numbers and expiring/expired training found.");
+    if (affectedUsers.length === 0) {
+      alert("No users with phone numbers/carriers and expiring/expired training found.");
       return;
     }
 
-    // Convert phone numbers to vtext.com email addresses
-    const vtextEmails = affectedPhones.map(phone => {
-      const digits = (phone || '').replace(/\D/g, '');
-      return `${digits}@vtext.com`;
+    const gatewayMap: Record<string, string> = {
+      'verizon': 'vtext.com',
+      'tmobile': 'tmomail.net',
+      'att': 'txt.att.net',
+      'sprint': 'messaging.sprintpcs.com',
+      'googlefi': 'msg.fi.google.com'
+    };
+
+    // Convert phone numbers to carrier-specific email addresses
+    const smsEmails = affectedUsers.map(p => {
+      const digits = (p.phone || '').replace(/\D/g, '');
+      const gateway = gatewayMap[p.carrier || ''] || 'vtext.com';
+      return `${digits}@${gateway}`;
     });
 
     const subject = encodeURIComponent("92 AMXS Training Alert");
@@ -1639,7 +1665,7 @@ const TrainingTracker: React.FC = () => {
     );
     
     // Use mailto link to send SMS via email gateway
-    const mailtoLink = `mailto:?bcc=${vtextEmails.join(',')}&subject=${subject}&body=${body}`;
+    const mailtoLink = `mailto:?bcc=${smsEmails.join(',')}&subject=${subject}&body=${body}`;
     window.location.href = mailtoLink;
   };
 
@@ -2253,6 +2279,21 @@ const Personnel: React.FC = () => {
                           onChange={(e) => setEditForm({...editForm, phone: e.target.value})}
                           className="sleek-input w-full"
                         />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Carrier</label>
+                        <select 
+                          value={editForm.carrier || ''} 
+                          onChange={(e) => setEditForm({...editForm, carrier: e.target.value as any})}
+                          className="sleek-input w-full"
+                        >
+                          <option value="">Select Carrier...</option>
+                          <option value="verizon">Verizon</option>
+                          <option value="tmobile">T-Mobile</option>
+                          <option value="att">AT&T</option>
+                          <option value="sprint">Sprint</option>
+                          <option value="googlefi">Google Fi</option>
+                        </select>
                       </div>
                       <div>
                         <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Man #</label>

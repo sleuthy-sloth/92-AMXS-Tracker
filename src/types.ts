@@ -8,6 +8,7 @@ export interface UserProfile {
   role: UserRole;
   email: string;
   phone?: string;
+  carrier?: 'verizon' | 'tmobile' | 'att' | 'sprint' | 'googlefi' | '';
   status: 'active' | 'pending' | 'rejected';
   createdAt?: any;
 }
