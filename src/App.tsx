@@ -12,7 +12,9 @@ import {
   signInWithPopup, 
   signOut, 
   onAuthStateChanged,
-  User
+  User,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword
 } from 'firebase/auth';
 import { 
   doc, 
@@ -45,7 +47,9 @@ import {
   FileSpreadsheet,
   FileText,
   ChevronDown,
-  UserPlus
+  UserPlus,
+  Mail,
+  Lock
 } from 'lucide-react';
 import { format, addDays, isBefore, parseISO } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
@@ -146,9 +150,11 @@ interface AuthContextType {
   profile: UserProfile | null;
   loading: boolean;
   signIn: () => Promise<void>;
+  signInEmail: (email: string, pass: string) => Promise<void>;
+  signUpEmail: (email: string, pass: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
-  bypassLogin: () => void;
+  bypassLogin: (role?: UserRole) => void;
   setShop: (shop: ShopType) => void;
 }
 
@@ -200,6 +206,25 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       await signInWithPopup(auth, provider);
     } catch (error) {
       console.error('Sign in error:', error);
+      throw error;
+    }
+  };
+
+  const signInEmail = async (email: string, pass: string) => {
+    try {
+      await signInWithEmailAndPassword(auth, email, pass);
+    } catch (error) {
+      console.error('Email sign in error:', error);
+      throw error;
+    }
+  };
+
+  const signUpEmail = async (email: string, pass: string) => {
+    try {
+      await createUserWithEmailAndPassword(auth, email, pass);
+    } catch (error) {
+      console.error('Email sign up error:', error);
+      throw error;
     }
   };
 
@@ -215,7 +240,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     if (user) await fetchProfile(user.uid);
   };
 
-  const bypassLogin = () => {
+  const bypassLogin = (role: UserRole = 'ncoic') => {
     const mockUser = {
       uid: 'mock-user-123',
       email: 'dev.preview@92amxs.af.mil',
@@ -227,7 +252,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       name: 'PREVIEW USER',
       man_number: '99999',
       shopId: 'AVIONICS',
-      role: 'ncoic',
+      role: role,
       email: 'dev.preview@92amxs.af.mil',
       phone: '555-0123',
       status: 'active'
@@ -245,7 +270,18 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signIn, logout, refreshProfile, bypassLogin, setShop }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      profile, 
+      loading, 
+      signIn, 
+      signInEmail,
+      signUpEmail,
+      logout, 
+      refreshProfile, 
+      bypassLogin, 
+      setShop 
+    }}>
       {children}
     </AuthContext.Provider>
   );
@@ -264,7 +300,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     { name: 'Personnel', path: '/personnel', icon: Users },
   ];
 
-  if (profile?.role === 'ncoic') {
+  if (profile?.role === 'ncoic' || profile?.role === 'leadership') {
     navItems.push({ name: 'Onboarding', path: '/onboarding', icon: UserPlus });
   }
 
@@ -396,7 +432,27 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 // --- Pages ---
 
 const Login: React.FC = () => {
-  const { signIn, bypassLogin } = useAuth();
+  const { signIn, signInEmail, signUpEmail, bypassLogin } = useAuth();
+  const [isEmailMode, setIsEmailMode] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    try {
+      if (isSignUp) {
+        await signUpEmail(email, password);
+      } else {
+        await signInEmail(email, password);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Authentication failed');
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="max-w-md w-full text-center space-y-8">
@@ -410,25 +466,111 @@ const Login: React.FC = () => {
         
         <div className="sleek-card space-y-6">
           <p className="text-sm text-on-surface leading-relaxed">
-            Access to the 92nd AMXS Maintenance & Training system is restricted to authorized personnel only. Please authenticate with your military credentials.
+            Access to the 92nd AMXS Maintenance & Training system is restricted to authorized personnel only.
           </p>
-          <div className="space-y-3">
-            <button 
-              onClick={signIn}
-              className="sleek-button w-full flex items-center justify-center gap-3 py-3"
-            >
-              Authenticate with Google
-            </button>
-            <div className="relative py-2">
-              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-outline"></div></div>
-              <div className="relative flex justify-center text-[10px] uppercase tracking-widest"><span className="bg-background px-2 text-on-surface-variant font-bold">Or</span></div>
+
+          {!isEmailMode ? (
+            <div className="space-y-3">
+              <button 
+                onClick={signIn}
+                className="sleek-button w-full flex items-center justify-center gap-3 py-3"
+              >
+                Authenticate with Google
+              </button>
+              <button 
+                onClick={() => setIsEmailMode(true)}
+                className="w-full py-3 text-xs font-bold text-on-surface-variant hover:text-on-surface transition-colors uppercase tracking-widest"
+              >
+                Use Email & Password
+              </button>
             </div>
-            <button 
-              onClick={bypassLogin}
-              className="w-full py-3 text-xs font-bold text-accent hover:text-accent/80 transition-colors uppercase tracking-widest border border-accent/20 rounded-xl hover:bg-accent/5"
-            >
-              Enter Demo Mode
-            </button>
+          ) : (
+            <form onSubmit={handleEmailAuth} className="space-y-4 text-left">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest ml-1">Email Address</label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
+                  <input 
+                    type="email" 
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="sleek-input pl-10 w-full" 
+                    placeholder="name@af.mil" 
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest ml-1">Password</label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
+                  <input 
+                    type="password" 
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="sleek-input pl-10 w-full" 
+                    placeholder="••••••••" 
+                  />
+                </div>
+              </div>
+
+              {error && (
+                <div className="p-3 bg-error/10 border border-error/20 rounded-xl flex items-center gap-3 text-error text-xs font-medium">
+                  <ShieldAlert className="w-4 h-4" />
+                  {error}
+                </div>
+              )}
+
+              <button type="submit" className="sleek-button w-full py-3">
+                {isSignUp ? 'Create Account' : 'Sign In'}
+              </button>
+
+              <div className="flex justify-between items-center px-1">
+                <button 
+                  type="button"
+                  onClick={() => setIsSignUp(!isSignUp)}
+                  className="text-[10px] font-bold text-primary uppercase tracking-widest hover:underline"
+                >
+                  {isSignUp ? 'Already have an account?' : 'Need an account?'}
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setIsEmailMode(false)}
+                  className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest hover:underline"
+                >
+                  Back to Google
+                </button>
+              </div>
+            </form>
+          )}
+
+          <div className="relative py-2">
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-outline"></div></div>
+            <div className="relative flex justify-center text-[10px] uppercase tracking-widest"><span className="bg-background px-2 text-on-surface-variant font-bold">Or</span></div>
+          </div>
+          <div className="space-y-2">
+            <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-2">Demo Roles</p>
+            <div className="grid grid-cols-3 gap-2">
+              <button 
+                onClick={() => bypassLogin('technician')}
+                className="py-2 text-[10px] font-bold text-accent hover:bg-accent/5 border border-accent/20 rounded-lg transition-all uppercase tracking-wider"
+              >
+                Tech
+              </button>
+              <button 
+                onClick={() => bypassLogin('ncoic')}
+                className="py-2 text-[10px] font-bold text-accent hover:bg-accent/5 border border-accent/20 rounded-lg transition-all uppercase tracking-wider"
+              >
+                NCOIC
+              </button>
+              <button 
+                onClick={() => bypassLogin('leadership')}
+                className="py-2 text-[10px] font-bold text-accent hover:bg-accent/5 border border-accent/20 rounded-lg transition-all uppercase tracking-wider"
+              >
+                Leadership
+              </button>
+            </div>
           </div>
         </div>
         
@@ -561,12 +703,30 @@ const Onboarding: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    if (!profile) return;
+
+    if (profile.uid === 'mock-user-123') {
+      setPendingUsers([
+        { 
+          uid: 'mock-pending-1', 
+          name: 'DOE, Jane', 
+          email: 'doe.jane@92amxs.af.mil', 
+          role: 'pending', 
+          status: 'pending', 
+          man_number: '',
+          shopId: '',
+          createdAt: { toDate: () => new Date() } 
+        } as any
+      ]);
+      return;
+    }
+
     const q = query(collection(db, 'users'), where('status', '==', 'pending'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setPendingUsers(snapshot.docs.map(doc => ({ ...doc.data() } as UserProfile)));
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'users'));
     return unsubscribe;
-  }, []);
+  }, [profile]);
 
   useEffect(() => {
     if (selectedUser) {
@@ -708,7 +868,7 @@ const Onboarding: React.FC = () => {
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">System Role</label>
                     <div className="flex gap-4">
-                      {['technician', 'ncoic'].map((r) => (
+                      {['technician', 'ncoic', 'leadership'].map((r) => (
                         <label key={r} className="flex-1 cursor-pointer">
                           <input 
                             type="radio" 
@@ -761,34 +921,35 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     if (!profile) return;
 
+    const isLeadership = profile.role === 'leadership';
+
     if (profile.uid === 'mock-user-123') {
-      setLogs(MOCK_LOGS.filter(l => l.shopId === profile.shopId));
-      setPersonnel(MOCK_PERSONNEL.filter(p => p.shopId === profile.shopId));
-      setTraining(MOCK_TRAINING.filter(t => t.shopId === profile.shopId));
+      setLogs(isLeadership ? MOCK_LOGS : MOCK_LOGS.filter(l => l.shopId === profile.shopId));
+      setPersonnel(isLeadership ? MOCK_PERSONNEL : MOCK_PERSONNEL.filter(p => p.shopId === profile.shopId));
+      setTraining(isLeadership ? MOCK_TRAINING : MOCK_TRAINING.filter(t => t.shopId === profile.shopId));
       return;
     }
 
-    const qLogs = query(
-      collection(db, 'logs'), 
-      where('shopId', '==', profile.shopId),
-      orderBy('timestamp', 'desc')
-    );
+    const qLogs = isLeadership 
+      ? query(collection(db, 'logs'), orderBy('timestamp', 'desc'))
+      : query(collection(db, 'logs'), where('shopId', '==', profile.shopId), orderBy('timestamp', 'desc'));
+    
     const unsubLogs = onSnapshot(qLogs, (snap) => {
       setLogs(snap.docs.map(d => ({ id: d.id, ...d.data() } as MaintenanceLog)));
     });
 
-    const qPersonnel = query(
-      collection(db, 'users'),
-      where('shopId', '==', profile.shopId)
-    );
+    const qPersonnel = isLeadership
+      ? query(collection(db, 'users'))
+      : query(collection(db, 'users'), where('shopId', '==', profile.shopId));
+    
     const unsubPersonnel = onSnapshot(qPersonnel, (snap) => {
       setPersonnel(snap.docs.map(d => d.data() as UserProfile));
     });
 
-    const qTraining = query(
-      collection(db, 'training'),
-      where('shopId', '==', profile.shopId)
-    );
+    const qTraining = isLeadership
+      ? query(collection(db, 'training'))
+      : query(collection(db, 'training'), where('shopId', '==', profile.shopId));
+    
     const unsubTraining = onSnapshot(qTraining, (snap) => {
       setTraining(snap.docs.map(d => d.data() as TrainingRecord));
     });
@@ -844,6 +1005,7 @@ const Dashboard: React.FC = () => {
                   <tr className="bg-surface-container-high text-[11px] font-bold text-on-surface-variant tracking-wider uppercase">
                     <th className="px-6 py-4">Name / Rank</th>
                     <th className="px-6 py-4">Man #</th>
+                    {profile?.role === 'leadership' && <th className="px-6 py-4">Shop</th>}
                     <th className="px-6 py-4">Role</th>
                     <th className="px-6 py-4">Status</th>
                   </tr>
@@ -856,6 +1018,7 @@ const Dashboard: React.FC = () => {
                         <p className="text-[11px] text-on-surface-variant">{p.email}</p>
                       </td>
                       <td className="px-6 py-4 text-sm text-on-surface-variant">{p.man_number}</td>
+                      {profile?.role === 'leadership' && <td className="px-6 py-4 text-sm text-on-surface-variant font-bold">{p.shopId}</td>}
                       <td className="px-6 py-4">
                         <span className={cn(
                           "badge",
@@ -898,16 +1061,17 @@ const MaintenanceLogs: React.FC = () => {
   useEffect(() => {
     if (!profile) return;
 
+    const isLeadership = profile.role === 'leadership';
+
     if (profile.uid === 'mock-user-123') {
-      setLogs(MOCK_LOGS.filter(l => l.shopId === profile.shopId));
+      setLogs(isLeadership ? MOCK_LOGS : MOCK_LOGS.filter(l => l.shopId === profile.shopId));
       return;
     }
 
-    const q = query(
-      collection(db, 'logs'), 
-      where('shopId', '==', profile.shopId),
-      orderBy('timestamp', 'desc')
-    );
+    const q = isLeadership
+      ? query(collection(db, 'logs'), orderBy('timestamp', 'desc'))
+      : query(collection(db, 'logs'), where('shopId', '==', profile.shopId), orderBy('timestamp', 'desc'));
+    
     const unsub = onSnapshot(q, (snap) => {
       setLogs(snap.docs.map(d => ({ id: d.id, ...d.data() } as MaintenanceLog)));
     });
@@ -1012,6 +1176,12 @@ const MaintenanceLogs: React.FC = () => {
                     <span className="text-on-surface-variant text-[10px] font-semibold uppercase">Technician</span>
                     <span className="text-on-surface text-xs font-medium">{log.technician_name}</span>
                   </div>
+                  {profile?.role === 'leadership' && (
+                    <div className="flex justify-between border-b border-outline pb-2">
+                      <span className="text-on-surface-variant text-[10px] font-semibold uppercase">Shop</span>
+                      <span className="text-on-surface text-xs font-bold">{log.shopId}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between border-b border-outline pb-2">
                     <span className="text-on-surface-variant text-[10px] font-semibold uppercase">Date</span>
                     <span className="text-on-surface text-xs font-medium">
@@ -1138,24 +1308,26 @@ const TrainingTracker: React.FC = () => {
   useEffect(() => {
     if (!profile) return;
 
+    const isLeadership = profile.role === 'leadership';
+
     if (profile.uid === 'mock-user-123') {
-      setTraining(MOCK_TRAINING.filter(t => t.shopId === profile.shopId));
-      setPersonnel(MOCK_PERSONNEL.filter(p => p.shopId === profile.shopId));
+      setTraining(isLeadership ? MOCK_TRAINING : MOCK_TRAINING.filter(t => t.shopId === profile.shopId));
+      setPersonnel(isLeadership ? MOCK_PERSONNEL : MOCK_PERSONNEL.filter(p => p.shopId === profile.shopId));
       return;
     }
 
-    const qTraining = query(
-      collection(db, 'training'),
-      where('shopId', '==', profile.shopId)
-    );
+    const qTraining = isLeadership
+      ? query(collection(db, 'training'))
+      : query(collection(db, 'training'), where('shopId', '==', profile.shopId));
+    
     const unsubTraining = onSnapshot(qTraining, (snap) => {
       setTraining(snap.docs.map(d => ({ id: d.id, ...d.data() } as TrainingRecord)));
     });
 
-    const qPersonnel = query(
-      collection(db, 'users'),
-      where('shopId', '==', profile.shopId)
-    );
+    const qPersonnel = isLeadership
+      ? query(collection(db, 'users'))
+      : query(collection(db, 'users'), where('shopId', '==', profile.shopId));
+    
     const unsubPersonnel = onSnapshot(qPersonnel, (snap) => {
       setPersonnel(snap.docs.map(d => d.data() as UserProfile));
     });
@@ -1343,6 +1515,7 @@ const TrainingTracker: React.FC = () => {
                   <tr className="bg-surface-container-high text-[11px] font-bold text-on-surface-variant tracking-wider uppercase">
                     <th className="px-6 py-4">Course Name</th>
                     <th className="px-6 py-4">Man #</th>
+                    {profile?.role === 'leadership' && <th className="px-6 py-4">Shop</th>}
                     <th className="px-6 py-4">Due Date</th>
                     <th className="px-6 py-4">Status</th>
                   </tr>
@@ -1359,6 +1532,7 @@ const TrainingTracker: React.FC = () => {
                         <p className="text-[10px] text-on-surface-variant uppercase font-bold mt-0.5">{getPersonName(record.man_number)}</p>
                       </td>
                       <td className="px-6 py-4 text-sm text-on-surface-variant">{record.man_number}</td>
+                      {profile?.role === 'leadership' && <td className="px-6 py-4 text-sm text-on-surface-variant font-bold">{record.shopId}</td>}
                       <td className="px-6 py-4 text-sm text-on-surface-variant">{record.due_date}</td>
                       <td className="px-6 py-4">
                         <span className={cn(
@@ -1487,15 +1661,17 @@ const Personnel: React.FC = () => {
   useEffect(() => {
     if (!profile) return;
 
+    const isLeadership = profile.role === 'leadership';
+
     if (profile.uid === 'mock-user-123') {
-      setPersonnel(MOCK_PERSONNEL.filter(p => p.shopId === profile.shopId));
+      setPersonnel(isLeadership ? MOCK_PERSONNEL : MOCK_PERSONNEL.filter(p => p.shopId === profile.shopId));
       return;
     }
 
-    const q = query(
-      collection(db, 'users'),
-      where('shopId', '==', profile.shopId)
-    );
+    const q = isLeadership
+      ? query(collection(db, 'users'), where('status', '==', 'active'))
+      : query(collection(db, 'users'), where('shopId', '==', profile.shopId), where('status', '==', 'active'));
+    
     const unsub = onSnapshot(q, (snap) => {
       setPersonnel(snap.docs.map(d => d.data() as UserProfile));
     });
@@ -1557,6 +1733,7 @@ const Personnel: React.FC = () => {
               <tr className="bg-surface-container-high text-[11px] font-bold text-on-surface-variant tracking-wider uppercase">
                 <th className="px-6 py-4">Name / Rank</th>
                 <th className="px-6 py-4">Man #</th>
+                {profile?.role === 'leadership' && <th className="px-6 py-4">Shop</th>}
                 <th className="px-6 py-4">Role</th>
                 <th className="px-6 py-4">Status</th>
               </tr>
@@ -1573,6 +1750,7 @@ const Personnel: React.FC = () => {
                     <p className="text-[11px] text-on-surface-variant">{p.email}</p>
                   </td>
                   <td className="px-6 py-4 text-sm text-on-surface-variant">{p.man_number}</td>
+                  {profile?.role === 'leadership' && <td className="px-6 py-4 text-sm text-on-surface-variant font-bold">{p.shopId}</td>}
                   <td className="px-6 py-4">
                     <span className={cn(
                       "badge",
@@ -1727,7 +1905,7 @@ const AppContent: React.FC = () => {
         <Route path="/maintenance" element={<MaintenanceLogs />} />
         <Route path="/training" element={<TrainingTracker />} />
         <Route path="/personnel" element={<Personnel />} />
-        {profile?.role === 'ncoic' && <Route path="/onboarding" element={<Onboarding />} />}
+        {(profile?.role === 'ncoic' || profile?.role === 'leadership') && <Route path="/onboarding" element={<Onboarding />} />}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </Layout>
