@@ -1915,7 +1915,7 @@ const AppContent: React.FC = () => {
 export default function App() {
   return (
     <AuthProvider>
-      <Router basename={import.meta.env.BASE_URL}>
+      <Router basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
         <AppContent />
       </Router>
     </AuthProvider>
