@@ -49,7 +49,9 @@ import {
   ChevronDown,
   UserPlus,
   Mail,
-  Lock
+  Lock,
+  List,
+  Grid
 } from 'lucide-react';
 import { format, addDays, isBefore, parseISO } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
@@ -1051,12 +1053,20 @@ const MaintenanceLogs: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     tail_number: '',
+    jcn: '',
     discrepancy: '',
     repair: '',
     doc_number: '',
+    personnelInput: '',
     isRedBall: false
   });
   const [loading, setLoading] = useState(false);
+  
+  // New features state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   useEffect(() => {
     if (!profile) return;
@@ -1082,32 +1092,47 @@ const MaintenanceLogs: React.FC = () => {
     e.preventDefault();
     if (!profile) return;
     setLoading(true);
+    
+    const personnelArray = formData.personnelInput.split(',').map(p => p.trim()).filter(p => p);
+    
     try {
       if (profile.uid === 'mock-user-123') {
         const newLog: MaintenanceLog = {
           id: `mock-${Date.now()}`,
-          ...formData,
+          tail_number: formData.tail_number,
+          jcn: formData.jcn,
+          discrepancy: formData.discrepancy,
+          repair: formData.repair,
+          doc_number: formData.doc_number,
+          isRedBall: formData.isRedBall,
           shopId: profile.shopId,
           technician_name: profile.name,
           man_number: profile.man_number,
+          personnel: personnelArray,
           timestamp: { toDate: () => new Date() } as any
         };
         setLogs([newLog, ...logs]);
         setIsModalOpen(false);
-        setFormData({ tail_number: '', discrepancy: '', repair: '', doc_number: '', isRedBall: false });
+        setFormData({ tail_number: '', jcn: '', discrepancy: '', repair: '', doc_number: '', personnelInput: '', isRedBall: false });
         return;
       }
 
       const newLog: MaintenanceLog = {
-        ...formData,
+        tail_number: formData.tail_number,
+        jcn: formData.jcn,
+        discrepancy: formData.discrepancy,
+        repair: formData.repair,
+        doc_number: formData.doc_number,
+        isRedBall: formData.isRedBall,
         shopId: profile.shopId,
         technician_name: profile.name,
         man_number: profile.man_number,
+        personnel: personnelArray,
         timestamp: serverTimestamp()
       };
       await addDoc(collection(db, 'logs'), newLog);
       setIsModalOpen(false);
-      setFormData({ tail_number: '', discrepancy: '', repair: '', doc_number: '', isRedBall: false });
+      setFormData({ tail_number: '', jcn: '', discrepancy: '', repair: '', doc_number: '', personnelInput: '', isRedBall: false });
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'logs');
     } finally {
@@ -1115,25 +1140,57 @@ const MaintenanceLogs: React.FC = () => {
     }
   };
 
+  const filteredLogs = logs.filter(log => {
+    const matchesSearch = 
+      log.tail_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      log.technician_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      log.discrepancy.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (log.jcn && log.jcn.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (log.personnel && log.personnel.some(p => p.toLowerCase().includes(searchQuery.toLowerCase())));
+      
+    let matchesDate = true;
+    if (startDate || endDate) {
+      const logDate = log.timestamp?.toDate ? log.timestamp.toDate() : new Date();
+      if (startDate) matchesDate = matchesDate && logDate >= new Date(startDate);
+      if (endDate) matchesDate = matchesDate && logDate <= new Date(endDate);
+    }
+    
+    return matchesSearch && matchesDate;
+  });
+
   return (
     <div className="space-y-8">
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight text-on-background">Maintenance Logs</h2>
           <p className="text-on-surface-variant font-medium text-sm mt-1">Real-time Turnover & Discrepancy Tracking</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
+          <div className="flex bg-surface-container-high rounded-xl p-1 border border-outline">
+            <button 
+              onClick={() => setViewMode('grid')}
+              className={cn("p-2 rounded-lg transition-colors", viewMode === 'grid' ? "bg-surface shadow-sm text-primary" : "text-on-surface-variant hover:text-on-surface")}
+            >
+              <Grid className="w-4 h-4" />
+            </button>
+            <button 
+              onClick={() => setViewMode('list')}
+              className={cn("p-2 rounded-lg transition-colors", viewMode === 'list' ? "bg-surface shadow-sm text-primary" : "text-on-surface-variant hover:text-on-surface")}
+            >
+              <List className="w-4 h-4" />
+            </button>
+          </div>
           {profile?.role === 'ncoic' && (
             <div className="flex gap-2">
               <button 
-                onClick={() => exportLogsToCSV(logs, profile.shopId)}
+                onClick={() => exportLogsToCSV(filteredLogs, profile.shopId)}
                 className="sleek-button bg-surface-container-high text-on-surface border-outline hover:bg-surface-container-highest flex items-center gap-2"
                 title="Export CSV"
               >
                 <FileSpreadsheet className="w-4 h-4" /> <span className="hidden sm:inline">CSV</span>
               </button>
               <button 
-                onClick={() => exportLogsToPDF(logs, profile.shopId)}
+                onClick={() => exportLogsToPDF(filteredLogs, profile.shopId)}
                 className="sleek-button bg-surface-container-high text-on-surface border-outline hover:bg-surface-container-highest flex items-center gap-2"
                 title="Export PDF"
               >
@@ -1150,54 +1207,91 @@ const MaintenanceLogs: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="flex flex-col md:flex-row gap-4 bg-surface p-4 rounded-2xl border border-outline">
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
+          <input 
+            type="text" 
+            placeholder="Search by tail number, name, JCN, or discrepancy..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="sleek-input pl-10 w-full"
+          />
+        </div>
+        <div className="flex gap-4">
+          <div className="flex flex-col">
+            <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider ml-1 mb-1">Start Date</span>
+            <input 
+              type="date" 
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="sleek-input"
+            />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider ml-1 mb-1">End Date</span>
+            <input 
+              type="date" 
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="sleek-input"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className={cn("grid gap-6", viewMode === 'grid' ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : "grid-cols-1")}>
         <AnimatePresence>
-          {logs.map((log) => (
+          {filteredLogs.map((log) => (
             <motion.div 
               key={log.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="sleek-card flex flex-col justify-between"
+              className={cn("sleek-card flex flex-col justify-between", viewMode === 'list' && "md:flex-row md:items-center gap-6")}
             >
-              <div>
-                <div className="flex justify-between items-start mb-4">
+              <div className={cn(viewMode === 'list' && "flex-1 grid grid-cols-1 md:grid-cols-4 gap-4")}>
+                <div className="flex justify-between items-start mb-4 md:mb-0 md:col-span-1">
                   <div className="flex flex-col">
-                    <span className="text-on-surface-variant text-[10px] font-bold tracking-wider mb-1 uppercase">Log ID: #{log.id?.slice(0, 6)}</span>
+                    <span className="text-on-surface-variant text-[10px] font-bold tracking-wider mb-1 uppercase">
+                      {log.jcn ? `JCN: ${log.jcn}` : `Log ID: #${log.id?.slice(0, 6)}`}
+                    </span>
                     <h3 className="text-xl font-bold text-on-background">{log.tail_number}</h3>
                   </div>
                   {log.isRedBall && (
-                    <span className="badge badge-danger">Red Ball</span>
+                    <span className="badge badge-danger md:hidden">Red Ball</span>
                   )}
                 </div>
                 
-                <div className="space-y-3 mb-6">
-                  <div className="flex justify-between border-b border-outline pb-2">
-                    <span className="text-on-surface-variant text-[10px] font-semibold uppercase">Technician</span>
-                    <span className="text-on-surface text-xs font-medium">{log.technician_name}</span>
+                <div className={cn("space-y-3 mb-6 md:mb-0", viewMode === 'list' && "md:col-span-3 md:grid md:grid-cols-3 md:gap-4 md:space-y-0")}>
+                  <div className="flex justify-between border-b border-outline pb-2 md:border-none md:flex-col md:justify-center">
+                    <span className="text-on-surface-variant text-[10px] font-semibold uppercase">Personnel</span>
+                    <span className="text-on-surface text-xs font-medium">
+                      {log.technician_name}
+                      {log.personnel && log.personnel.length > 0 && ` + ${log.personnel.length} more`}
+                    </span>
                   </div>
-                  {profile?.role === 'leadership' && (
-                    <div className="flex justify-between border-b border-outline pb-2">
-                      <span className="text-on-surface-variant text-[10px] font-semibold uppercase">Shop</span>
-                      <span className="text-on-surface text-xs font-bold">{log.shopId}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between border-b border-outline pb-2">
+                  <div className="flex justify-between border-b border-outline pb-2 md:border-none md:flex-col md:justify-center">
                     <span className="text-on-surface-variant text-[10px] font-semibold uppercase">Date</span>
                     <span className="text-on-surface text-xs font-medium">
                       {log.timestamp?.toDate ? format(log.timestamp.toDate(), 'yyyy.MM.dd') : 'Pending'}
                     </span>
                   </div>
-                  <div className="flex flex-col gap-1">
+                  <div className="flex flex-col gap-1 md:col-span-1">
                     <span className="text-primary text-[10px] font-bold uppercase">Discrepancy</span>
-                    <p className="text-on-surface text-xs italic leading-relaxed line-clamp-3">{log.discrepancy}</p>
+                    <p className="text-on-surface text-xs italic leading-relaxed line-clamp-3 md:line-clamp-2">{log.discrepancy}</p>
                   </div>
                 </div>
               </div>
               
-              <button className="w-full bg-surface-container-high text-on-surface font-semibold py-2 rounded-lg text-xs hover:bg-surface-container-highest transition-all">
-                View Details
-              </button>
+              <div className={cn(viewMode === 'list' && "flex flex-col items-end gap-2 min-w-[120px]")}>
+                {log.isRedBall && viewMode === 'list' && (
+                  <span className="badge badge-danger">Red Ball</span>
+                )}
+                <button className={cn("bg-surface-container-high text-on-surface font-semibold py-2 rounded-lg text-xs hover:bg-surface-container-highest transition-all", viewMode === 'grid' ? "w-full" : "px-4")}>
+                  View Details
+                </button>
+              </div>
             </motion.div>
           ))}
         </AnimatePresence>
@@ -1233,18 +1327,38 @@ const MaintenanceLogs: React.FC = () => {
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Red Ball Status</label>
-                    <button 
-                      type="button"
-                      onClick={() => setFormData({...formData, isRedBall: !formData.isRedBall})}
-                      className={cn(
-                        "sleek-input flex items-center justify-center gap-2",
-                        formData.isRedBall ? "bg-error text-white border-error" : "bg-surface-container-high text-on-surface-variant"
-                      )}
-                    >
-                      <ShieldAlert className="w-4 h-4" /> {formData.isRedBall ? 'URGENT' : 'NORMAL'}
-                    </button>
+                    <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">JCN (Job Control Number)</label>
+                    <input 
+                      className="sleek-input"
+                      placeholder="E.G. 231450012"
+                      value={formData.jcn}
+                      onChange={e => setFormData({...formData, jcn: e.target.value})}
+                    />
                   </div>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Additional Personnel (Comma Separated)</label>
+                  <input 
+                    className="sleek-input"
+                    placeholder="E.G. Smith J, Doe A"
+                    value={formData.personnelInput}
+                    onChange={e => setFormData({...formData, personnelInput: e.target.value})}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Red Ball Status</label>
+                  <button 
+                    type="button"
+                    onClick={() => setFormData({...formData, isRedBall: !formData.isRedBall})}
+                    className={cn(
+                      "sleek-input flex items-center justify-center gap-2",
+                      formData.isRedBall ? "bg-error text-white border-error" : "bg-surface-container-high text-on-surface-variant"
+                    )}
+                  >
+                    <ShieldAlert className="w-4 h-4" /> {formData.isRedBall ? 'URGENT' : 'NORMAL'}
+                  </button>
                 </div>
 
                 <div className="space-y-4">
@@ -1305,28 +1419,53 @@ const TrainingTracker: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<TrainingRecord | null>(null);
 
+  // New features state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
+
   useEffect(() => {
     if (!profile) return;
 
     const isLeadership = profile.role === 'leadership';
+    const isTechnician = profile.role === 'technician';
 
     if (profile.uid === 'mock-user-123') {
-      setTraining(isLeadership ? MOCK_TRAINING : MOCK_TRAINING.filter(t => t.shopId === profile.shopId));
-      setPersonnel(isLeadership ? MOCK_PERSONNEL : MOCK_PERSONNEL.filter(p => p.shopId === profile.shopId));
+      if (isLeadership) {
+        setTraining(MOCK_TRAINING);
+        setPersonnel(MOCK_PERSONNEL);
+      } else if (isTechnician) {
+        setTraining(MOCK_TRAINING.filter(t => t.man_number === profile.man_number));
+        setPersonnel(MOCK_PERSONNEL.filter(p => p.man_number === profile.man_number));
+      } else {
+        setTraining(MOCK_TRAINING.filter(t => t.shopId === profile.shopId));
+        setPersonnel(MOCK_PERSONNEL.filter(p => p.shopId === profile.shopId));
+      }
       return;
     }
 
-    const qTraining = isLeadership
-      ? query(collection(db, 'training'))
-      : query(collection(db, 'training'), where('shopId', '==', profile.shopId));
+    let qTraining;
+    if (isLeadership) {
+      qTraining = query(collection(db, 'training'));
+    } else if (isTechnician) {
+      qTraining = query(collection(db, 'training'), where('man_number', '==', profile.man_number));
+    } else {
+      qTraining = query(collection(db, 'training'), where('shopId', '==', profile.shopId));
+    }
     
     const unsubTraining = onSnapshot(qTraining, (snap) => {
       setTraining(snap.docs.map(d => ({ id: d.id, ...d.data() } as TrainingRecord)));
     });
 
-    const qPersonnel = isLeadership
-      ? query(collection(db, 'users'))
-      : query(collection(db, 'users'), where('shopId', '==', profile.shopId));
+    let qPersonnel;
+    if (isLeadership) {
+      qPersonnel = query(collection(db, 'users'));
+    } else if (isTechnician) {
+      qPersonnel = query(collection(db, 'users'), where('man_number', '==', profile.man_number));
+    } else {
+      qPersonnel = query(collection(db, 'users'), where('shopId', '==', profile.shopId));
+    }
     
     const unsubPersonnel = onSnapshot(qPersonnel, (snap) => {
       setPersonnel(snap.docs.map(d => d.data() as UserProfile));
@@ -1401,32 +1540,63 @@ const TrainingTracker: React.FC = () => {
     }
   };
 
+  const filteredTraining = training.filter(record => {
+    const personName = getPersonName(record.man_number);
+    const matchesSearch = 
+      record.course_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      record.man_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      personName.toLowerCase().includes(searchQuery.toLowerCase());
+      
+    let matchesDate = true;
+    if (startDate || endDate) {
+      const recordDate = new Date(record.due_date);
+      if (startDate) matchesDate = matchesDate && recordDate >= new Date(startDate);
+      if (endDate) matchesDate = matchesDate && recordDate <= new Date(endDate);
+    }
+    
+    return matchesSearch && matchesDate;
+  });
+
   const stats = {
-    current: training.filter(t => t.status === 'current').length,
-    expiring: training.filter(t => t.status === 'expiring').length,
-    expired: training.filter(t => t.status === 'expired').length,
-    total: training.length || 1
+    current: filteredTraining.filter(t => t.status === 'current').length,
+    expiring: filteredTraining.filter(t => t.status === 'expiring').length,
+    expired: filteredTraining.filter(t => t.status === 'expired').length,
+    total: filteredTraining.length || 1
   };
 
   return (
     <div className="space-y-8">
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight text-on-background">Training Readiness</h2>
           <p className="text-on-surface-variant font-medium text-sm mt-1">Task Expiration Forecast // 60-Day Window</p>
         </div>
-        <div className="flex items-center gap-4">
-          {profile?.role === 'ncoic' && (
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex bg-surface-container-high rounded-xl p-1 border border-outline">
+            <button 
+              onClick={() => setViewMode('grid')}
+              className={cn("p-2 rounded-lg transition-colors", viewMode === 'grid' ? "bg-surface shadow-sm text-primary" : "text-on-surface-variant hover:text-on-surface")}
+            >
+              <Grid className="w-4 h-4" />
+            </button>
+            <button 
+              onClick={() => setViewMode('list')}
+              className={cn("p-2 rounded-lg transition-colors", viewMode === 'list' ? "bg-surface shadow-sm text-primary" : "text-on-surface-variant hover:text-on-surface")}
+            >
+              <List className="w-4 h-4" />
+            </button>
+          </div>
+          {(profile?.role === 'ncoic' || profile?.role === 'leadership') && (
             <div className="flex gap-2">
               <button 
-                onClick={() => exportTrainingToCSV(training, profile.shopId)}
+                onClick={() => exportTrainingToCSV(filteredTraining, profile.shopId)}
                 className="sleek-button bg-surface-container-high text-on-surface border-outline hover:bg-surface-container-highest flex items-center gap-2"
                 title="Export CSV"
               >
                 <FileSpreadsheet className="w-4 h-4" /> <span className="hidden sm:inline">CSV</span>
               </button>
               <button 
-                onClick={() => exportTrainingToPDF(training, profile.shopId)}
+                onClick={() => exportTrainingToPDF(filteredTraining, profile.shopId)}
                 className="sleek-button bg-surface-container-high text-on-surface border-outline hover:bg-surface-container-highest flex items-center gap-2"
                 title="Export PDF"
               >
@@ -1434,13 +1604,46 @@ const TrainingTracker: React.FC = () => {
               </button>
             </div>
           )}
-          <BarChart3 className="text-primary w-10 h-10" />
+          <BarChart3 className="text-primary w-10 h-10 hidden sm:block" />
+        </div>
+      </div>
+
+      <div className="flex flex-col md:flex-row gap-4 bg-surface p-4 rounded-2xl border border-outline">
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
+          <input 
+            type="text" 
+            placeholder="Search by course name, man #, or personnel name..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="sleek-input pl-10 w-full"
+          />
+        </div>
+        <div className="flex gap-4">
+          <div className="flex flex-col">
+            <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider ml-1 mb-1">Due After</span>
+            <input 
+              type="date" 
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="sleek-input"
+            />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider ml-1 mb-1">Due Before</span>
+            <input 
+              type="date" 
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="sleek-input"
+            />
+          </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Upload Area */}
-        {profile?.role === 'ncoic' && (
+        {(profile?.role === 'ncoic' || profile?.role === 'leadership') && (
           <div className="lg:col-span-12">
             <div className="sleek-card !p-0 overflow-hidden">
               <label className="p-12 flex flex-col items-center justify-center text-center space-y-4 hover:bg-surface-container-high transition-colors group cursor-pointer">
@@ -1501,54 +1704,89 @@ const TrainingTracker: React.FC = () => {
         </div>
 
         <div className="lg:col-span-12">
-          <div className="sleek-card !p-0 overflow-hidden">
-            <div className="p-6 border-b border-outline flex justify-between items-center bg-surface">
-              <h3 className="font-bold text-lg text-on-background tracking-tight">Training Records</h3>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
-                <input className="sleek-input pl-10 py-2 text-xs w-64" placeholder="Search Training..." />
+          {viewMode === 'list' ? (
+            <div className="sleek-card !p-0 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-surface-container-high text-[11px] font-bold text-on-surface-variant tracking-wider uppercase">
+                      <th className="px-6 py-4">Course Name</th>
+                      <th className="px-6 py-4">Man #</th>
+                      {profile?.role === 'leadership' && <th className="px-6 py-4">Shop</th>}
+                      <th className="px-6 py-4">Due Date</th>
+                      <th className="px-6 py-4">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-outline">
+                    {filteredTraining.map((record) => (
+                      <tr 
+                        key={record.id} 
+                        className="hover:bg-surface-container-high transition-colors cursor-pointer"
+                        onClick={() => setSelectedRecord(record)}
+                      >
+                        <td className="px-6 py-4">
+                          <p className="font-semibold text-on-background">{record.course_name}</p>
+                          <p className="text-[10px] text-on-surface-variant uppercase font-bold mt-0.5">{getPersonName(record.man_number)}</p>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-on-surface-variant">{record.man_number}</td>
+                        {profile?.role === 'leadership' && <td className="px-6 py-4 text-sm text-on-surface-variant font-bold">{record.shopId}</td>}
+                        <td className="px-6 py-4 text-sm text-on-surface-variant">{record.due_date}</td>
+                        <td className="px-6 py-4">
+                          <span className={cn(
+                            "badge",
+                            record.status === 'current' ? "badge-success" : 
+                            record.status === 'expiring' ? "badge-warning" : "badge-danger"
+                          )}>
+                            {record.status.toUpperCase()}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-surface-container-high text-[11px] font-bold text-on-surface-variant tracking-wider uppercase">
-                    <th className="px-6 py-4">Course Name</th>
-                    <th className="px-6 py-4">Man #</th>
-                    {profile?.role === 'leadership' && <th className="px-6 py-4">Shop</th>}
-                    <th className="px-6 py-4">Due Date</th>
-                    <th className="px-6 py-4">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-outline">
-                  {training.map((record) => (
-                    <tr 
-                      key={record.id} 
-                      className="hover:bg-surface-container-high transition-colors cursor-pointer"
-                      onClick={() => setSelectedRecord(record)}
-                    >
-                      <td className="px-6 py-4">
-                        <p className="font-semibold text-on-background">{record.course_name}</p>
-                        <p className="text-[10px] text-on-surface-variant uppercase font-bold mt-0.5">{getPersonName(record.man_number)}</p>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-on-surface-variant">{record.man_number}</td>
-                      {profile?.role === 'leadership' && <td className="px-6 py-4 text-sm text-on-surface-variant font-bold">{record.shopId}</td>}
-                      <td className="px-6 py-4 text-sm text-on-surface-variant">{record.due_date}</td>
-                      <td className="px-6 py-4">
-                        <span className={cn(
-                          "badge",
-                          record.status === 'current' ? "badge-success" : 
-                          record.status === 'expiring' ? "badge-warning" : "badge-danger"
-                        )}>
-                          {record.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredTraining.map((record) => (
+                <div 
+                  key={record.id} 
+                  className="sleek-card cursor-pointer hover:border-primary/50 transition-colors"
+                  onClick={() => setSelectedRecord(record)}
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h4 className="font-bold text-on-background">{record.course_name}</h4>
+                      <p className="text-[10px] text-on-surface-variant uppercase font-bold mt-1">{getPersonName(record.man_number)}</p>
+                    </div>
+                    <span className={cn(
+                      "badge",
+                      record.status === 'current' ? "badge-success" :
+                      record.status === 'expiring' ? "badge-warning" : "badge-danger"
+                    )}>
+                      {record.status.toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between border-b border-outline pb-2">
+                      <span className="text-on-surface-variant text-[10px] font-semibold uppercase">Man #</span>
+                      <span className="text-on-surface text-xs font-medium">{record.man_number}</span>
+                    </div>
+                    {profile?.role === 'leadership' && (
+                      <div className="flex justify-between border-b border-outline pb-2">
+                        <span className="text-on-surface-variant text-[10px] font-semibold uppercase">Shop</span>
+                        <span className="text-on-surface text-xs font-bold">{record.shopId}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between border-b border-outline pb-2">
+                      <span className="text-on-surface-variant text-[10px] font-semibold uppercase">Due Date</span>
+                      <span className="text-on-surface text-xs font-medium">{record.due_date}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
+          )}
         </div>
       </div>
 
