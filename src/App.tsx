@@ -1602,71 +1602,10 @@ const TrainingTracker: React.FC = () => {
     }
   };
 
-  const handleNotifyUsers = () => {
-    // Find users with expiring or expired training
-    const affectedManNumbers = new Set(
-      filteredTraining
-        .filter(t => t.status === 'expired' || t.status === 'expiring')
-        .map(t => t.man_number)
-    );
+  const [notifyModal, setNotifyModal] = useState<{isOpen: boolean, type: 'email' | 'sms'} | null>(null);
 
-    const affectedEmails = personnel
-      .filter(p => affectedManNumbers.has(p.man_number) && p.email)
-      .map(p => p.email);
-
-    if (affectedEmails.length === 0) {
-      alert("No users with expiring or expired training found.");
-      return;
-    }
-
-    const subject = encodeURIComponent("ACTION REQUIRED: Upcoming or Overdue Training");
-    const body = encodeURIComponent(
-      "Please review your training records in the 92 AMXS Tracker. You have training items that are either overdue or expiring within the next 60 days.\n\nThank you."
-    );
-    
-    // Use BCC so users don't see everyone else's email
-    const mailtoLink = `mailto:?bcc=${affectedEmails.join(',')}&subject=${subject}&body=${body}`;
-    window.location.href = mailtoLink;
-  };
-
-  const handleNotifyUsersSMS = () => {
-    // Find users with expiring or expired training
-    const affectedManNumbers = new Set(
-      filteredTraining
-        .filter(t => t.status === 'expired' || t.status === 'expiring')
-        .map(t => t.man_number)
-    );
-
-    const affectedUsers = personnel.filter(p => affectedManNumbers.has(p.man_number) && p.phone && p.carrier);
-
-    if (affectedUsers.length === 0) {
-      alert("No users with phone numbers/carriers and expiring/expired training found.");
-      return;
-    }
-
-    const gatewayMap: Record<string, string> = {
-      'verizon': 'vtext.com',
-      'tmobile': 'tmomail.net',
-      'att': 'txt.att.net',
-      'sprint': 'messaging.sprintpcs.com',
-      'googlefi': 'msg.fi.google.com'
-    };
-
-    // Convert phone numbers to carrier-specific email addresses
-    const smsEmails = affectedUsers.map(p => {
-      const digits = (p.phone || '').replace(/\D/g, '');
-      const gateway = gatewayMap[p.carrier || ''] || 'vtext.com';
-      return `${digits}@${gateway}`;
-    });
-
-    const subject = encodeURIComponent("92 AMXS Training Alert");
-    const body = encodeURIComponent(
-      "ACTION REQUIRED: Please review your training records in the 92 AMXS Tracker. You have training items that are either overdue or expiring within the next 60 days."
-    );
-    
-    // Use mailto link to send SMS via email gateway
-    const mailtoLink = `mailto:?bcc=${smsEmails.join(',')}&subject=${subject}&body=${body}`;
-    window.location.href = mailtoLink;
+  const openNotifyModal = (type: 'email' | 'sms') => {
+    setNotifyModal({ isOpen: true, type });
   };
 
   const filteredTraining = training.filter(record => {
@@ -1718,14 +1657,14 @@ const TrainingTracker: React.FC = () => {
           {(profile?.role === 'ncoic' || profile?.role === 'leadership') && (
             <div className="flex gap-2">
               <button 
-                onClick={handleNotifyUsers}
+                onClick={() => openNotifyModal('email')}
                 className="sleek-button bg-primary text-on-primary hover:bg-primary/90 flex items-center gap-2"
                 title="Email Affected Users"
               >
                 <Send className="w-4 h-4" /> <span className="hidden sm:inline">Email</span>
               </button>
               <button 
-                onClick={handleNotifyUsersSMS}
+                onClick={() => openNotifyModal('sms')}
                 className="sleek-button bg-primary text-on-primary hover:bg-primary/90 flex items-center gap-2"
                 title="Text Affected Users"
               >
@@ -2023,6 +1962,127 @@ const TrainingTracker: React.FC = () => {
                     </button>
                   )}
                 </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Notification Modal */}
+      <AnimatePresence>
+        {notifyModal?.isOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setNotifyModal(null)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-3xl bg-surface rounded-3xl shadow-2xl overflow-hidden border border-outline flex flex-col max-h-[90vh]"
+            >
+              <div className="p-6 border-b border-outline bg-surface-container-low flex justify-between items-center">
+                <div>
+                  <h3 className="text-xl font-bold text-on-background">
+                    {notifyModal.type === 'email' ? 'Email Notifications' : 'Text Notifications'}
+                  </h3>
+                  <p className="text-sm text-on-surface-variant mt-1">Send personalized training alerts</p>
+                </div>
+                <button 
+                  onClick={() => setNotifyModal(null)}
+                  className="p-2 hover:bg-surface-container-high rounded-full transition-colors"
+                >
+                  <X className="w-6 h-6 text-on-surface-variant" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                {(() => {
+                  const affectedRecords = filteredTraining.filter(t => t.status === 'expired' || t.status === 'expiring');
+                  const groupedRecords = affectedRecords.reduce((acc, record) => {
+                    if (!acc[record.man_number]) acc[record.man_number] = [];
+                    acc[record.man_number].push(record);
+                    return acc;
+                  }, {} as Record<string, TrainingRecord[]>);
+
+                  const affectedUsers = personnel.filter(p => 
+                    groupedRecords[p.man_number] && 
+                    (notifyModal.type === 'email' ? p.email : (p.phone && p.carrier))
+                  );
+
+                  if (affectedUsers.length === 0) {
+                    return (
+                      <div className="text-center py-8 text-on-surface-variant">
+                        <p>No users found with missing training and valid contact info.</p>
+                      </div>
+                    );
+                  }
+
+                  return affectedUsers.map(user => {
+                    const records = groupedRecords[user.man_number];
+                    
+                    let msg = `*** 92 AMXS TRAINING ALERT ***\n\n`;
+                    msg += `Name: ${user.name}\n`;
+                    msg += `ACTION REQUIRED: The following training items are overdue or expiring soon:\n\n`;
+                    records.forEach(r => {
+                      msg += `• ${r.course_name}\n`;
+                      msg += `  DUE: ${r.due_date} | STATUS: ${r.status.toUpperCase()}\n\n`;
+                    });
+                    msg += `Please complete these items and update the tracker.`;
+
+                    const subject = encodeURIComponent("92 AMXS Training Alert");
+                    const body = encodeURIComponent(msg);
+                    
+                    let link = '';
+                    if (notifyModal.type === 'email') {
+                      link = `mailto:${user.email}?subject=${subject}&body=${body}`;
+                    } else {
+                      const digits = (user.phone || '').replace(/\D/g, '');
+                      const gatewayMap: Record<string, string> = {
+                        'verizon': 'vtext.com',
+                        'tmobile': 'tmomail.net',
+                        'att': 'txt.att.net',
+                        'sprint': 'messaging.sprintpcs.com',
+                        'googlefi': 'msg.fi.google.com'
+                      };
+                      const gateway = gatewayMap[user.carrier || ''] || 'vtext.com';
+                      const email = `${digits}@${gateway}`;
+                      link = `mailto:${email}?subject=${subject}&body=${body}`;
+                    }
+
+                    return (
+                      <div key={user.uid} className="bg-surface-container-low p-4 rounded-2xl border border-outline flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+                        <div className="flex-1">
+                          <h4 className="font-bold text-on-background">{user.name}</h4>
+                          <p className="text-xs text-on-surface-variant mb-2">
+                            {notifyModal.type === 'email' ? user.email : `${user.phone} (${user.carrier})`}
+                          </p>
+                          <div className="space-y-1">
+                            {records.map(r => (
+                              <div key={r.id} className="text-xs flex items-center gap-2">
+                                <span className={cn("w-2 h-2 rounded-full", r.status === 'expired' ? "bg-error" : "bg-warning")}></span>
+                                <span className="font-medium text-on-surface">{r.course_name}</span>
+                                <span className="text-on-surface-variant">({r.due_date})</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <a 
+                          href={link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="sleek-button bg-primary text-on-primary whitespace-nowrap"
+                        >
+                          Send {notifyModal.type === 'email' ? 'Email' : 'Text'}
+                        </a>
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             </motion.div>
           </div>
