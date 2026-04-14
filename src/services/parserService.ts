@@ -1,15 +1,27 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
+let ai: GoogleGenAI | null = null;
+
+function getAI() {
+  if (!ai) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error("Gemini API key is not configured. Please add it to your environment variables.");
+    }
+    ai = new GoogleGenAI({ apiKey });
+  }
+  return ai;
+}
 
 export async function parseTrainingReport(base64Data: string, mimeType: string) {
   try {
+    const aiClient = getAI();
     // Alias .xlsm to .xlsx for compatibility
     const supportedMimeType = mimeType === 'application/vnd.ms-excel.sheet.macroEnabled.12' 
       ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       : mimeType;
 
-    const response = await ai.models.generateContent({
+    const response = await aiClient.models.generateContent({
       model: "gemini-2.5-flash",
       contents: [
         {
