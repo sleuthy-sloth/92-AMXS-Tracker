@@ -53,7 +53,8 @@ import {
   Mail,
   Lock,
   List,
-  Grid
+  Grid,
+  MessageSquare
 } from 'lucide-react';
 import { format, addDays, isBefore, parseISO } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
@@ -125,15 +126,15 @@ const MOCK_LOGS: MaintenanceLog[] = [
 
 const MOCK_PERSONNEL: UserProfile[] = [
   // AVIONICS
-  { uid: 'mock-user-123', name: 'PREVIEW USER', man_number: '99999', shopId: 'AVIONICS', role: 'ncoic', email: 'dev.preview@92amxs.af.mil', status: 'active' },
-  { uid: 'mock-user-2', name: 'DOE, J', man_number: '12345', shopId: 'AVIONICS', role: 'technician', email: 'doe.j@92amxs.af.mil', status: 'active' },
-  { uid: 'mock-user-3', name: 'SMITH, A', man_number: '54321', shopId: 'AVIONICS', role: 'technician', email: 'smith.a@92amxs.af.mil', status: 'active' },
+  { uid: 'mock-user-123', name: 'PREVIEW USER', man_number: '99999', shopId: 'AVIONICS', role: 'ncoic', email: 'dev.preview@92amxs.af.mil', phone: '5672016985', status: 'active' },
+  { uid: 'mock-user-2', name: 'DOE, J', man_number: '12345', shopId: 'AVIONICS', role: 'technician', email: 'doe.j@92amxs.af.mil', phone: '5550101', status: 'active' },
+  { uid: 'mock-user-3', name: 'SMITH, A', man_number: '54321', shopId: 'AVIONICS', role: 'technician', email: 'smith.a@92amxs.af.mil', phone: '5550102', status: 'active' },
   // CREW CHIEFS
-  { uid: 'mock-user-4', name: 'MILLER, R', man_number: '22222', shopId: 'CREW_CHIEFS', role: 'technician', email: 'miller.r@92amxs.af.mil', status: 'active' },
-  { uid: 'mock-user-5', name: 'JOHNSON, K', man_number: '22223', shopId: 'CREW_CHIEFS', role: 'ncoic', email: 'johnson.k@92amxs.af.mil', status: 'active' },
+  { uid: 'mock-user-4', name: 'MILLER, R', man_number: '22222', shopId: 'CREW_CHIEFS', role: 'technician', email: 'miller.r@92amxs.af.mil', phone: '5550103', status: 'active' },
+  { uid: 'mock-user-5', name: 'JOHNSON, K', man_number: '22223', shopId: 'CREW_CHIEFS', role: 'ncoic', email: 'johnson.k@92amxs.af.mil', phone: '5550104', status: 'active' },
   // JETS
-  { uid: 'mock-user-6', name: 'BROWN, T', man_number: '33333', shopId: 'JETS', role: 'technician', email: 'brown.t@92amxs.af.mil', status: 'active' },
-  { uid: 'mock-user-7', name: 'DAVIS, L', man_number: '33334', shopId: 'JETS', role: 'ncoic', email: 'davis.l@92amxs.af.mil', status: 'active' }
+  { uid: 'mock-user-6', name: 'BROWN, T', man_number: '33333', shopId: 'JETS', role: 'technician', email: 'brown.t@92amxs.af.mil', phone: '5550105', status: 'active' },
+  { uid: 'mock-user-7', name: 'DAVIS, L', man_number: '33334', shopId: 'JETS', role: 'ncoic', email: 'davis.l@92amxs.af.mil', phone: '5550106', status: 'active' }
 ];
 
 const MOCK_TRAINING: TrainingRecord[] = [
@@ -1182,7 +1183,7 @@ const MaintenanceLogs: React.FC = () => {
               <List className="w-4 h-4" />
             </button>
           </div>
-          {profile?.role === 'ncoic' && (
+          {(profile?.role === 'ncoic' || profile?.role === 'leadership') && (
             <div className="flex gap-2">
               <button 
                 onClick={() => exportLogsToCSV(filteredLogs, profile.shopId)}
@@ -1609,6 +1610,39 @@ const TrainingTracker: React.FC = () => {
     window.location.href = mailtoLink;
   };
 
+  const handleNotifyUsersSMS = () => {
+    // Find users with expiring or expired training
+    const affectedManNumbers = new Set(
+      filteredTraining
+        .filter(t => t.status === 'expired' || t.status === 'expiring')
+        .map(t => t.man_number)
+    );
+
+    const affectedPhones = personnel
+      .filter(p => affectedManNumbers.has(p.man_number) && p.phone)
+      .map(p => p.phone);
+
+    if (affectedPhones.length === 0) {
+      alert("No users with phone numbers and expiring/expired training found.");
+      return;
+    }
+
+    // Convert phone numbers to vtext.com email addresses
+    const vtextEmails = affectedPhones.map(phone => {
+      const digits = (phone || '').replace(/\D/g, '');
+      return `${digits}@vtext.com`;
+    });
+
+    const subject = encodeURIComponent("92 AMXS Training Alert");
+    const body = encodeURIComponent(
+      "ACTION REQUIRED: Please review your training records in the 92 AMXS Tracker. You have training items that are either overdue or expiring within the next 60 days."
+    );
+    
+    // Use mailto link to send SMS via email gateway
+    const mailtoLink = `mailto:?bcc=${vtextEmails.join(',')}&subject=${subject}&body=${body}`;
+    window.location.href = mailtoLink;
+  };
+
   const filteredTraining = training.filter(record => {
     const personName = getPersonName(record.man_number);
     const matchesSearch = 
@@ -1660,9 +1694,16 @@ const TrainingTracker: React.FC = () => {
               <button 
                 onClick={handleNotifyUsers}
                 className="sleek-button bg-primary text-on-primary hover:bg-primary/90 flex items-center gap-2"
-                title="Notify Affected Users"
+                title="Email Affected Users"
               >
-                <Send className="w-4 h-4" /> <span className="hidden sm:inline">Notify</span>
+                <Send className="w-4 h-4" /> <span className="hidden sm:inline">Email</span>
+              </button>
+              <button 
+                onClick={handleNotifyUsersSMS}
+                className="sleek-button bg-primary text-on-primary hover:bg-primary/90 flex items-center gap-2"
+                title="Text Affected Users"
+              >
+                <MessageSquare className="w-4 h-4" /> <span className="hidden sm:inline">Text</span>
               </button>
               <button 
                 onClick={() => exportTrainingToCSV(filteredTraining, profile.shopId)}
@@ -2201,6 +2242,15 @@ const Personnel: React.FC = () => {
                           type="email" 
                           value={editForm.email || ''} 
                           onChange={(e) => setEditForm({...editForm, email: e.target.value})}
+                          className="sleek-input w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Phone</label>
+                        <input 
+                          type="text" 
+                          value={editForm.phone || ''} 
+                          onChange={(e) => setEditForm({...editForm, phone: e.target.value})}
                           className="sleek-input w-full"
                         />
                       </div>
