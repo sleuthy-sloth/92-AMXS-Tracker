@@ -1,4 +1,4 @@
-export type UserRole = 'ncoic' | 'technician' | 'pending';
+export type UserRole = 'leadership' | 'ncoic' | 'technician' | 'pending';
 
 export interface UserProfile {
   uid: string;
