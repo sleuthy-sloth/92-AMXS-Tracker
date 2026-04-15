@@ -13,9 +13,11 @@ service cloud.firestore {
     //   - name: string (required)
     //   - man_number: string (required)
     //   - shopId: string (required)
-    //   - role: string (required, 'ncoic' | 'technician')
+    //   - amuId: string (required)
+    //   - role: string (required, 'leadership' | 'ncoic' | 'technician')
     //   - email: string (required)
-    //   - phone: string (optional)
+    //   - status: string (required, 'active' | 'pending' | 'rejected')
+    //   - isDemo: bool (optional)
     //
     // Collection: logs
     // Document ID: {logId}
@@ -23,12 +25,12 @@ service cloud.firestore {
     //   - tail_number: string (required)
     //   - discrepancy: string (required)
     //   - repair: string (required)
-    //   - doc_number: string (optional)
     //   - shopId: string (required)
+    //   - amuId: string (required)
     //   - technician_name: string (required)
     //   - man_number: string (required)
     //   - timestamp: timestamp (required)
-    //   - isRedBall: bool (optional)
+    //   - isDemo: bool (optional)
     //
     // Collection: training
     // Document ID: {trainingId}
@@ -37,8 +39,9 @@ service cloud.firestore {
     //   - course_name: string (required)
     //   - due_date: string (required, ISO 8601)
     //   - shopId: string (required)
+    //   - amuId: string (required)
     //   - status: string (required, 'current' | 'expiring' | 'expired')
-    //
+    //   - isDemo: bool (optional)
     // ===============================================================
 
     // ===============================================================
@@ -66,42 +69,51 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isAuthenticated() && 
-        (request.auth.token.email == "spkoehl@gmail.com" && request.auth.token.email_verified == true);
+      return isAuthenticated() && request.auth.token.email == "spkoehl@gmail.com";
     }
 
-    function isSameShop(shopId) {
-      return isAuthenticated() && getUserData().shopId == shopId && getUserData().status == 'active';
+    function isSameShop(amuId, shopId) {
+      return isAuthenticated() && getUserData().amuId == amuId && getUserData().shopId == shopId && getUserData().status == 'active';
+    }
+
+    function isDemo(data) {
+      return data.isDemo == true;
     }
 
     function isValidUser(data) {
-      return data.keys().hasAll(['uid', 'name', 'man_number', 'shopId', 'role', 'email', 'status']) &&
+      return data.keys().hasAll(['uid', 'name', 'man_number', 'shopId', 'amuId', 'role', 'email', 'status']) &&
              data.uid is string &&
              data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
              data.man_number is string &&
              data.shopId is string &&
+             data.amuId is string &&
              data.role in ['leadership', 'ncoic', 'technician', 'pending'] &&
              data.status in ['active', 'pending', 'rejected'] &&
              data.email is string;
     }
 
     function isValidLog(data) {
-      return data.keys().hasAll(['tail_number', 'discrepancy', 'repair', 'shopId', 'technician_name', 'man_number', 'timestamp']) &&
+      return data.keys().hasAll(['tail_number', 'discrepancy', 'repair', 'shopId', 'amuId', 'technician_name', 'man_number', 'timestamp']) &&
              data.tail_number is string && data.tail_number.size() > 0 &&
              data.discrepancy is string && data.discrepancy.size() > 0 && data.discrepancy.size() < 5000 &&
              data.repair is string && data.repair.size() > 0 && data.repair.size() < 5000 &&
              data.shopId is string &&
+             data.amuId is string &&
              data.technician_name is string &&
              data.man_number is string &&
-             data.timestamp is timestamp;
+             data.timestamp is timestamp &&
+             (!('shift' in data) || data.shift in ['Days', 'Swings', 'Nights', 'Weekend Duty']) &&
+             (!('lastEditedBy' in data) || data.lastEditedBy is string) &&
+             (!('lastEditedAt' in data) || data.lastEditedAt is timestamp);
     }
 
     function isValidTraining(data) {
-      return data.keys().hasAll(['man_number', 'course_name', 'due_date', 'shopId', 'status']) &&
+      return data.keys().hasAll(['man_number', 'course_name', 'due_date', 'shopId', 'amuId', 'status']) &&
              data.man_number is string &&
              data.course_name is string &&
              data.due_date is string &&
              data.shopId is string &&
+             data.amuId is string &&
              data.status in ['current', 'expiring', 'expired'];
     }
 
@@ -110,29 +122,29 @@ service cloud.firestore {
     // ===============================================================
 
     match /users/{uid} {
-      allow read: if isAuthenticated() && (request.auth.uid == uid || isSameShop(resource.data.shopId) || isNCOIC() || isLeadership() || isAdmin());
-      allow create: if isAuthenticated() && (
+      allow read: if isDemo(resource.data) || (isAuthenticated() && (request.auth.uid == uid || resource.data.man_number == getUserData().man_number || isSameShop(resource.data.amuId, resource.data.shopId) || isNCOIC() || isLeadership() || isAdmin()));
+      allow create: if isDemo(request.resource.data) || (isAuthenticated() && (
         isAdmin() || 
         (isValidUser(request.resource.data) && request.auth.uid == uid && request.resource.data.role == 'pending' && request.resource.data.status == 'pending')
-      );
-      allow update: if isAuthenticated() && (
+      ));
+      allow update: if isDemo(resource.data) || (isAuthenticated() && (
         (request.auth.uid == uid && isValidUser(request.resource.data) && request.resource.data.role == resource.data.role && request.resource.data.status == resource.data.status) ||
         (isNCOIC() && isValidUser(request.resource.data)) ||
         (isLeadership() && isValidUser(request.resource.data)) ||
         isAdmin()
-      );
+      ));
     }
 
     match /logs/{logId} {
-      allow read: if isAuthenticated() && (isSameShop(resource.data.shopId) || isLeadership() || isAdmin());
-      allow create: if isAuthenticated() && isValidLog(request.resource.data) && (isAdmin() || isSameShop(request.resource.data.shopId));
-      allow update: if isAuthenticated() && isValidLog(request.resource.data) && (isSameShop(resource.data.shopId) && isNCOIC() || isLeadership() || isAdmin());
-      allow delete: if isAuthenticated() && (isSameShop(resource.data.shopId) && isNCOIC() || isLeadership() || isAdmin());
+      allow read: if isDemo(resource.data) || (isAuthenticated() && (isSameShop(resource.data.amuId, resource.data.shopId) || isLeadership() || isAdmin()));
+      allow create: if isDemo(request.resource.data) || (isAuthenticated() && isValidLog(request.resource.data) && (isAdmin() || isSameShop(request.resource.data.amuId, request.resource.data.shopId)));
+      allow update: if isDemo(resource.data) || (isAuthenticated() && isValidLog(request.resource.data) && (getUserData().man_number == resource.data.man_number || (isSameShop(resource.data.amuId, resource.data.shopId) && isNCOIC()) || isLeadership() || isAdmin()));
+      allow delete: if isDemo(resource.data) || (isAuthenticated() && ((isSameShop(resource.data.amuId, resource.data.shopId) && isNCOIC()) || isLeadership() || isAdmin()));
     }
 
     match /training/{trainingId} {
-      allow read: if isAuthenticated() && (isSameShop(resource.data.shopId) || isLeadership() || isAdmin());
-      allow write: if isAuthenticated() && (isAdmin() || isLeadership() || (isNCOIC() && isSameShop(request.resource.data.shopId))) && isValidTraining(request.resource.data);
+      allow read: if isDemo(resource.data) || (isAuthenticated() && (resource.data.man_number == getUserData().man_number || isSameShop(resource.data.amuId, resource.data.shopId) || isLeadership() || isAdmin()));
+      allow write: if isDemo(request.resource.data) || (isAuthenticated() && (isAdmin() || isLeadership() || (isNCOIC() && isSameShop(request.resource.data.amuId, request.resource.data.shopId))) && isValidTraining(request.resource.data));
     }
   }
 }

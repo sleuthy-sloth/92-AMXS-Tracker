@@ -1,4 +1,6 @@
 export type UserRole = 'leadership' | 'ncoic' | 'technician' | 'pending';
+export type AMUType = 'BLACK' | 'GREEN' | 'SILVER' | 'BLUE' | 'NONE';
+export type ShiftType = 'Days' | 'Swings' | 'Nights' | 'Weekend Duty';
 
 export interface UserProfile {
   uid: string;
@@ -6,13 +8,13 @@ export interface UserProfile {
   rank: string;
   man_number: string;
   shopId: string;
+  amuId: AMUType;
   role: UserRole;
   email: string;
   phone?: string;
-  carrier?: 'verizon' | 'tmobile' | 'att' | 'sprint' | 'googlefi' | '';
   status: 'active' | 'pending' | 'rejected';
   createdAt?: any;
-  hasSeenTour?: boolean;
+  isDemo?: boolean;
 }
 
 export interface MaintenanceLog {
@@ -23,11 +25,16 @@ export interface MaintenanceLog {
   repair: string;
   doc_number?: string;
   shopId: string;
+  amuId: AMUType;
   technician_name: string;
   man_number: string;
   personnel?: string[];
   timestamp: any; // Firestore Timestamp
   isRedBall?: boolean;
+  isDemo?: boolean;
+  shift?: ShiftType;
+  lastEditedBy?: string;
+  lastEditedAt?: any;
 }
 
 export interface TrainingRecord {
@@ -36,5 +43,7 @@ export interface TrainingRecord {
   course_name: string;
   due_date: string; // ISO 8601
   shopId: string;
+  amuId: AMUType;
   status: 'current' | 'expiring' | 'expired';
+  isDemo?: boolean;
 }

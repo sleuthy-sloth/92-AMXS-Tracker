@@ -43,6 +43,7 @@ import {
   Search, 
   UploadCloud, 
   ShieldAlert,
+  ShieldCheck,
   Menu,
   X,
   Send,
@@ -137,7 +138,7 @@ class ErrorBoundary extends Component<{ children: React.ReactNode }, { hasError:
   }
 }
 import { cn } from './lib/utils';
-import { UserProfile, MaintenanceLog, TrainingRecord, UserRole } from './types';
+import { UserProfile, MaintenanceLog, TrainingRecord, UserRole, AMUType, ShiftType } from './types';
 import { parseTrainingReport } from './services/parserService';
 import { 
   exportLogsToCSV, 
@@ -151,6 +152,8 @@ import {
 const SHOPS = ['AVIONICS', 'CREW_CHIEFS', 'JETS', 'E&E', 'LEADERSHIP'] as const;
 type ShopType = typeof SHOPS[number];
 
+const AMUS: AMUType[] = ['BLACK', 'GREEN', 'SILVER', 'BLUE'];
+
 const MOCK_LOGS: MaintenanceLog[] = [
   // AVIONICS
   {
@@ -159,10 +162,13 @@ const MOCK_LOGS: MaintenanceLog[] = [
     discrepancy: 'Radar altimeter intermittent failure during low-level flight.',
     repair: 'Replaced LRU-3 and verified signal integrity.',
     shopId: 'AVIONICS',
+    amuId: 'BLACK',
     technician_name: 'DOE, J',
     man_number: '12345',
     timestamp: { toDate: () => new Date() } as any,
-    isRedBall: true
+    isRedBall: true,
+    shift: 'Days',
+    isDemo: true
   },
   {
     id: 'mock-log-2',
@@ -170,9 +176,12 @@ const MOCK_LOGS: MaintenanceLog[] = [
     discrepancy: 'Navigation display flickering in cold weather.',
     repair: 'Reseated connections and updated firmware.',
     shopId: 'AVIONICS',
+    amuId: 'BLACK',
     technician_name: 'SMITH, A',
     man_number: '54321',
-    timestamp: { toDate: () => new Date(Date.now() - 86400000) } as any
+    timestamp: { toDate: () => new Date(Date.now() - 86400000) } as any,
+    shift: 'Swings',
+    isDemo: true
   },
   // CREW CHIEFS
   {
@@ -181,10 +190,13 @@ const MOCK_LOGS: MaintenanceLog[] = [
     discrepancy: 'Left main tire showing excessive wear.',
     repair: 'Replaced tire and inspected brake assembly.',
     shopId: 'CREW_CHIEFS',
+    amuId: 'GREEN',
     technician_name: 'MILLER, R',
     man_number: '22222',
     timestamp: { toDate: () => new Date() } as any,
-    isRedBall: false
+    isRedBall: false,
+    shift: 'Nights',
+    isDemo: true
   },
   // JETS
   {
@@ -193,35 +205,38 @@ const MOCK_LOGS: MaintenanceLog[] = [
     discrepancy: 'Engine #2 high oil consumption reported.',
     repair: 'Inspected seals, found leak in scavenge pump, replaced pump.',
     shopId: 'JETS',
+    amuId: 'SILVER',
     technician_name: 'BROWN, T',
     man_number: '33333',
     timestamp: { toDate: () => new Date() } as any,
-    isRedBall: true
+    isRedBall: true,
+    shift: 'Weekend Duty',
+    isDemo: true
   }
 ];
 
 const MOCK_PERSONNEL: UserProfile[] = [
   // AVIONICS
-  { uid: 'mock-user-123', name: 'PREVIEW USER', rank: 'TSgt', man_number: '99999', shopId: 'AVIONICS', role: 'ncoic', email: 'dev.preview@92amxs.af.mil', phone: '5672016985', carrier: 'tmobile', status: 'active', hasSeenTour: true },
-  { uid: 'mock-user-2', name: 'DOE, J', rank: 'SrA', man_number: '12345', shopId: 'AVIONICS', role: 'technician', email: 'doe.j@92amxs.af.mil', phone: '5550101', carrier: 'verizon', status: 'active', hasSeenTour: true },
-  { uid: 'mock-user-3', name: 'SMITH, A', rank: 'A1C', man_number: '54321', shopId: 'AVIONICS', role: 'technician', email: 'smith.a@92amxs.af.mil', phone: '5550102', carrier: 'att', status: 'active', hasSeenTour: true },
+  { uid: 'mock-user-123', name: 'PREVIEW USER', rank: 'TSgt', man_number: '99999', shopId: 'AVIONICS', amuId: 'BLACK', role: 'ncoic', email: 'dev.preview@92amxs.af.mil', phone: '5672016985', status: 'active', isDemo: true },
+  { uid: 'mock-user-2', name: 'DOE, J', rank: 'SrA', man_number: '12345', shopId: 'AVIONICS', amuId: 'BLACK', role: 'technician', email: 'doe.j@92amxs.af.mil', phone: '5550101', status: 'active', isDemo: true },
+  { uid: 'mock-user-3', name: 'SMITH, A', rank: 'A1C', man_number: '54321', shopId: 'AVIONICS', amuId: 'BLACK', role: 'technician', email: 'smith.a@92amxs.af.mil', phone: '5550102', status: 'active', isDemo: true },
   // CREW CHIEFS
-  { uid: 'mock-user-4', name: 'MILLER, R', rank: 'SSgt', man_number: '22222', shopId: 'CREW_CHIEFS', role: 'technician', email: 'miller.r@92amxs.af.mil', phone: '5550103', carrier: 'tmobile', status: 'active', hasSeenTour: true },
-  { uid: 'mock-user-5', name: 'JOHNSON, K', rank: 'MSgt', man_number: '22223', shopId: 'CREW_CHIEFS', role: 'ncoic', email: 'johnson.k@92amxs.af.mil', phone: '5550104', carrier: 'verizon', status: 'active', hasSeenTour: true },
+  { uid: 'mock-user-4', name: 'MILLER, R', rank: 'SSgt', man_number: '22222', shopId: 'CREW_CHIEFS', amuId: 'GREEN', role: 'technician', email: 'miller.r@92amxs.af.mil', phone: '5550103', status: 'active', isDemo: true },
+  { uid: 'mock-user-5', name: 'JOHNSON, K', rank: 'MSgt', man_number: '22223', shopId: 'CREW_CHIEFS', amuId: 'GREEN', role: 'ncoic', email: 'johnson.k@92amxs.af.mil', phone: '5550104', status: 'active', isDemo: true },
   // JETS
-  { uid: 'mock-user-6', name: 'BROWN, T', rank: 'SrA', man_number: '33333', shopId: 'JETS', role: 'technician', email: 'brown.t@92amxs.af.mil', phone: '5550105', carrier: 'att', status: 'active', hasSeenTour: true },
-  { uid: 'mock-user-7', name: 'DAVIS, L', rank: 'TSgt', man_number: '33334', shopId: 'JETS', role: 'ncoic', email: 'davis.l@92amxs.af.mil', phone: '5550106', carrier: 'sprint', status: 'active', hasSeenTour: true }
+  { uid: 'mock-user-6', name: 'BROWN, T', rank: 'SrA', man_number: '33333', shopId: 'JETS', amuId: 'SILVER', role: 'technician', email: 'brown.t@92amxs.af.mil', phone: '5550105', status: 'active', isDemo: true },
+  { uid: 'mock-user-7', name: 'DAVIS, L', rank: 'TSgt', man_number: '33334', shopId: 'JETS', amuId: 'SILVER', role: 'ncoic', email: 'davis.l@92amxs.af.mil', phone: '5550106', status: 'active', isDemo: true }
 ];
 
 const MOCK_TRAINING: TrainingRecord[] = [
   // AVIONICS
-  { id: 't1', man_number: '99999', course_name: 'Advanced Avionics Systems', due_date: '2026-12-01', shopId: 'AVIONICS', status: 'current' },
-  { id: 't2', man_number: '12345', course_name: 'Flight Safety Refresher', due_date: format(addDays(new Date(), 15), 'yyyy-MM-dd'), shopId: 'AVIONICS', status: 'expiring' },
-  { id: 't3', man_number: '54321', course_name: 'Classified Comms Handling', due_date: '2024-01-10', shopId: 'AVIONICS', status: 'expired' },
+  { id: 't1', man_number: '99999', course_name: 'Advanced Avionics Systems', due_date: '2026-12-01', shopId: 'AVIONICS', amuId: 'BLACK', status: 'current', isDemo: true },
+  { id: 't2', man_number: '12345', course_name: 'Flight Safety Refresher', due_date: format(addDays(new Date(), 15), 'yyyy-MM-dd'), shopId: 'AVIONICS', amuId: 'BLACK', status: 'expiring', isDemo: true },
+  { id: 't3', man_number: '54321', course_name: 'Classified Comms Handling', due_date: '2024-01-10', shopId: 'AVIONICS', amuId: 'BLACK', status: 'expired', isDemo: true },
   // CREW CHIEFS
-  { id: 't4', man_number: '22222', course_name: 'Tire & Wheel Maintenance', due_date: '2026-05-20', shopId: 'CREW_CHIEFS', status: 'current' },
+  { id: 't4', man_number: '22222', course_name: 'Tire & Wheel Maintenance', due_date: '2026-05-20', shopId: 'CREW_CHIEFS', amuId: 'GREEN', status: 'current', isDemo: true },
   // JETS
-  { id: 't5', man_number: '33333', course_name: 'F108 Engine Overhaul', due_date: '2026-08-15', shopId: 'JETS', status: 'current' }
+  { id: 't5', man_number: '33333', course_name: 'F108 Engine Overhaul', due_date: '2026-08-15', shopId: 'JETS', amuId: 'SILVER', status: 'current', isDemo: true }
 ];
 
 // --- Contexts ---
@@ -237,6 +252,10 @@ interface AuthContextType {
   refreshProfile: () => Promise<void>;
   bypassLogin: (role?: UserRole) => void;
   setShop: (shop: ShopType) => void;
+  setAMU: (amu: AMUType) => void;
+  setRole: (role: UserRole) => void;
+  isDemoMode: boolean;
+  toggleDemoMode: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -281,6 +300,9 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isDemoMode, setIsDemoMode] = useState(false);
+
+  const toggleDemoMode = () => setIsDemoMode(prev => !prev);
 
   const fetchProfile = async (uid: string) => {
     try {
@@ -368,27 +390,57 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       rank: 'TSgt',
       man_number: '99999',
       shopId: 'AVIONICS',
+      amuId: 'BLACK',
       role: role,
       email: 'dev.preview@92amxs.af.mil',
       phone: '555-0123',
       status: 'active',
-      hasSeenTour: true
+      isDemo: true
     };
     
     setUser(mockUser);
     setProfile(mockProfile);
     setLoading(false);
+    setIsDemoMode(true);
   };
 
   const setShop = async (shop: ShopType) => {
     if (profile) {
       const updatedProfile = { ...profile, shopId: shop };
       setProfile(updatedProfile);
-      if (user?.uid === 'mock-user-123') {
+      if (user && user.uid !== 'mock-user-123') {
         try {
-          await updateDoc(doc(db, 'users', 'mock-user-123'), { shopId: shop });
+          await updateDoc(doc(db, 'users', user.uid), { shopId: shop });
         } catch (e) {
           console.error('Error updating shop in Firestore', e);
+        }
+      }
+    }
+  };
+
+  const setAMU = async (amu: AMUType) => {
+    if (profile) {
+      const updatedProfile = { ...profile, amuId: amu };
+      setProfile(updatedProfile);
+      if (user && user.uid !== 'mock-user-123') {
+        try {
+          await updateDoc(doc(db, 'users', user.uid), { amuId: amu });
+        } catch (e) {
+          console.error('Error updating AMU in Firestore', e);
+        }
+      }
+    }
+  };
+
+  const setRole = async (role: UserRole) => {
+    if (profile) {
+      const updatedProfile = { ...profile, role: role };
+      setProfile(updatedProfile);
+      if (user && user.uid !== 'mock-user-123') {
+        try {
+          await updateDoc(doc(db, 'users', user.uid), { role: role });
+        } catch (e) {
+          console.error('Error updating role in Firestore', e);
         }
       }
     }
@@ -405,161 +457,25 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       logout, 
       refreshProfile, 
       bypassLogin, 
-      setShop 
+      setShop,
+      setAMU,
+      setRole,
+      isDemoMode,
+      toggleDemoMode
     }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-const Tour: React.FC = () => {
-  const { profile } = useAuth();
-  const [step, setStep] = useState(0);
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    if (profile && profile.hasSeenTour === false) {
-      const timer = setTimeout(() => setIsVisible(true), 1500);
-      return () => clearTimeout(timer);
-    }
-  }, [profile]);
-
-  if (!profile || !isVisible) return null;
-
-  const technicianSteps = [
-    {
-      title: "Welcome to 92nd AMXS Log!",
-      content: "This system helps you track maintenance and training in real-time. Let's take a quick tour.",
-      target: "Dashboard"
-    },
-    {
-      title: "Maintenance Logs",
-      content: "Submit your turnover and discrepancy repairs here. It's the source of truth for the shop.",
-      target: "Maintenance"
-    },
-    {
-      title: "Training Tracker",
-      content: "Check your specific training requirements and due dates. Stay green!",
-      target: "Training"
-    },
-    {
-      title: "Need Help?",
-      content: "The Support page has FAQs and contact info for the developer, TSgt Koehl.",
-      target: "Support"
-    }
-  ];
-
-  const ncoicSteps = [
-    {
-      title: "NCOIC Command Center",
-      content: "As an NCOIC, you have full control over your shop's data and personnel.",
-      target: "Dashboard"
-    },
-    {
-      title: "Onboarding",
-      content: "New members will show up here. You assign their shop, man number, and role.",
-      target: "Onboarding"
-    },
-    {
-      title: "Training Management",
-      content: "Upload training reports and notify your team of upcoming expirations via Email or SMS.",
-      target: "Training"
-    },
-    {
-      title: "Shop Roster",
-      content: "Manage your personnel, edit profiles, or remove members who have PCS'd.",
-      target: "Personnel"
-    }
-  ];
-
-  const leadershipSteps = [
-    {
-      title: "Squadron Overview",
-      content: "Leadership access provides a birds-eye view of all shops in the 92nd AMXS.",
-      target: "Dashboard"
-    },
-    {
-      title: "Global Maintenance",
-      content: "View and search maintenance logs across the entire squadron.",
-      target: "Maintenance"
-    },
-    {
-      title: "Squadron Readiness",
-      content: "Monitor training health for all shops and identify readiness gaps.",
-      target: "Training"
-    }
-  ];
-
-  const steps = profile.role === 'leadership' ? leadershipSteps : 
-                profile.role === 'ncoic' ? ncoicSteps : technicianSteps;
-
-  const handleNext = () => {
-    if (step < steps.length - 1) {
-      setStep(step + 1);
-    } else {
-      completeTour();
-    }
-  };
-
-  const completeTour = async () => {
-    setIsVisible(false);
-    try {
-      await updateDoc(doc(db, 'users', profile.uid), { hasSeenTour: true });
-    } catch (e) {
-      console.error("Error saving tour status", e);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px]">
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.9, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-surface max-w-md w-full rounded-3xl shadow-2xl border border-primary/30 overflow-hidden"
-      >
-        <div className="p-8 space-y-6">
-          <div className="flex justify-between items-center">
-            <span className="badge badge-info">Step {step + 1} of {steps.length}</span>
-            <button onClick={completeTour} className="text-on-surface-variant hover:text-on-surface text-xs font-bold uppercase tracking-widest">Skip</button>
-          </div>
-          
-          <div className="space-y-2">
-            <h3 className="text-2xl font-bold text-on-background tracking-tight">{steps[step].title}</h3>
-            <p className="text-on-surface-variant leading-relaxed">{steps[step].content}</p>
-          </div>
-
-          <div className="pt-4 flex gap-3">
-            {step > 0 && (
-              <button 
-                onClick={() => setStep(step - 1)}
-                className="sleek-button flex-1 bg-surface-container-highest text-on-surface flex items-center justify-center gap-2"
-              >
-                <ChevronLeft className="w-4 h-4" /> Back
-              </button>
-            )}
-            <button 
-              onClick={handleNext}
-              className="sleek-button flex-1 bg-primary text-white flex items-center justify-center gap-2"
-            >
-              {step === steps.length - 1 ? 'Finish' : 'Next'} <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-        <div className="bg-primary/5 p-4 border-t border-primary/10 flex items-center gap-3">
-          <Info className="w-4 h-4 text-primary" />
-          <p className="text-[10px] text-primary/80 font-medium uppercase tracking-wider">
-            Target Feature: <span className="font-bold">{steps[step].target}</span>
-          </p>
-        </div>
-      </motion.div>
-    </div>
-  );
-};
+// Tour component removed
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, profile, logout, setShop } = useAuth();
+  const { user, profile, logout, setShop, setAMU, setRole, isDemoMode, toggleDemoMode } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isShopDropdownOpen, setIsShopDropdownOpen] = useState(false);
+  const [isAMUDropdownOpen, setIsAMUDropdownOpen] = useState(false);
+  const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
   const location = useLocation();
 
   const navItems = [
@@ -576,7 +492,6 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   return (
     <div className="min-h-screen flex bg-background">
-      <Tour />
       {/* Sidebar */}
       <aside className={cn(
         "fixed inset-y-0 left-0 z-40 w-[240px] bg-sidebar text-white transform transition-transform duration-300 md:translate-x-0 md:static flex flex-col",
@@ -609,43 +524,144 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         </nav>
 
         <div className="p-6 text-xs text-slate-500 border-t border-white/5">
-          {user?.uid === 'mock-user-123' && (
-            <div className="mb-6 relative">
-              <p className="text-[10px] uppercase tracking-widest text-slate-400 mb-2 font-bold">Preview Shop</p>
-              <button 
-                onClick={() => setIsShopDropdownOpen(!isShopDropdownOpen)}
-                className="w-full flex items-center justify-between bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-slate-200 hover:bg-white/10 transition-colors"
-              >
-                <span className="font-semibold">{profile?.shopId}</span>
-                <ChevronDown className={cn("w-3 h-3 transition-transform", isShopDropdownOpen && "rotate-180")} />
-              </button>
-              
-              <AnimatePresence>
-                {isShopDropdownOpen && (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    className="absolute bottom-full left-0 w-full mb-2 bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden z-50"
-                  >
-                    {SHOPS.map(shop => (
-                      <button
-                        key={shop}
-                        onClick={() => {
-                          setShop(shop);
-                          setIsShopDropdownOpen(false);
-                        }}
-                        className={cn(
-                          "w-full text-left px-4 py-2 text-xs hover:bg-white/5 transition-colors",
-                          profile?.shopId === shop ? "text-primary font-bold" : "text-slate-300"
-                        )}
-                      >
-                        {shop}
-                      </button>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
+          {/* Demo Mode Toggle */}
+          <div className="mb-6">
+            <p className="text-[10px] uppercase tracking-widest text-slate-400 mb-2 font-bold">System Mode</p>
+            <button 
+              onClick={toggleDemoMode}
+              className={cn(
+                "w-full flex items-center justify-between rounded-lg px-3 py-2 transition-all border",
+                isDemoMode 
+                  ? "bg-amber-500/10 border-amber-500/30 text-amber-500" 
+                  : "bg-emerald-500/10 border-emerald-500/30 text-emerald-500"
+              )}
+            >
+              <span className="font-bold flex items-center gap-2">
+                {isDemoMode ? <ShieldAlert className="w-3 h-3" /> : <ShieldCheck className="w-3 h-3" />}
+                {isDemoMode ? 'DEMO SANDBOX' : 'LIVE DATABASE'}
+              </span>
+              <div className={cn(
+                "w-2 h-2 rounded-full animate-pulse",
+                isDemoMode ? "bg-amber-500" : "bg-emerald-500"
+              )} />
+            </button>
+          </div>
+
+          {isDemoMode && (
+            <div className="space-y-4 mb-6">
+              <div className="relative">
+                <p className="text-[10px] uppercase tracking-widest text-slate-400 mb-2 font-bold">Preview Role</p>
+                <button 
+                  onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
+                  className="w-full flex items-center justify-between bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-slate-200 hover:bg-white/10 transition-colors"
+                >
+                  <span className="font-semibold uppercase">{profile?.role}</span>
+                  <ChevronDown className={cn("w-3 h-3 transition-transform", isRoleDropdownOpen && "rotate-180")} />
+                </button>
+                
+                <AnimatePresence>
+                  {isRoleDropdownOpen && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="absolute bottom-full left-0 w-full mb-2 bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden z-50"
+                    >
+                      {['technician', 'ncoic', 'leadership'].map(role => (
+                        <button
+                          key={role}
+                          onClick={() => {
+                            setRole(role as UserRole);
+                            setIsRoleDropdownOpen(false);
+                          }}
+                          className={cn(
+                            "w-full text-left px-4 py-2 text-xs hover:bg-white/5 transition-colors uppercase",
+                            profile?.role === role ? "text-primary font-bold" : "text-slate-300"
+                          )}
+                        >
+                          {role}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              <div className="relative">
+                <p className="text-[10px] uppercase tracking-widest text-slate-400 mb-2 font-bold">Preview AMU</p>
+                <button 
+                  onClick={() => setIsAMUDropdownOpen(!isAMUDropdownOpen)}
+                  className="w-full flex items-center justify-between bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-slate-200 hover:bg-white/10 transition-colors"
+                >
+                  <span className="font-semibold">{profile?.amuId}</span>
+                  <ChevronDown className={cn("w-3 h-3 transition-transform", isAMUDropdownOpen && "rotate-180")} />
+                </button>
+                
+                <AnimatePresence>
+                  {isAMUDropdownOpen && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="absolute bottom-full left-0 w-full mb-2 bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden z-50"
+                    >
+                      {AMUS.map(amu => (
+                        <button
+                          key={amu}
+                          onClick={() => {
+                            setAMU(amu);
+                            setIsAMUDropdownOpen(false);
+                          }}
+                          className={cn(
+                            "w-full text-left px-4 py-2 text-xs hover:bg-white/5 transition-colors",
+                            profile?.amuId === amu ? "text-primary font-bold" : "text-slate-300"
+                          )}
+                        >
+                          {amu}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              <div className="relative">
+                <p className="text-[10px] uppercase tracking-widest text-slate-400 mb-2 font-bold">Preview Shop</p>
+                <button 
+                  onClick={() => setIsShopDropdownOpen(!isShopDropdownOpen)}
+                  className="w-full flex items-center justify-between bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-slate-200 hover:bg-white/10 transition-colors"
+                >
+                  <span className="font-semibold">{profile?.shopId}</span>
+                  <ChevronDown className={cn("w-3 h-3 transition-transform", isShopDropdownOpen && "rotate-180")} />
+                </button>
+                
+                <AnimatePresence>
+                  {isShopDropdownOpen && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="absolute bottom-full left-0 w-full mb-2 bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden z-50"
+                    >
+                      {SHOPS.map(shop => (
+                        <button
+                          key={shop}
+                          onClick={() => {
+                            setShop(shop);
+                            setIsShopDropdownOpen(false);
+                          }}
+                          className={cn(
+                            "w-full text-left px-4 py-2 text-xs hover:bg-white/5 transition-colors",
+                            profile?.shopId === shop ? "text-primary font-bold" : "text-slate-300"
+                          )}
+                        >
+                          {shop}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           )}
 
@@ -655,7 +671,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             </div>
             <div className="overflow-hidden">
               <p className="font-semibold text-slate-200 truncate">{profile?.name}</p>
-              <p className="text-[10px] uppercase tracking-wider">Shop: {profile?.shopId}</p>
+              <p className="text-[10px] uppercase tracking-wider">AMU: {profile?.amuId} • {profile?.shopId}</p>
             </div>
           </div>
           <button 
@@ -678,7 +694,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           </div>
           <div className="text-right hidden sm:block">
             <div className="font-semibold text-on-background">{profile?.rank} {profile?.name}</div>
-            <div className="text-xs text-on-surface-variant uppercase tracking-wider">{profile?.role} • Shop ID: {profile?.shopId}</div>
+            <div className="text-xs text-on-surface-variant uppercase tracking-wider">{profile?.role} • {profile?.amuId} • {profile?.shopId}</div>
           </div>
         </header>
 
@@ -748,12 +764,28 @@ const Login: React.FC = () => {
               >
                 Authenticate with Google
               </button>
-              <button 
-                onClick={() => setIsEmailMode(true)}
-                className="w-full py-3 text-xs font-bold text-on-surface-variant hover:text-on-surface transition-colors uppercase tracking-widest"
-              >
-                Use Email & Password
-              </button>
+              
+              <div className="relative py-4">
+                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-outline"></div></div>
+                <div className="relative flex justify-center text-[10px] uppercase tracking-widest font-bold"><span className="bg-surface px-2 text-on-surface-variant">Developer Access</span></div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <button 
+                  onClick={() => bypassLogin('leadership')}
+                  className="sleek-button !bg-amber-500/10 !text-amber-500 border-amber-500/20 hover:!bg-amber-500/20 text-xs py-3 flex flex-col items-center gap-1"
+                >
+                  <ShieldAlert className="w-4 h-4" />
+                  Demo Sandbox
+                </button>
+                <button 
+                  onClick={() => setIsEmailMode(true)}
+                  className="sleek-button !bg-primary/10 !text-primary border-primary/20 hover:!bg-primary/20 text-xs py-3 flex flex-col items-center gap-1"
+                >
+                  <Lock className="w-4 h-4" />
+                  Master Admin
+                </button>
+              </div>
             </div>
           ) : (
             <form onSubmit={handleEmailAuth} className="space-y-4 text-left">
@@ -820,29 +852,6 @@ const Login: React.FC = () => {
             <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-outline"></div></div>
             <div className="relative flex justify-center text-[10px] uppercase tracking-widest"><span className="bg-background px-2 text-on-surface-variant font-bold">Or</span></div>
           </div>
-          <div className="space-y-2">
-            <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-2">Demo Roles</p>
-            <div className="grid grid-cols-3 gap-2">
-              <button 
-                onClick={() => bypassLogin('technician')}
-                className="py-2 text-[10px] font-bold text-accent hover:bg-accent/5 border border-accent/20 rounded-lg transition-all uppercase tracking-wider"
-              >
-                Tech
-              </button>
-              <button 
-                onClick={() => bypassLogin('ncoic')}
-                className="py-2 text-[10px] font-bold text-accent hover:bg-accent/5 border border-accent/20 rounded-lg transition-all uppercase tracking-wider"
-              >
-                NCOIC
-              </button>
-              <button 
-                onClick={() => bypassLogin('leadership')}
-                className="py-2 text-[10px] font-bold text-accent hover:bg-accent/5 border border-accent/20 rounded-lg transition-all uppercase tracking-wider"
-              >
-                Leadership
-              </button>
-            </div>
-          </div>
         </div>
         
         <div className="opacity-40 flex flex-col items-center gap-1">
@@ -862,8 +871,8 @@ const Setup: React.FC = () => {
     rank: '',
     man_number: '',
     shopId: '' as ShopType | '',
-    phone: '',
-    carrier: '' as any
+    amuId: '' as AMUType | '',
+    phone: ''
   });
   const [loading, setLoading] = useState(false);
 
@@ -872,6 +881,8 @@ const Setup: React.FC = () => {
     if (!user) return;
     setLoading(true);
     try {
+      const isMasterAdmin = user.email === 'spkoehl@gmail.com';
+      
       const profile: UserProfile = {
         uid: user.uid,
         email: user.email || '',
@@ -879,12 +890,12 @@ const Setup: React.FC = () => {
         rank: formData.rank,
         man_number: formData.man_number,
         shopId: formData.shopId || 'PENDING',
+        amuId: formData.amuId || 'NONE',
         phone: formData.phone,
-        carrier: formData.carrier,
-        role: 'pending',
-        status: 'pending',
+        role: isMasterAdmin ? 'leadership' : 'pending',
+        status: isMasterAdmin ? 'active' : 'pending',
         createdAt: serverTimestamp(),
-        hasSeenTour: false
+        isDemo: false
       };
       await setDoc(doc(db, 'users', user.uid), profile);
       await refreshProfile();
@@ -930,14 +941,16 @@ const Setup: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Man Number</label>
-                <input 
+                <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Assigned AMU</label>
+                <select 
                   required
                   className="sleek-input"
-                  placeholder="99999"
-                  value={formData.man_number}
-                  onChange={e => setFormData({...formData, man_number: e.target.value})}
-                />
+                  value={formData.amuId}
+                  onChange={e => setFormData({...formData, amuId: e.target.value as any})}
+                >
+                  <option value="">Select AMU...</option>
+                  {AMUS.map(a => <option key={a} value={a}>{a}</option>)}
+                </select>
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Assigned Shop</label>
@@ -953,31 +966,25 @@ const Setup: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Phone Number</label>
-                <input 
-                  className="sleek-input"
-                  placeholder="555-0123"
-                  value={formData.phone}
-                  onChange={e => setFormData({...formData, phone: e.target.value})}
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Carrier</label>
-                <select 
-                  className="sleek-input"
-                  value={formData.carrier}
-                  onChange={e => setFormData({...formData, carrier: e.target.value})}
-                >
-                  <option value="">Select Carrier...</option>
-                  <option value="verizon">Verizon</option>
-                  <option value="tmobile">T-Mobile</option>
-                  <option value="att">AT&T</option>
-                  <option value="sprint">Sprint</option>
-                  <option value="googlefi">Google Fi</option>
-                </select>
-              </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Man Number</label>
+              <input 
+                required
+                className="sleek-input"
+                placeholder="99999"
+                value={formData.man_number}
+                onChange={e => setFormData({...formData, man_number: e.target.value})}
+              />
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Phone Number</label>
+              <input 
+                className="sleek-input"
+                placeholder="555-0123"
+                value={formData.phone}
+                onChange={e => setFormData({...formData, phone: e.target.value})}
+              />
             </div>
           </div>
 
@@ -1032,6 +1039,7 @@ const Onboarding: React.FC = () => {
     rank: '',
     man_number: '',
     shopId: '' as ShopType | '',
+    amuId: '' as AMUType | '',
     role: 'technician' as UserRole
   });
   const [loading, setLoading] = useState(false);
@@ -1053,6 +1061,7 @@ const Onboarding: React.FC = () => {
         rank: selectedUser.rank || '',
         man_number: selectedUser.man_number !== 'PENDING' ? selectedUser.man_number : '',
         shopId: selectedUser.shopId !== 'PENDING' ? (selectedUser.shopId as ShopType) : (profile?.shopId as ShopType) || '',
+        amuId: selectedUser.amuId !== 'NONE' ? selectedUser.amuId : (profile?.amuId as AMUType) || '',
         role: 'technician'
       });
     }
@@ -1066,7 +1075,8 @@ const Onboarding: React.FC = () => {
       await setDoc(doc(db, 'users', selectedUser.uid), {
         ...selectedUser,
         ...formData,
-        status: 'active'
+        status: 'active',
+        isDemo: false
       });
       setSelectedUser(null);
     } catch (error) {
@@ -1173,6 +1183,19 @@ const Onboarding: React.FC = () => {
                         onChange={e => setFormData({...formData, man_number: e.target.value})}
                       />
                     </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">AMU</label>
+                      <select 
+                        required
+                        className="sleek-input"
+                        value={formData.amuId}
+                        onChange={e => setFormData({...formData, amuId: e.target.value as AMUType})}
+                      >
+                        <option value="">Select AMU</option>
+                        {AMUS.map(a => <option key={a} value={a}>{a}</option>)}
+                      </select>
+                    </div>
                     <div className="flex flex-col gap-1">
                       <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Shop</label>
                       <select 
@@ -1185,6 +1208,7 @@ const Onboarding: React.FC = () => {
                         {SHOPS.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
                     </div>
+                  </div>
                   </div>
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">System Role</label>
@@ -1234,7 +1258,7 @@ const Onboarding: React.FC = () => {
 };
 
 const Dashboard: React.FC = () => {
-  const { profile } = useAuth();
+  const { profile, isDemoMode } = useAuth();
   const [logs, setLogs] = useState<MaintenanceLog[]>([]);
   const [personnel, setPersonnel] = useState<UserProfile[]>([]);
   const [training, setTraining] = useState<TrainingRecord[]>([]);
@@ -1244,25 +1268,60 @@ const Dashboard: React.FC = () => {
 
     const isLeadership = profile.role === 'leadership';
 
-    const qLogs = isLeadership 
-      ? query(collection(db, 'logs'), orderBy('timestamp', 'desc'))
-      : query(collection(db, 'logs'), where('shopId', '==', profile.shopId), orderBy('timestamp', 'desc'));
+    let qLogs;
+    if (isLeadership) {
+      qLogs = query(
+        collection(db, 'logs'), 
+        where('isDemo', '==', isDemoMode),
+        orderBy('timestamp', 'desc')
+      );
+    } else {
+      qLogs = query(
+        collection(db, 'logs'), 
+        where('amuId', '==', profile.amuId),
+        where('shopId', '==', profile.shopId), 
+        where('isDemo', '==', isDemoMode),
+        orderBy('timestamp', 'desc')
+      );
+    }
     
     const unsubLogs = onSnapshot(qLogs, (snap) => {
       setLogs(snap.docs.map(d => ({ id: d.id, ...d.data() } as MaintenanceLog)));
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'logs'));
 
-    const qPersonnel = isLeadership
-      ? query(collection(db, 'users'))
-      : query(collection(db, 'users'), where('shopId', '==', profile.shopId));
+    let qPersonnel;
+    if (isLeadership) {
+      qPersonnel = query(
+        collection(db, 'users'),
+        where('isDemo', '==', isDemoMode)
+      );
+    } else {
+      qPersonnel = query(
+        collection(db, 'users'), 
+        where('amuId', '==', profile.amuId),
+        where('shopId', '==', profile.shopId),
+        where('isDemo', '==', isDemoMode)
+      );
+    }
     
     const unsubPersonnel = onSnapshot(qPersonnel, (snap) => {
       setPersonnel(snap.docs.map(d => d.data() as UserProfile));
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'users'));
 
-    const qTraining = isLeadership
-      ? query(collection(db, 'training'))
-      : query(collection(db, 'training'), where('shopId', '==', profile.shopId));
+    let qTraining;
+    if (isLeadership) {
+      qTraining = query(
+        collection(db, 'training'),
+        where('isDemo', '==', isDemoMode)
+      );
+    } else {
+      qTraining = query(
+        collection(db, 'training'), 
+        where('amuId', '==', profile.amuId),
+        where('shopId', '==', profile.shopId),
+        where('isDemo', '==', isDemoMode)
+      );
+    }
     
     const unsubTraining = onSnapshot(qTraining, (snap) => {
       setTraining(snap.docs.map(d => d.data() as TrainingRecord));
@@ -1273,7 +1332,7 @@ const Dashboard: React.FC = () => {
       unsubPersonnel();
       unsubTraining();
     };
-  }, [profile]);
+  }, [profile, isDemoMode]);
 
   const urgentLogs = logs.filter(l => l.isRedBall).length;
   const readiness = training.length > 0 
@@ -1360,7 +1419,7 @@ const Dashboard: React.FC = () => {
 };
 
 const MaintenanceLogs: React.FC = () => {
-  const { user, profile } = useAuth();
+  const { user, profile, isDemoMode } = useAuth();
   const [logs, setLogs] = useState<MaintenanceLog[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -1370,9 +1429,11 @@ const MaintenanceLogs: React.FC = () => {
     repair: '',
     doc_number: '',
     personnelInput: '',
-    isRedBall: false
+    isRedBall: false,
+    shift: 'Days' as ShiftType
   });
   const [loading, setLoading] = useState(false);
+  const [editingLogId, setEditingLogId] = useState<string | null>(null);
   
   // New features state
   const [searchQuery, setSearchQuery] = useState('');
@@ -1385,15 +1446,28 @@ const MaintenanceLogs: React.FC = () => {
 
     const isLeadership = profile.role === 'leadership';
 
-    const q = isLeadership
-      ? query(collection(db, 'logs'), orderBy('timestamp', 'desc'))
-      : query(collection(db, 'logs'), where('shopId', '==', profile.shopId), orderBy('timestamp', 'desc'));
+    let q;
+    if (isLeadership) {
+      q = query(
+        collection(db, 'logs'), 
+        where('isDemo', '==', isDemoMode),
+        orderBy('timestamp', 'desc')
+      );
+    } else {
+      q = query(
+        collection(db, 'logs'), 
+        where('amuId', '==', profile.amuId),
+        where('shopId', '==', profile.shopId), 
+        where('isDemo', '==', isDemoMode),
+        orderBy('timestamp', 'desc')
+      );
+    }
     
     const unsub = onSnapshot(q, (snap) => {
       setLogs(snap.docs.map(d => ({ id: d.id, ...d.data() } as MaintenanceLog)));
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'logs'));
     return unsub;
-  }, [profile]);
+  }, [profile, isDemoMode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1410,27 +1484,62 @@ const MaintenanceLogs: React.FC = () => {
     const personnelArray = formData.personnelInput.split(',').map(p => p.trim()).filter(p => p);
     
     try {
-      const newLog: MaintenanceLog = {
-        tail_number: formData.tail_number,
-        jcn: formData.jcn,
-        discrepancy: formData.discrepancy,
-        repair: formData.repair,
-        doc_number: formData.doc_number,
-        isRedBall: formData.isRedBall,
-        shopId: profile.shopId,
-        technician_name: profile.name,
-        man_number: profile.man_number,
-        personnel: personnelArray,
-        timestamp: serverTimestamp()
-      };
-      await addDoc(collection(db, 'logs'), newLog);
+      if (editingLogId) {
+        await updateDoc(doc(db, 'logs', editingLogId), {
+          tail_number: formData.tail_number,
+          jcn: formData.jcn,
+          discrepancy: formData.discrepancy,
+          repair: formData.repair,
+          doc_number: formData.doc_number,
+          isRedBall: formData.isRedBall,
+          personnel: personnelArray,
+          shift: formData.shift,
+          lastEditedBy: profile.name,
+          lastEditedAt: serverTimestamp()
+        });
+      } else {
+        const newLog: MaintenanceLog = {
+          tail_number: formData.tail_number,
+          jcn: formData.jcn,
+          discrepancy: formData.discrepancy,
+          repair: formData.repair,
+          doc_number: formData.doc_number,
+          isRedBall: formData.isRedBall,
+          shopId: profile.shopId,
+          amuId: profile.amuId,
+          technician_name: profile.name,
+          man_number: profile.man_number,
+          personnel: personnelArray,
+          shift: formData.shift,
+          timestamp: serverTimestamp(),
+          isDemo: isDemoMode
+        };
+        await addDoc(collection(db, 'logs'), newLog);
+      }
       setIsModalOpen(false);
-      setFormData({ tail_number: '', jcn: '', discrepancy: '', repair: '', doc_number: '', personnelInput: '', isRedBall: false });
+      setEditingLogId(null);
+      setFormData({ tail_number: '', jcn: '', discrepancy: '', repair: '', doc_number: '', personnelInput: '', isRedBall: false, shift: 'Days' });
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'logs');
+      handleFirestoreError(error, editingLogId ? OperationType.UPDATE : OperationType.CREATE, 'logs');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEditClick = (log: MaintenanceLog) => {
+    setFormData({
+      tail_number: log.tail_number,
+      jcn: log.jcn || '',
+      discrepancy: log.discrepancy,
+      repair: log.repair,
+      doc_number: log.doc_number || '',
+      personnelInput: log.personnel?.join(', ') || '',
+      isRedBall: log.isRedBall || false,
+      shift: log.shift || 'Days'
+    });
+    setEditingLogId(log.id!);
+    setSelectedLog(null);
+    setIsModalOpen(true);
   };
 
   const filteredLogs = logs.filter(log => {
@@ -1561,6 +1670,7 @@ const MaintenanceLogs: React.FC = () => {
                     </td>
                     <td className="px-4 py-2 text-on-surface-variant whitespace-nowrap">
                       {log.timestamp?.toDate ? format(log.timestamp.toDate(), 'yyyy.MM.dd') : 'Pending'}
+                      {log.shift && <span className="ml-2 text-[9px] uppercase bg-surface-container-high px-1.5 py-0.5 rounded">{log.shift}</span>}
                     </td>
                     <td className="px-4 py-2 text-on-surface-variant">
                       {log.technician_name}
@@ -1618,6 +1728,7 @@ const MaintenanceLogs: React.FC = () => {
                       <span className="text-on-surface-variant text-[10px] font-semibold uppercase">Date</span>
                       <span className="text-on-surface text-xs font-medium">
                         {log.timestamp?.toDate ? format(log.timestamp.toDate(), 'yyyy.MM.dd') : 'Pending'}
+                        {log.shift && <span className="ml-2 text-[9px] uppercase bg-surface-container-high px-1.5 py-0.5 rounded">{log.shift}</span>}
                       </span>
                     </div>
                     <div className="flex flex-col gap-1">
@@ -1671,6 +1782,7 @@ const MaintenanceLogs: React.FC = () => {
                     <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Date Logged</span>
                     <p className="text-sm font-semibold text-on-background">
                       {selectedLog.timestamp?.toDate ? format(selectedLog.timestamp.toDate(), 'MMMM dd, yyyy HH:mm') : 'Pending'}
+                      {selectedLog.shift && <span className="ml-2 text-[10px] uppercase bg-surface-container-high px-2 py-1 rounded">{selectedLog.shift}</span>}
                     </p>
                   </div>
                 </div>
@@ -1709,13 +1821,26 @@ const MaintenanceLogs: React.FC = () => {
                 )}
               </div>
               
-              <div className="p-6 border-t border-outline bg-surface-container-low flex justify-end">
-                <button 
-                  onClick={() => setSelectedLog(null)}
-                  className="sleek-button px-8"
-                >
-                  Close
-                </button>
+              <div className="p-6 border-t border-outline bg-surface-container-low flex justify-between items-center">
+                <div className="text-xs text-on-surface-variant">
+                  {selectedLog.lastEditedBy && (
+                    <span>Last edited by {selectedLog.lastEditedBy} {selectedLog.lastEditedAt?.toDate && `on ${format(selectedLog.lastEditedAt.toDate(), 'MM/dd HH:mm')}`}</span>
+                  )}
+                </div>
+                <div className="flex gap-3">
+                  <button 
+                    onClick={() => handleEditClick(selectedLog)}
+                    className="sleek-button bg-surface-container-high text-on-surface border-outline hover:bg-surface-container-highest"
+                  >
+                    Edit Entry
+                  </button>
+                  <button 
+                    onClick={() => setSelectedLog(null)}
+                    className="sleek-button px-8"
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
             </motion.div>
           </div>
@@ -1733,8 +1858,8 @@ const MaintenanceLogs: React.FC = () => {
               className="bg-surface max-w-2xl w-full rounded-2xl shadow-2xl overflow-hidden border border-outline"
             >
               <div className="p-6 border-b border-outline flex justify-between items-center">
-                <h3 className="font-bold text-xl text-on-background tracking-tight">New Maintenance Entry</h3>
-                <button onClick={() => setIsModalOpen(false)} className="text-on-surface-variant hover:text-on-background">
+                <h3 className="font-bold text-xl text-on-background tracking-tight">{editingLogId ? 'Edit Maintenance Entry' : 'New Maintenance Entry'}</h3>
+                <button onClick={() => { setIsModalOpen(false); setEditingLogId(null); }} className="text-on-surface-variant hover:text-on-background">
                   <X />
                 </button>
               </div>
@@ -1772,18 +1897,33 @@ const MaintenanceLogs: React.FC = () => {
                   />
                 </div>
 
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Red Ball Status</label>
-                  <button 
-                    type="button"
-                    onClick={() => setFormData({...formData, isRedBall: !formData.isRedBall})}
-                    className={cn(
-                      "sleek-input flex items-center justify-center gap-2",
-                      formData.isRedBall ? "bg-error text-white border-error" : "bg-surface-container-high text-on-surface-variant"
-                    )}
-                  >
-                    <ShieldAlert className="w-4 h-4" /> {formData.isRedBall ? 'URGENT' : 'NORMAL'}
-                  </button>
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Red Ball Status</label>
+                    <button 
+                      type="button"
+                      onClick={() => setFormData({...formData, isRedBall: !formData.isRedBall})}
+                      className={cn(
+                        "sleek-input flex items-center justify-center gap-2",
+                        formData.isRedBall ? "bg-error text-white border-error" : "bg-surface-container-high text-on-surface-variant"
+                      )}
+                    >
+                      <ShieldAlert className="w-4 h-4" /> {formData.isRedBall ? 'URGENT' : 'NORMAL'}
+                    </button>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Shift</label>
+                    <select 
+                      className="sleek-input"
+                      value={formData.shift}
+                      onChange={e => setFormData({...formData, shift: e.target.value as ShiftType})}
+                    >
+                      <option value="Days">Days</option>
+                      <option value="Swings">Swings</option>
+                      <option value="Nights">Nights</option>
+                      <option value="Weekend Duty">Weekend Duty</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div className="space-y-4">
@@ -1838,7 +1978,7 @@ const MaintenanceLogs: React.FC = () => {
 };
 
 const TrainingTracker: React.FC = () => {
-  const { profile } = useAuth();
+  const { profile, isDemoMode } = useAuth();
   const [training, setTraining] = useState<TrainingRecord[]>([]);
   const [personnel, setPersonnel] = useState<UserProfile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -1858,11 +1998,23 @@ const TrainingTracker: React.FC = () => {
 
     let qTraining;
     if (isLeadership) {
-      qTraining = query(collection(db, 'training'));
+      qTraining = query(
+        collection(db, 'training'),
+        where('isDemo', '==', isDemoMode)
+      );
     } else if (isTechnician) {
-      qTraining = query(collection(db, 'training'), where('man_number', '==', profile.man_number));
+      qTraining = query(
+        collection(db, 'training'), 
+        where('man_number', '==', profile.man_number),
+        where('isDemo', '==', isDemoMode)
+      );
     } else {
-      qTraining = query(collection(db, 'training'), where('shopId', '==', profile.shopId));
+      qTraining = query(
+        collection(db, 'training'), 
+        where('amuId', '==', profile.amuId),
+        where('shopId', '==', profile.shopId),
+        where('isDemo', '==', isDemoMode)
+      );
     }
     
     const unsubTraining = onSnapshot(qTraining, (snap) => {
@@ -1871,11 +2023,23 @@ const TrainingTracker: React.FC = () => {
 
     let qPersonnel;
     if (isLeadership) {
-      qPersonnel = query(collection(db, 'users'));
+      qPersonnel = query(
+        collection(db, 'users'),
+        where('isDemo', '==', isDemoMode)
+      );
     } else if (isTechnician) {
-      qPersonnel = query(collection(db, 'users'), where('man_number', '==', profile.man_number));
+      qPersonnel = query(
+        collection(db, 'users'), 
+        where('man_number', '==', profile.man_number),
+        where('isDemo', '==', isDemoMode)
+      );
     } else {
-      qPersonnel = query(collection(db, 'users'), where('shopId', '==', profile.shopId));
+      qPersonnel = query(
+        collection(db, 'users'), 
+        where('amuId', '==', profile.amuId),
+        where('shopId', '==', profile.shopId),
+        where('isDemo', '==', isDemoMode)
+      );
     }
     
     const unsubPersonnel = onSnapshot(qPersonnel, (snap) => {
@@ -1886,7 +2050,7 @@ const TrainingTracker: React.FC = () => {
       unsubTraining();
       unsubPersonnel();
     };
-  }, [profile]);
+  }, [profile, isDemoMode]);
 
   const getPersonName = (manNumber: string) => {
     const person = personnel.find(p => p.man_number === manNumber);
@@ -1928,7 +2092,9 @@ const TrainingTracker: React.FC = () => {
             course_name: record.course_name,
             due_date: record.due_date,
             shopId: profile.shopId,
-            status
+            amuId: profile.amuId,
+            status,
+            isDemo: isDemoMode
           };
 
           await addDoc(collection(db, 'training'), trainingData);
@@ -1943,9 +2109,9 @@ const TrainingTracker: React.FC = () => {
     }
   };
 
-  const [notifyModal, setNotifyModal] = useState<{isOpen: boolean, type: 'email' | 'sms'} | null>(null);
+  const [notifyModal, setNotifyModal] = useState<{isOpen: boolean, type: 'email'} | null>(null);
 
-  const openNotifyModal = (type: 'email' | 'sms') => {
+  const openNotifyModal = (type: 'email') => {
     setNotifyModal({ isOpen: true, type });
   };
 
@@ -2003,13 +2169,6 @@ const TrainingTracker: React.FC = () => {
                 title="Email Affected Users"
               >
                 <Send className="w-4 h-4" /> <span className="hidden sm:inline">Email</span>
-              </button>
-              <button 
-                onClick={() => openNotifyModal('sms')}
-                className="sleek-button bg-primary text-on-primary hover:bg-primary/90 flex items-center gap-2"
-                title="Text Affected Users"
-              >
-                <MessageSquare className="w-4 h-4" /> <span className="hidden sm:inline">Text</span>
               </button>
               <button 
                 onClick={() => exportTrainingToCSV(filteredTraining, profile.shopId)}
@@ -2329,7 +2488,7 @@ const TrainingTracker: React.FC = () => {
               <div className="p-6 border-b border-outline bg-surface-container-low flex justify-between items-center">
                 <div>
                   <h3 className="text-xl font-bold text-on-background">
-                    {notifyModal.type === 'email' ? 'Email Notifications' : 'Text Notifications'}
+                    Email Notifications
                   </h3>
                   <p className="text-sm text-on-surface-variant mt-1">Send personalized training alerts</p>
                 </div>
@@ -2351,8 +2510,7 @@ const TrainingTracker: React.FC = () => {
                   }, {} as Record<string, TrainingRecord[]>);
 
                   const affectedUsers = personnel.filter(p => 
-                    groupedRecords[p.man_number] && 
-                    (notifyModal.type === 'email' ? p.email : (p.phone && p.carrier))
+                    groupedRecords[p.man_number] && p.email
                   );
 
                   if (affectedUsers.length === 0) {
@@ -2378,29 +2536,14 @@ const TrainingTracker: React.FC = () => {
                     const subject = encodeURIComponent("92 AMXS Training Alert");
                     const body = encodeURIComponent(msg);
                     
-                    let link = '';
-                    if (notifyModal.type === 'email') {
-                      link = `mailto:${user.email}?subject=${subject}&body=${body}`;
-                    } else {
-                      const digits = (user.phone || '').replace(/\D/g, '');
-                      const gatewayMap: Record<string, string> = {
-                        'verizon': 'vtext.com',
-                        'tmobile': 'tmomail.net',
-                        'att': 'txt.att.net',
-                        'sprint': 'messaging.sprintpcs.com',
-                        'googlefi': 'msg.fi.google.com'
-                      };
-                      const gateway = gatewayMap[user.carrier || ''] || 'vtext.com';
-                      const email = `${digits}@${gateway}`;
-                      link = `mailto:${email}?subject=${subject}&body=${body}`;
-                    }
+                    const link = `mailto:${user.email}?subject=${subject}&body=${body}`;
 
                     return (
                       <div key={user.uid} className="bg-surface-container-low p-4 rounded-2xl border border-outline flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
                         <div className="flex-1">
                           <h4 className="font-bold text-on-background">{user.name}</h4>
                           <p className="text-xs text-on-surface-variant mb-2">
-                            {notifyModal.type === 'email' ? user.email : `${user.phone} (${user.carrier})`}
+                            {user.email}
                           </p>
                           <div className="space-y-1">
                             {records.map(r => (
@@ -2418,7 +2561,7 @@ const TrainingTracker: React.FC = () => {
                           rel="noopener noreferrer"
                           className="sleek-button bg-primary text-on-primary whitespace-nowrap"
                         >
-                          Send {notifyModal.type === 'email' ? 'Email' : 'Text'}
+                          Send Email
                         </a>
                       </div>
                     );
@@ -2434,7 +2577,7 @@ const TrainingTracker: React.FC = () => {
 };
 
 const Personnel: React.FC = () => {
-  const { user, profile } = useAuth();
+  const { user, profile, isDemoMode } = useAuth();
   const [personnel, setPersonnel] = useState<UserProfile[]>([]);
   const [selectedPerson, setSelectedPerson] = useState<UserProfile | null>(null);
   const [personTraining, setPersonTraining] = useState<TrainingRecord[]>([]);
@@ -2448,15 +2591,28 @@ const Personnel: React.FC = () => {
 
     const isLeadership = profile.role === 'leadership';
 
-    const q = isLeadership
-      ? query(collection(db, 'users'), where('status', '==', 'active'))
-      : query(collection(db, 'users'), where('shopId', '==', profile.shopId), where('status', '==', 'active'));
+    let q;
+    if (isLeadership) {
+      q = query(
+        collection(db, 'users'), 
+        where('status', '==', 'active'),
+        where('isDemo', '==', isDemoMode)
+      );
+    } else {
+      q = query(
+        collection(db, 'users'), 
+        where('amuId', '==', profile.amuId),
+        where('shopId', '==', profile.shopId), 
+        where('status', '==', 'active'),
+        where('isDemo', '==', isDemoMode)
+      );
+    }
     
     const unsub = onSnapshot(q, (snap) => {
       setPersonnel(snap.docs.map(d => d.data() as UserProfile));
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'users'));
     return unsub;
-  }, [profile]);
+  }, [profile, isDemoMode]);
 
   useEffect(() => {
     if (!selectedPerson || !profile) return;
@@ -2684,21 +2840,6 @@ const Personnel: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Carrier</label>
-                        <select 
-                          value={editForm.carrier || ''} 
-                          onChange={(e) => setEditForm({...editForm, carrier: e.target.value as any})}
-                          className="sleek-input w-full"
-                        >
-                          <option value="">Select Carrier...</option>
-                          <option value="verizon">Verizon</option>
-                          <option value="tmobile">T-Mobile</option>
-                          <option value="att">AT&T</option>
-                          <option value="sprint">Sprint</option>
-                          <option value="googlefi">Google Fi</option>
-                        </select>
-                      </div>
-                      <div>
                         <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Man #</label>
                         <input 
                           type="text" 
@@ -2708,13 +2849,26 @@ const Personnel: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Shop ID</label>
-                        <input 
-                          type="text" 
-                          value={editForm.shopId || ''} 
-                          onChange={(e) => setEditForm({...editForm, shopId: e.target.value})}
+                        <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">AMU</label>
+                        <select 
+                          value={editForm.amuId || ''} 
+                          onChange={(e) => setEditForm({...editForm, amuId: e.target.value as AMUType})}
                           className="sleek-input w-full"
-                        />
+                        >
+                          <option value="">Select AMU...</option>
+                          {AMUS.map(a => <option key={a} value={a}>{a}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Shop</label>
+                        <select 
+                          value={editForm.shopId || ''} 
+                          onChange={(e) => setEditForm({...editForm, shopId: e.target.value as ShopType})}
+                          className="sleek-input w-full"
+                        >
+                          <option value="">Select Shop...</option>
+                          {SHOPS.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
                       </div>
                       <div>
                         <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Role</label>
@@ -2865,19 +3019,6 @@ const Support: React.FC = () => {
             <div>
               <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Email Address</p>
               <a href="mailto:Steven.Koehl.1@us.af.mil" className="text-primary font-medium hover:underline">Steven.Koehl.1@us.af.mil</a>
-            </div>
-            <div className="pt-4">
-              <button 
-                onClick={() => {
-                  if (profile) {
-                    updateDoc(doc(db, 'users', profile.uid), { hasSeenTour: false });
-                    window.location.reload();
-                  }
-                }}
-                className="sleek-button w-full bg-primary text-white flex items-center justify-center gap-2"
-              >
-                <Clock className="w-4 h-4" /> Restart Guided Walkthrough
-              </button>
             </div>
           </div>
         </div>
