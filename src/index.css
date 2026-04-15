@@ -1,76 +1,130 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-headline: "Inter", sans-serif;
   --font-body: "Inter", sans-serif;
   --font-label: "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  --font-serif: "Playfair Display", serif;
+
+  --color-putty: #F5F5F4;
+  --color-af-blue: #1B365D;
+  --color-safety-orange: #FF671F;
+  --color-caution-yellow: #F2A900;
+  --color-stealth: #27272A;
 
   --color-surface-container-lowest: #ffffff;
   --color-surface-container-low: #ffffff;
   --color-surface-container: #ffffff;
-  --color-surface-container-high: #f8fafc;
-  --color-surface-container-highest: #f1f5f9;
+  --color-surface-container-high: #f5f5f4;
+  --color-surface-container-highest: #e7e7e4;
   
-  --color-primary: #3b82f6;
+  --color-primary: #1B365D;
   --color-on-primary: #ffffff;
   --color-primary-container: #dbeafe;
-  --color-on-primary-container: #1e40af;
+  --color-on-primary-container: #1B365D;
 
   --color-secondary: #64748b;
   --color-on-secondary: #ffffff;
   --color-secondary-container: #e2e8f0;
   --color-on-secondary-container: #1e293b;
 
-  --color-tertiary: #f59e0b;
+  --color-tertiary: #F2A900;
   --color-on-tertiary: #ffffff;
   --color-tertiary-container: #fef3c7;
   --color-on-tertiary-container: #92400e;
 
-  --color-error: #ef4444;
+  --color-error: #FF671F;
   --color-on-error: #ffffff;
   --color-error-container: #fee2e2;
   --color-on-error-container: #991b1b;
 
-  --color-background: #f8fafc;
-  --color-on-background: #1e293b;
+  --color-background: #F5F5F4;
+  --color-on-background: #1B365D;
   --color-surface: #ffffff;
-  --color-on-surface: #1e293b;
-  --color-surface-variant: #f1f5f9;
+  --color-on-surface: #1B365D;
+  --color-surface-variant: #e7e7e4;
   --color-on-surface-variant: #64748b;
-  --color-outline: #e2e8f0;
-  --color-outline-variant: #cbd5e1;
-  --color-sidebar: #0f172a;
+  --color-outline: #d1d1cf;
+  --color-outline-variant: #b5b5b2;
+  --color-sidebar: #1B365D;
 }
 
 @layer base {
   body {
-    @apply bg-background text-on-background font-body;
+    @apply bg-background text-on-background font-body antialiased;
   }
   
   h1, h2, h3, h4, h5, h6 {
-    @apply font-headline font-semibold;
+    @apply font-headline font-bold tracking-tight;
   }
 }
 
 .sleek-card {
-  @apply bg-surface border border-outline rounded-xl p-6 shadow-sm transition-all hover:shadow-md;
+  @apply bg-surface border border-outline rounded-none p-6 transition-all hover:bg-putty/50;
+}
+
+.visible-grid {
+  @apply border-t border-l border-outline;
+}
+
+.visible-grid > * {
+  @apply border-b border-r border-outline;
+}
+
+.glass {
+  @apply bg-white/70 backdrop-blur-md border border-white/20;
+}
+
+.glass-dark {
+  @apply bg-af-blue/80 backdrop-blur-lg border border-white/10;
 }
 
 .sleek-button {
-  @apply bg-primary text-on-primary px-4 py-2 rounded-lg font-medium text-sm transition-all hover:bg-primary/90 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+  @apply bg-primary text-on-primary px-5 py-2.5 rounded-none font-bold text-xs uppercase tracking-widest transition-all hover:bg-primary/90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
 }
 
 .sleek-input {
-  @apply bg-surface border border-outline rounded-lg text-on-surface placeholder-on-surface-variant/50 px-4 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all;
+  @apply bg-surface border border-outline rounded-none text-on-surface placeholder-on-surface-variant/50 px-4 py-2.5 text-sm font-mono focus:ring-0 focus:border-primary outline-none transition-all;
 }
 
 .badge {
-  @apply px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider;
+  @apply px-2 py-0.5 rounded-none text-[9px] font-black uppercase tracking-[0.15em];
 }
 
 .badge-info { @apply bg-primary-container text-on-primary-container; }
-.badge-warning { @apply bg-tertiary-container text-on-tertiary-container; }
+.badge-warning { @apply bg-caution-yellow/20 text-caution-yellow border border-caution-yellow/30; }
 .badge-success { @apply bg-emerald-100 text-emerald-800; }
-.badge-danger { @apply bg-error-container text-on-error-container; }
+.badge-danger { @apply bg-safety-orange/20 text-safety-orange border border-safety-orange/30; }
+
+.tech-label {
+  @apply text-[10px] font-black text-on-surface-variant uppercase tracking-[0.2em] font-mono;
+}
+
+.serif-header {
+  @apply font-serif italic font-normal text-on-surface-variant/70;
+}
+
+.data-mono {
+  @apply font-mono tracking-tighter font-medium;
+}
+
+.hover-invert {
+  @apply transition-all duration-200;
+}
+
+.hover-invert:hover {
+  @apply bg-primary text-white;
+}
+
+.hover-invert:hover .text-on-surface-variant,
+.hover-invert:hover .tech-label,
+.hover-invert:hover .serif-header {
+  @apply text-white/70;
+}
+
+.hover-invert:hover .data-mono {
+  @apply text-white;
+}
 

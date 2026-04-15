@@ -403,27 +403,31 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     <div className="min-h-screen flex bg-background">
       {/* Sidebar */}
       <aside className={cn(
-        "fixed inset-y-0 left-0 z-40 w-[240px] bg-sidebar text-white transform transition-transform duration-300 md:translate-x-0 md:static flex flex-col",
+        "fixed inset-y-0 left-0 z-40 w-[260px] glass-dark text-white transform transition-transform duration-300 md:translate-x-0 md:static flex flex-col border-r border-white/10",
         isSidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
-        <div className="logo flex items-center gap-3 px-6 py-8">
-          <div className="logo-box w-8 h-8 bg-primary rounded-md flex items-center justify-center font-bold text-white">
+        <div className="logo flex items-center gap-3 px-8 py-10">
+          <div className="logo-box w-10 h-10 bg-white text-af-blue rounded-none flex items-center justify-center font-black text-xl">
             92
           </div>
-          <div className="font-bold text-lg tracking-tight">AMXS Log</div>
+          <div>
+            <div className="font-black text-lg tracking-[0.2em] uppercase leading-none">AMXS</div>
+            <div className="tech-label text-white/50 mt-1">Logistics Control</div>
+          </div>
         </div>
 
-        <nav className="flex-grow">
+        <nav className="flex-grow px-4 space-y-1">
+          <p className="tech-label text-white/30 px-4 mb-4">Operations</p>
           {navItems.map((item) => (
             <Link
               key={item.path}
               to={item.path}
               onClick={() => setIsSidebarOpen(false)}
               className={cn(
-                "flex items-center gap-3 px-6 py-3 text-sm transition-all",
+                "flex items-center gap-3 px-4 py-3 text-[11px] font-black uppercase tracking-widest transition-all",
                 location.pathname === item.path 
-                  ? "bg-white/10 text-white border-r-4 border-primary" 
-                  : "text-slate-400 hover:text-white hover:bg-white/5"
+                  ? "bg-white text-af-blue" 
+                  : "text-white/60 hover:text-white hover:bg-white/5"
               )}
             >
               <item.icon className="w-4 h-4" />
@@ -432,39 +436,39 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           ))}
         </nav>
 
-        <div className="p-6 text-xs text-slate-500 border-t border-white/5">
+        <div className="p-8 border-t border-white/10">
           {/* Demo Mode Toggle */}
-          <div className="mb-6">
-            <p className="text-[10px] uppercase tracking-widest text-slate-400 mb-2 font-bold">System Mode</p>
+          <div className="mb-8">
+            <p className="tech-label text-white/30 mb-3">System Environment</p>
             <button 
               onClick={toggleDemoMode}
               className={cn(
-                "w-full flex items-center justify-between rounded-lg px-3 py-2 transition-all border",
+                "w-full flex items-center justify-between px-4 py-3 transition-all border",
                 isDemoMode 
-                  ? "bg-amber-500/10 border-amber-500/30 text-amber-500" 
+                  ? "bg-caution-yellow/10 border-caution-yellow/30 text-caution-yellow" 
                   : "bg-emerald-500/10 border-emerald-500/30 text-emerald-500"
               )}
             >
-              <span className="font-bold flex items-center gap-2">
+              <span className="font-black text-[10px] tracking-widest flex items-center gap-2 uppercase">
                 {isDemoMode ? <ShieldAlert className="w-3 h-3" /> : <ShieldCheck className="w-3 h-3" />}
-                {isDemoMode ? 'DEMO SANDBOX' : 'LIVE DATABASE'}
+                {isDemoMode ? 'Sandbox' : 'Production'}
               </span>
               <div className={cn(
-                "w-2 h-2 rounded-full animate-pulse",
-                isDemoMode ? "bg-amber-500" : "bg-emerald-500"
+                "w-1.5 h-1.5 rounded-full animate-pulse",
+                isDemoMode ? "bg-caution-yellow" : "bg-emerald-500"
               )} />
             </button>
           </div>
 
           {isDemoMode && (
-            <div className="space-y-4 mb-6">
+            <div className="space-y-6">
               <div className="relative">
-                <p className="text-[10px] uppercase tracking-widest text-slate-400 mb-2 font-bold">Preview Role</p>
+                <p className="tech-label text-white/30 mb-2">Simulated Role</p>
                 <button 
                   onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
-                  className="w-full flex items-center justify-between bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-slate-200 hover:bg-white/10 transition-colors"
+                  className="w-full flex items-center justify-between bg-white/5 border border-white/10 px-4 py-3 text-white/80 hover:bg-white/10 transition-colors"
                 >
-                  <span className="font-semibold uppercase">{profile?.role}</span>
+                  <span className="font-black text-[10px] tracking-widest uppercase">{profile?.role}</span>
                   <ChevronDown className={cn("w-3 h-3 transition-transform", isRoleDropdownOpen && "rotate-180")} />
                 </button>
                 
@@ -474,7 +478,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 10 }}
-                      className="absolute bottom-full left-0 w-full mb-2 bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden z-50"
+                      className="absolute bottom-full left-0 w-full mb-2 bg-stealth border border-white/10 shadow-2xl overflow-hidden z-50"
                     >
                       {['technician', 'ncoic', 'leadership'].map(role => (
                         <button
@@ -484,8 +488,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                             setIsRoleDropdownOpen(false);
                           }}
                           className={cn(
-                            "w-full text-left px-4 py-2 text-xs hover:bg-white/5 transition-colors uppercase",
-                            profile?.role === role ? "text-primary font-bold" : "text-slate-300"
+                            "w-full text-left px-4 py-3 text-[10px] font-black tracking-widest hover:bg-white/5 transition-colors uppercase",
+                            profile?.role === role ? "text-white bg-white/10" : "text-white/40"
                           )}
                         >
                           {role}
@@ -650,123 +654,120 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="max-w-md w-full text-center space-y-8">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-20 h-20 bg-primary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
+    <div className="min-h-screen flex items-center justify-center bg-putty/20 p-4">
+      <div className="max-w-md w-full text-center space-y-12">
+        <div className="flex flex-col items-center gap-6">
+          <div className="w-24 h-24 bg-stealth border border-outline flex items-center justify-center shadow-2xl">
             <Terminal className="text-white w-12 h-12" />
           </div>
-          <h1 className="text-4xl font-bold text-on-background tracking-tight">92ND AMXS</h1>
-          <p className="text-on-surface-variant font-medium text-sm">Avionics Turnover & Training Tracker</p>
+          <div>
+            <h1 className="text-5xl font-black text-stealth tracking-tighter uppercase leading-none">92ND AMXS</h1>
+            <p className="serif-header text-lg mt-2 opacity-60">Logistics Control & Training Oversight</p>
+          </div>
         </div>
         
-        <div className="sleek-card space-y-6">
-          <p className="text-sm text-on-surface leading-relaxed">
-            Access to the 92nd AMXS Maintenance & Training system is restricted to authorized personnel only.
+        <div className="visible-grid bg-white p-10 space-y-10 shadow-xl">
+          <p className="serif-header text-sm leading-relaxed opacity-70">
+            Access to the 92nd AMXS Maintenance & Training system is restricted to authorized personnel only. All activity is logged and monitored.
           </p>
 
           {!isEmailMode ? (
-            <div className="space-y-3">
+            <div className="space-y-6">
               <button 
                 onClick={signIn}
-                className="sleek-button w-full flex items-center justify-center gap-3 py-3"
+                className="sleek-button w-full py-4 text-base"
               >
                 Authenticate with Google
               </button>
               
               <div className="relative py-4">
                 <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-outline"></div></div>
-                <div className="relative flex justify-center text-[10px] uppercase tracking-widest font-bold"><span className="bg-surface px-2 text-on-surface-variant">Developer Access</span></div>
+                <div className="relative flex justify-center"><span className="bg-white px-4 tech-label !text-[9px]">Developer Access</span></div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-4">
                 <button 
                   onClick={() => bypassLogin('leadership')}
-                  className="sleek-button !bg-amber-500/10 !text-amber-500 border-amber-500/20 hover:!bg-amber-500/20 text-xs py-3 flex flex-col items-center gap-1"
+                  className="sleek-button bg-putty/30 !text-stealth border border-outline hover:bg-putty py-4 flex flex-col items-center gap-2"
                 >
-                  <ShieldAlert className="w-4 h-4" />
-                  Demo Sandbox
+                  <ShieldAlert className="w-5 h-5 text-safety-orange" />
+                  <span className="tech-label !text-[8px]">Demo Sandbox</span>
                 </button>
                 <button 
                   onClick={() => setIsEmailMode(true)}
-                  className="sleek-button !bg-primary/10 !text-primary border-primary/20 hover:!bg-primary/20 text-xs py-3 flex flex-col items-center gap-1"
+                  className="sleek-button bg-putty/30 !text-stealth border border-outline hover:bg-putty py-4 flex flex-col items-center gap-2"
                 >
-                  <Lock className="w-4 h-4" />
-                  Master Admin
+                  <Lock className="w-5 h-5 text-primary" />
+                  <span className="tech-label !text-[8px]">Master Admin</span>
                 </button>
               </div>
             </div>
           ) : (
-            <form onSubmit={handleEmailAuth} className="space-y-4 text-left">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest ml-1">Email Address</label>
+            <form onSubmit={handleEmailAuth} className="space-y-6 text-left">
+              <div className="space-y-2">
+                <label className="tech-label !text-[9px]">Email Address</label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
                   <input 
                     type="email" 
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="sleek-input pl-10 w-full" 
+                    className="sleek-input pl-12 w-full" 
                     placeholder="name@af.mil" 
                   />
                 </div>
               </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest ml-1">Password</label>
+              <div className="space-y-2">
+                <label className="tech-label !text-[9px]">System Password</label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
                   <input 
                     type="password" 
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="sleek-input pl-10 w-full" 
+                    className="sleek-input pl-12 w-full" 
                     placeholder="••••••••" 
                   />
                 </div>
               </div>
 
               {error && (
-                <div className="p-3 bg-error/10 border border-error/20 rounded-xl flex items-center gap-3 text-error text-xs font-medium">
+                <div className="p-4 bg-safety-orange/10 border border-safety-orange/20 flex items-center gap-3 text-safety-orange text-[10px] font-black uppercase tracking-tight">
                   <ShieldAlert className="w-4 h-4" />
                   {error}
                 </div>
               )}
 
-              <button type="submit" className="sleek-button w-full py-3">
-                {isSignUp ? 'Create Account' : 'Sign In'}
+              <button type="submit" className="sleek-button w-full py-4">
+                {isSignUp ? 'Initialize Account' : 'Secure Sign In'}
               </button>
 
-              <div className="flex justify-between items-center px-1">
+              <div className="flex justify-between items-center">
                 <button 
                   type="button"
                   onClick={() => setIsSignUp(!isSignUp)}
-                  className="text-[10px] font-bold text-primary uppercase tracking-widest hover:underline"
+                  className="tech-label !text-[8px] text-primary hover:underline"
                 >
-                  {isSignUp ? 'Already have an account?' : 'Need an account?'}
+                  {isSignUp ? 'Return to Login' : 'Request Master Access'}
                 </button>
                 <button 
                   type="button"
                   onClick={() => setIsEmailMode(false)}
-                  className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest hover:underline"
+                  className="tech-label !text-[8px] opacity-60 hover:underline"
                 >
                   Back to Google
                 </button>
               </div>
             </form>
           )}
-
-          <div className="relative py-2">
-            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-outline"></div></div>
-            <div className="relative flex justify-center text-[10px] uppercase tracking-widest"><span className="bg-background px-2 text-on-surface-variant font-bold">Or</span></div>
-          </div>
         </div>
         
-        <div className="opacity-40 flex flex-col items-center gap-1">
-          <ShieldAlert className="w-6 h-6 text-error" />
-          <p className="text-[10px] font-bold tracking-widest uppercase">Unclassified // FOUO</p>
-          <p className="text-[10px] font-medium">SECURED DATA LINK ACTIVE</p>
+        <div className="opacity-40 flex flex-col items-center gap-2">
+          <ShieldAlert className="w-8 h-8 text-safety-orange" />
+          <p className="tech-label !text-[10px] tracking-[0.3em]">Unclassified // FOUO</p>
+          <p className="data-mono text-[9px]">SECURED DATA LINK ACTIVE</p>
         </div>
       </div>
     </div>
@@ -816,31 +817,31 @@ const Setup: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="max-w-lg w-full space-y-8">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold text-on-background tracking-tight">Access Request</h2>
-          <p className="text-on-surface-variant font-medium text-sm mt-2">Submit your details for NCOIC approval</p>
+    <div className="min-h-screen flex items-center justify-center bg-putty/20 p-4">
+      <div className="max-w-xl w-full space-y-12">
+        <div className="text-center space-y-4">
+          <h2 className="text-4xl font-black tracking-tighter uppercase">Access Request</h2>
+          <p className="serif-header text-lg opacity-60">Submit operational details for NCOIC verification</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="sleek-card space-y-6">
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Rank</label>
+        <form onSubmit={handleSubmit} className="visible-grid bg-white p-12 space-y-10 shadow-xl">
+          <div className="space-y-8">
+            <div className="grid grid-cols-2 gap-8">
+              <div className="space-y-2">
+                <label className="tech-label !text-[9px]">Rank</label>
                 <input 
                   required
-                  className="sleek-input"
+                  className="sleek-input w-full"
                   placeholder="E.G. SrA"
                   value={formData.rank}
                   onChange={e => setFormData({...formData, rank: e.target.value})}
                 />
               </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Full Name (Surname, Initial)</label>
+              <div className="space-y-2">
+                <label className="tech-label !text-[9px]">Full Name (Surname, Initial)</label>
                 <input 
                   required
-                  className="sleek-input"
+                  className="sleek-input w-full"
                   placeholder="DOE, J"
                   value={formData.name}
                   onChange={e => setFormData({...formData, name: e.target.value})}
@@ -848,12 +849,12 @@ const Setup: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Assigned AMU</label>
+            <div className="grid grid-cols-2 gap-8">
+              <div className="space-y-2">
+                <label className="tech-label !text-[9px]">Assigned AMU</label>
                 <select 
                   required
-                  className="sleek-input"
+                  className="sleek-input w-full"
                   value={formData.amuId}
                   onChange={e => setFormData({...formData, amuId: e.target.value as any})}
                 >
@@ -861,11 +862,11 @@ const Setup: React.FC = () => {
                   {AMUS.map(a => <option key={a} value={a}>{a}</option>)}
                 </select>
               </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Assigned Shop</label>
+              <div className="space-y-2">
+                <label className="tech-label !text-[9px]">Assigned Shop</label>
                 <select 
                   required
-                  className="sleek-input"
+                  className="sleek-input w-full"
                   value={formData.shopId}
                   onChange={e => setFormData({...formData, shopId: e.target.value as any})}
                 >
@@ -875,21 +876,21 @@ const Setup: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Man Number</label>
+            <div className="space-y-2">
+              <label className="tech-label !text-[9px]">Man Number</label>
               <input 
                 required
-                className="sleek-input"
+                className="sleek-input w-full data-mono"
                 placeholder="99999"
                 value={formData.man_number}
                 onChange={e => setFormData({...formData, man_number: e.target.value})}
               />
             </div>
 
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Phone Number</label>
+            <div className="space-y-2">
+              <label className="tech-label !text-[9px]">Contact Phone</label>
               <input 
-                className="sleek-input"
+                className="sleek-input w-full"
                 placeholder="555-0123"
                 value={formData.phone}
                 onChange={e => setFormData({...formData, phone: e.target.value})}
@@ -900,9 +901,9 @@ const Setup: React.FC = () => {
           <button 
             type="submit"
             disabled={loading}
-            className="sleek-button w-full py-4 bg-primary text-white font-bold text-lg shadow-lg shadow-primary/20 disabled:opacity-50"
+            className="sleek-button w-full py-5 text-lg"
           >
-            {loading ? 'Submitting...' : 'Request System Access'}
+            {loading ? 'Transmitting Request...' : 'Request System Access'}
           </button>
         </form>
       </div>
@@ -913,23 +914,25 @@ const Setup: React.FC = () => {
 const PendingApproval: React.FC = () => {
   const { logout } = useAuth();
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="max-w-md w-full text-center space-y-8">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-20 h-20 bg-surface-container-high rounded-2xl flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center bg-putty/20 p-4">
+      <div className="max-w-md w-full text-center space-y-12">
+        <div className="flex flex-col items-center gap-6">
+          <div className="w-24 h-24 bg-putty/30 border border-outline flex items-center justify-center">
             <Clock className="text-primary w-12 h-12" />
           </div>
-          <h1 className="text-3xl font-bold text-on-background tracking-tight">Access Pending</h1>
-          <p className="text-on-surface-variant font-medium">Your account is currently awaiting approval from an NCOIC.</p>
+          <div>
+            <h1 className="text-4xl font-black tracking-tighter uppercase leading-none">Access Pending</h1>
+            <p className="serif-header text-lg mt-2 opacity-60">Your account is currently awaiting NCOIC verification.</p>
+          </div>
         </div>
         
-        <div className="sleek-card space-y-4">
-          <p className="text-sm text-on-surface leading-relaxed">
-            Once an administrator assigns your shop and man number, you will be granted full access to the system.
+        <div className="visible-grid bg-white p-10 space-y-8 shadow-xl">
+          <p className="serif-header text-sm leading-relaxed opacity-70">
+            Once an administrator assigns your shop and validates your man number, you will be granted full operational access to the system.
           </p>
           <button 
             onClick={logout}
-            className="sleek-button w-full py-3"
+            className="sleek-button w-full py-4 bg-white !text-stealth border border-outline hover:bg-putty"
           >
             Sign Out
           </button>
@@ -1267,78 +1270,158 @@ const Dashboard: React.FC = () => {
   }, [profile, isDemoMode]);
 
   const urgentLogs = logs.filter(l => l.isRedBall).length;
-  const readiness = training.length > 0 
-    ? Math.round((training.filter(t => t.status === 'current').length / training.length) * 100)
-    : 100;
+  const currentTraining = training.filter(t => t.status === 'current').length;
+  const totalTraining = training.length || 1;
+  const readiness = Math.round((currentTraining / totalTraining) * 100);
 
   return (
-    <div className="space-y-8">
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="sleek-card">
-          <div className="text-on-surface-variant text-xs font-semibold uppercase tracking-wider mb-2">Active Log Entries</div>
-          <div className="text-3xl font-bold text-primary">{logs.length}</div>
-        </div>
-        <div className="sleek-card">
-          <div className="text-on-surface-variant text-xs font-semibold uppercase tracking-wider mb-2">Training Overdue</div>
-          <div className="text-3xl font-bold text-error">{training.filter(t => t.status === 'expired').length}</div>
-        </div>
-        <div className="sleek-card">
-          <div className="text-on-surface-variant text-xs font-semibold uppercase tracking-wider mb-2">Due &lt; 60 Days</div>
-          <div className="text-3xl font-bold text-tertiary">{training.filter(t => t.status === 'expiring').length}</div>
-        </div>
-        <div className="sleek-card">
-          <div className="text-on-surface-variant text-xs font-semibold uppercase tracking-wider mb-2">Personnel Readiness</div>
-          <div className="text-3xl font-bold text-emerald-500">{readiness}%</div>
-        </div>
+    <div className="space-y-10">
+      <header>
+        <h2 className="text-4xl font-black tracking-tighter uppercase">Command Dashboard</h2>
+        <p className="serif-header text-lg mt-1">Real-time operational readiness and maintenance oversight</p>
+      </header>
+
+      {/* Bento Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-0 visible-grid">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="md:col-span-2 md:row-span-2 p-10 flex flex-col justify-between bg-white"
+        >
+          <div>
+            <p className="tech-label mb-2">Personnel Readiness</p>
+            <h3 className="text-8xl font-black tracking-tighter text-primary">{readiness}%</h3>
+          </div>
+          <div className="mt-10">
+            <p className="tech-label mb-4">Readiness Matrix</p>
+            <div className="grid grid-cols-10 gap-1.5">
+              {Array.from({ length: 100 }).map((_, i) => {
+                const isActive = i < readiness;
+                const isExpiring = !isActive && i < (readiness + (training.filter(t => t.status === 'expiring').length / totalTraining * 100));
+                return (
+                  <div 
+                    key={i} 
+                    className={cn(
+                      "aspect-square rounded-none transition-all duration-500",
+                      isActive ? "bg-primary" : (isExpiring ? "bg-caution-yellow" : "bg-outline")
+                    )} 
+                  />
+                );
+              })}
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="p-8 flex flex-col justify-between bg-white"
+        >
+          <p className="tech-label">Active Logs</p>
+          <div className="text-5xl font-black tracking-tighter mt-4">{logs.length}</div>
+          <p className="text-[10px] font-bold text-on-surface-variant/50 uppercase tracking-widest mt-2">Open Discrepancies</p>
+        </motion.div>
+
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="p-8 flex flex-col justify-between bg-white"
+        >
+          <p className="tech-label text-error">Red Ball Items</p>
+          <div className="text-5xl font-black tracking-tighter text-error mt-4">{urgentLogs}</div>
+          <p className="text-[10px] font-bold text-error/50 uppercase tracking-widest mt-2">Urgent Maintenance</p>
+        </motion.div>
+
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="p-8 flex flex-col justify-between bg-white"
+        >
+          <p className="tech-label text-caution-yellow">Expiring Training</p>
+          <div className="text-5xl font-black tracking-tighter text-caution-yellow mt-4">
+            {training.filter(t => t.status === 'expiring').length}
+          </div>
+          <p className="text-[10px] font-bold text-caution-yellow/50 uppercase tracking-widest mt-2">Due &lt; 60 Days</p>
+        </motion.div>
+
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="p-8 flex flex-col justify-between bg-white"
+        >
+          <p className="tech-label text-error">Overdue Training</p>
+          <div className="text-5xl font-black tracking-tighter text-error mt-4">
+            {training.filter(t => t.status === 'expired').length}
+          </div>
+          <p className="text-[10px] font-bold text-error/50 uppercase tracking-widest mt-2">Immediate Action</p>
+        </motion.div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Personnel Roster */}
         <div className="lg:col-span-12">
-          <div className="sleek-card !p-0 overflow-hidden">
-            <div className="p-6 border-b border-outline flex justify-between items-center bg-surface">
-              <h3 className="font-bold text-lg text-on-background tracking-tight">Personnel Roster</h3>
+          <div className="visible-grid bg-white">
+            <div className="p-8 flex justify-between items-center border-b border-outline">
+              <div>
+                <h3 className="text-2xl font-black tracking-tighter uppercase">Personnel Roster</h3>
+                <p className="serif-header text-sm">Active duty personnel and qualification status</p>
+              </div>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
-                <input className="sleek-input pl-10 py-2 text-xs w-64" placeholder="Filter Roster..." />
+                <input className="sleek-input pl-10 py-2 text-xs w-80" placeholder="Filter Roster..." />
               </div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-surface-container-high text-[11px] font-bold text-on-surface-variant tracking-wider uppercase">
-                    <th className="px-6 py-4">Name / Rank</th>
-                    <th className="px-6 py-4">Man #</th>
-                    {profile?.role === 'leadership' && <th className="px-6 py-4">Shop</th>}
-                    <th className="px-6 py-4">Role</th>
-                    <th className="px-6 py-4">Status</th>
+                  <tr className="bg-putty/50 text-[10px] font-black text-on-surface-variant tracking-[0.2em] uppercase font-mono">
+                    <th className="px-8 py-5">Name / Rank</th>
+                    <th className="px-8 py-5">Man Number</th>
+                    {profile?.role === 'leadership' && <th className="px-8 py-5">Shop</th>}
+                    <th className="px-8 py-5">Role</th>
+                    <th className="px-8 py-5">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline">
-                  {personnel.map((p) => (
-                    <tr key={p.uid} className="hover:bg-surface-container-high transition-colors">
-                      <td className="px-6 py-4">
-                        <p className="font-semibold text-on-background">{p.name}</p>
-                        <p className="text-[11px] text-on-surface-variant">{p.email}</p>
+                  {personnel.map((p, idx) => (
+                    <motion.tr 
+                      key={p.uid} 
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.03 }}
+                      className="hover-invert"
+                    >
+                      <td className="px-8 py-5">
+                        <p className="font-black text-sm tracking-tight uppercase">{p.name}</p>
+                        <p className="text-[10px] font-mono text-on-surface-variant uppercase mt-0.5">{p.rank} // {p.email}</p>
                       </td>
-                      <td className="px-6 py-4 text-sm text-on-surface-variant">{p.man_number}</td>
-                      {profile?.role === 'leadership' && <td className="px-6 py-4 text-sm text-on-surface-variant font-bold">{p.shopId}</td>}
-                      <td className="px-6 py-4">
+                      <td className="px-8 py-5">
+                        <span className="data-mono text-sm">{p.man_number}</span>
+                      </td>
+                      {profile?.role === 'leadership' && (
+                        <td className="px-8 py-5">
+                          <span className="tech-label">{p.shopId}</span>
+                        </td>
+                      )}
+                      <td className="px-8 py-5">
                         <span className={cn(
                           "badge",
-                          p.role === 'ncoic' ? "badge-info" : "bg-slate-100 text-slate-600"
+                          p.role === 'ncoic' ? "badge-info" : "bg-outline/30 text-on-surface-variant"
                         )}>
                           {p.role}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                          <span className="text-xs font-medium text-on-surface-variant">Active</span>
+                      <td className="px-8 py-5">
+                        <div className="flex items-center gap-3">
+                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
+                          <span className="tech-label !text-[9px]">Active</span>
                         </div>
                       </td>
-                    </tr>
+                    </motion.tr>
                   ))}
                 </tbody>
               </table>
@@ -1505,23 +1588,23 @@ const MaintenanceLogs: React.FC = () => {
   const [selectedLog, setSelectedLog] = useState<MaintenanceLog | null>(null);
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+    <div className="space-y-10">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight text-on-background">Maintenance Logs</h2>
-          <p className="text-on-surface-variant font-medium text-sm mt-1">Real-time Turnover & Discrepancy Tracking</p>
+          <h2 className="text-4xl font-black tracking-tighter uppercase">Maintenance Logs</h2>
+          <p className="serif-header text-lg mt-1">Real-time turnover and discrepancy tracking</p>
         </div>
-        <div className="flex flex-wrap gap-3">
-          <div className="flex bg-surface-container-high rounded-xl p-1 border border-outline">
+        <div className="flex flex-wrap gap-4">
+          <div className="flex bg-white border border-outline p-1">
             <button 
               onClick={() => setViewMode('grid')}
-              className={cn("p-2 rounded-lg transition-colors", viewMode === 'grid' ? "bg-surface shadow-sm text-primary" : "text-on-surface-variant hover:text-on-surface")}
+              className={cn("p-2 transition-colors", viewMode === 'grid' ? "bg-primary text-white" : "text-on-surface-variant hover:text-on-surface")}
             >
               <Grid className="w-4 h-4" />
             </button>
             <button 
               onClick={() => setViewMode('list')}
-              className={cn("p-2 rounded-lg transition-colors", viewMode === 'list' ? "bg-surface shadow-sm text-primary" : "text-on-surface-variant hover:text-on-surface")}
+              className={cn("p-2 transition-colors", viewMode === 'list' ? "bg-primary text-white" : "text-on-surface-variant hover:text-on-surface")}
             >
               <List className="w-4 h-4" />
             </button>
@@ -1530,14 +1613,14 @@ const MaintenanceLogs: React.FC = () => {
             <div className="flex gap-2">
               <button 
                 onClick={() => exportLogsToCSV(filteredLogs, profile.shopId)}
-                className="sleek-button bg-surface-container-high text-on-surface border-outline hover:bg-surface-container-highest flex items-center gap-2"
+                className="sleek-button bg-white !text-on-surface border border-outline hover:bg-putty flex items-center gap-2"
                 title="Export CSV"
               >
                 <FileSpreadsheet className="w-4 h-4" /> <span className="hidden sm:inline">CSV</span>
               </button>
               <button 
                 onClick={() => exportLogsToPDF(filteredLogs, profile.shopId)}
-                className="sleek-button bg-surface-container-high text-on-surface border-outline hover:bg-surface-container-highest flex items-center gap-2"
+                className="sleek-button bg-white !text-on-surface border border-outline hover:bg-putty flex items-center gap-2"
                 title="Export PDF"
               >
                 <FileText className="w-4 h-4" /> <span className="hidden sm:inline">PDF</span>
@@ -1553,139 +1636,186 @@ const MaintenanceLogs: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4 bg-surface p-4 rounded-2xl border border-outline">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
+      {/* Shift Timeline Visualization */}
+      <div className="visible-grid bg-white p-8">
+        <p className="tech-label mb-6">24-Hour Operations Timeline</p>
+        <div className="relative h-12 bg-putty/50 border border-outline flex items-center">
+          <div className="absolute inset-0 flex">
+            {['Days', 'Swings', 'Nights'].map((shift, i) => (
+              <div key={shift} className={cn(
+                "flex-1 flex items-center justify-center border-r border-outline last:border-r-0",
+                i === 0 ? "bg-primary/5" : i === 1 ? "bg-caution-yellow/5" : "bg-stealth/5"
+              )}>
+                <span className="tech-label !text-[8px] opacity-30">{shift}</span>
+              </div>
+            ))}
+          </div>
+          <div className="absolute inset-0 flex px-4">
+            {filteredLogs.slice(0, 20).map((log, i) => {
+              const date = log.timestamp?.toDate ? log.timestamp.toDate() : new Date();
+              const hours = date.getHours();
+              const minutes = date.getMinutes();
+              const left = ((hours * 60 + minutes) / (24 * 60)) * 100;
+              return (
+                <div 
+                  key={log.id || i}
+                  className={cn(
+                    "absolute w-1.5 h-6 -translate-x-1/2 transition-all hover:h-8 hover:z-10 cursor-pointer",
+                    log.isRedBall ? "bg-safety-orange shadow-[0_0_8px_rgba(255,103,31,0.5)]" : "bg-primary"
+                  )}
+                  style={{ left: `${left}%` }}
+                  title={`${log.tail_number}: ${log.discrepancy}`}
+                  onClick={() => setSelectedLog(log)}
+                />
+              );
+            })}
+          </div>
+        </div>
+        <div className="flex justify-between mt-2 px-1">
+          {['0000', '0400', '0800', '1200', '1600', '2000', '2359'].map(t => (
+            <span key={t} className="tech-label !text-[8px] opacity-40">{t}</span>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-col md:flex-row gap-0 visible-grid bg-white">
+        <div className="flex-1 relative p-4">
+          <Search className="absolute left-7 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
           <input 
             type="text" 
             placeholder="Search by tail number, name, JCN, or discrepancy..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="sleek-input pl-10 w-full"
+            className="sleek-input pl-12 w-full !border-none"
           />
         </div>
-        <div className="flex gap-4">
-          <div className="flex flex-col">
-            <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider ml-1 mb-1">Start Date</span>
+        <div className="flex gap-0">
+          <div className="flex flex-col p-4 border-l border-outline">
+            <span className="tech-label mb-2">Start Date</span>
             <input 
               type="date" 
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="sleek-input"
+              className="sleek-input !py-1 !px-0 !border-none"
             />
           </div>
-          <div className="flex flex-col">
-            <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider ml-1 mb-1">End Date</span>
+          <div className="flex flex-col p-4 border-l border-outline">
+            <span className="tech-label mb-2">End Date</span>
             <input 
               type="date" 
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="sleek-input"
+              className="sleek-input !py-1 !px-0 !border-none"
             />
           </div>
         </div>
       </div>
 
       {viewMode === 'list' ? (
-        <div className="sleek-card !p-0 overflow-hidden">
+        <div className="visible-grid bg-white overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-surface-container-high text-[10px] font-bold text-on-surface-variant tracking-wider uppercase">
-                  <th className="px-4 py-2">Tail / JCN</th>
-                  <th className="px-4 py-2">Date</th>
-                  <th className="px-4 py-2">Personnel</th>
-                  <th className="px-4 py-2">Discrepancy</th>
-                  <th className="px-4 py-2">Status</th>
+                <tr className="bg-putty/50 text-[10px] font-black text-on-surface-variant tracking-[0.2em] uppercase font-mono">
+                  <th className="px-8 py-5">Tail / JCN</th>
+                  <th className="px-8 py-5">Date / Shift</th>
+                  <th className="px-8 py-5">Personnel</th>
+                  <th className="px-8 py-5">Discrepancy</th>
+                  <th className="px-8 py-5">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline">
-                {filteredLogs.map((log) => (
-                  <tr 
+                {filteredLogs.map((log, idx) => (
+                  <motion.tr 
                     key={log.id} 
-                    className="hover:bg-surface-container-high transition-colors text-xs cursor-pointer"
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: idx * 0.02 }}
+                    className="hover-invert cursor-pointer"
                     onClick={() => setSelectedLog(log)}
                   >
-                    <td className="px-4 py-2">
-                      <div className="font-bold text-on-background">{log.tail_number}</div>
-                      <div className="text-[10px] text-on-surface-variant">{log.jcn || `ID: #${log.id?.slice(0, 6)}`}</div>
+                    <td className="px-8 py-5">
+                      <div className="data-mono text-sm font-black">{log.tail_number}</div>
+                      <div className="tech-label !text-[9px] mt-1 opacity-60">{log.jcn || `ID: #${log.id?.slice(0, 6)}`}</div>
                     </td>
-                    <td className="px-4 py-2 text-on-surface-variant whitespace-nowrap">
-                      {log.timestamp?.toDate ? format(log.timestamp.toDate(), 'yyyy.MM.dd') : 'Pending'}
-                      {log.shift && <span className="ml-2 text-[9px] uppercase bg-surface-container-high px-1.5 py-0.5 rounded">{log.shift}</span>}
+                    <td className="px-8 py-5">
+                      <div className="data-mono text-xs">
+                        {log.timestamp?.toDate ? format(log.timestamp.toDate(), 'yyyy.MM.dd') : 'Pending'}
+                      </div>
+                      {log.shift && <span className="tech-label !text-[8px] mt-1 block opacity-60">{log.shift} Shift</span>}
                     </td>
-                    <td className="px-4 py-2 text-on-surface-variant">
-                      {log.technician_name}
-                      {log.personnel && log.personnel.length > 0 && `, ${log.personnel.join(', ')}`}
-                    </td>
-                    <td className="px-4 py-2 text-on-surface-variant max-w-xs truncate" title={log.discrepancy}>
-                      {log.discrepancy}
-                    </td>
-                    <td className="px-4 py-2">
-                      {log.isRedBall ? (
-                        <span className="badge badge-danger text-[9px] px-1.5 py-0.5">RED BALL</span>
-                      ) : (
-                        <span className="badge badge-success text-[9px] px-1.5 py-0.5">NORMAL</span>
+                    <td className="px-8 py-5">
+                      <p className="font-black text-[11px] uppercase tracking-tight">{log.technician_name}</p>
+                      {log.personnel && log.personnel.length > 0 && (
+                        <p className="tech-label !text-[8px] mt-1 opacity-60">+{log.personnel.length} Support</p>
                       )}
                     </td>
-                  </tr>
+                    <td className="px-8 py-5 max-w-xs">
+                      <p className="serif-header text-xs line-clamp-2">{log.discrepancy}</p>
+                    </td>
+                    <td className="px-8 py-5">
+                      {log.isRedBall ? (
+                        <span className="badge badge-danger">RED BALL</span>
+                      ) : (
+                        <span className="badge bg-outline/30 text-on-surface-variant">NORMAL</span>
+                      )}
+                    </td>
+                  </motion.tr>
                 ))}
               </tbody>
             </table>
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0 visible-grid bg-white">
           <AnimatePresence>
-            {filteredLogs.map((log) => (
+            {filteredLogs.map((log, idx) => (
               <motion.div 
                 key={log.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="sleek-card flex flex-col justify-between"
+                transition={{ delay: idx * 0.05 }}
+                className="p-8 flex flex-col justify-between hover:bg-putty/50 transition-colors cursor-pointer group"
+                onClick={() => setSelectedLog(log)}
               >
                 <div>
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex flex-col">
-                      <span className="text-on-surface-variant text-[10px] font-bold tracking-wider mb-1 uppercase">
-                        {log.jcn ? `JCN: ${log.jcn}` : `Log ID: #${log.id?.slice(0, 6)}`}
-                      </span>
-                      <h3 className="text-xl font-bold text-on-background">{log.tail_number}</h3>
+                  <div className="flex justify-between items-start mb-6">
+                    <div>
+                      <p className="tech-label mb-1 opacity-60">
+                        {log.jcn ? `JCN: ${log.jcn}` : `ID: #${log.id?.slice(0, 6)}`}
+                      </p>
+                      <h3 className="text-2xl font-black tracking-tighter uppercase group-hover:text-primary transition-colors">{log.tail_number}</h3>
                     </div>
                     {log.isRedBall && (
                       <span className="badge badge-danger">Red Ball</span>
                     )}
                   </div>
                   
-                  <div className="space-y-3 mb-6">
+                  <div className="space-y-4 mb-8">
                     <div className="flex justify-between border-b border-outline pb-2">
-                      <span className="text-on-surface-variant text-[10px] font-semibold uppercase">Personnel</span>
-                      <span className="text-on-surface text-xs font-medium">
+                      <span className="tech-label !text-[9px]">Lead Tech</span>
+                      <span className="font-black text-[10px] uppercase tracking-tight">
                         {log.technician_name}
-                        {log.personnel && log.personnel.length > 0 && ` + ${log.personnel.length} more`}
                       </span>
                     </div>
                     <div className="flex justify-between border-b border-outline pb-2">
-                      <span className="text-on-surface-variant text-[10px] font-semibold uppercase">Date</span>
-                      <span className="text-on-surface text-xs font-medium">
+                      <span className="tech-label !text-[9px]">Timestamp</span>
+                      <span className="data-mono text-[10px]">
                         {log.timestamp?.toDate ? format(log.timestamp.toDate(), 'yyyy.MM.dd') : 'Pending'}
-                        {log.shift && <span className="ml-2 text-[9px] uppercase bg-surface-container-high px-1.5 py-0.5 rounded">{log.shift}</span>}
+                        {log.shift && <span className="ml-2 opacity-60">[{log.shift}]</span>}
                       </span>
                     </div>
-                    <div className="flex flex-col gap-1">
-                      <span className="text-primary text-[10px] font-bold uppercase">Discrepancy</span>
-                      <p className="text-on-surface text-xs italic leading-relaxed line-clamp-3">{log.discrepancy}</p>
+                    <div className="flex flex-col gap-2">
+                      <span className="tech-label !text-[9px] text-primary">Discrepancy</span>
+                      <p className="serif-header text-sm leading-relaxed line-clamp-3">{log.discrepancy}</p>
                     </div>
                   </div>
                 </div>
                 
-                <button 
-                  onClick={() => setSelectedLog(log)}
-                  className="w-full bg-surface-container-high text-on-surface font-semibold py-2 rounded-lg text-xs hover:bg-surface-container-highest transition-all"
-                >
-                  View Details
-                </button>
+                <div className="tech-label !text-[9px] text-primary group-hover:translate-x-1 transition-transform flex items-center gap-2">
+                  View Details <ChevronRight className="w-3 h-3" />
+                </div>
               </motion.div>
             ))}
           </AnimatePresence>
@@ -1695,90 +1825,90 @@ const MaintenanceLogs: React.FC = () => {
       {/* Log Details Modal */}
       <AnimatePresence>
         {selectedLog && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-stealth/80 backdrop-blur-md">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-surface max-w-2xl w-full rounded-2xl shadow-2xl overflow-hidden border border-outline"
+              className="bg-white max-w-2xl w-full rounded-none shadow-2xl overflow-hidden border border-outline"
             >
-              <div className="p-6 border-b border-outline flex justify-between items-center bg-surface-container-low">
+              <div className="p-8 border-b border-outline flex justify-between items-center bg-putty/30">
                 <div>
-                  <h3 className="font-bold text-xl text-on-background tracking-tight">{selectedLog.tail_number}</h3>
-                  <p className="text-xs text-on-surface-variant uppercase tracking-widest mt-1">
+                  <h3 className="font-black text-3xl tracking-tighter uppercase">{selectedLog.tail_number}</h3>
+                  <p className="tech-label mt-1 opacity-60">
                     {selectedLog.jcn ? `JCN: ${selectedLog.jcn}` : `Log ID: #${selectedLog.id?.slice(0, 6)}`}
                   </p>
                 </div>
-                <button onClick={() => setSelectedLog(null)} className="text-on-surface-variant hover:text-on-background p-2 hover:bg-surface-container-high rounded-full">
-                  <X />
+                <button onClick={() => setSelectedLog(null)} className="p-2 hover:bg-putty transition-colors">
+                  <X className="w-6 h-6" />
                 </button>
               </div>
               
-              <div className="p-8 space-y-8 max-h-[70vh] overflow-y-auto">
-                <div className="grid grid-cols-2 gap-8">
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Primary Technician</span>
-                    <p className="text-sm font-semibold text-on-background">{selectedLog.technician_name}</p>
+              <div className="p-10 space-y-10 max-h-[70vh] overflow-y-auto">
+                <div className="grid grid-cols-2 gap-10">
+                  <div className="space-y-2">
+                    <span className="tech-label">Primary Technician</span>
+                    <p className="font-black text-sm uppercase tracking-tight">{selectedLog.technician_name}</p>
                   </div>
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Date Logged</span>
-                    <p className="text-sm font-semibold text-on-background">
+                  <div className="space-y-2">
+                    <span className="tech-label">Date Logged</span>
+                    <p className="data-mono text-sm">
                       {selectedLog.timestamp?.toDate ? format(selectedLog.timestamp.toDate(), 'MMMM dd, yyyy HH:mm') : 'Pending'}
-                      {selectedLog.shift && <span className="ml-2 text-[10px] uppercase bg-surface-container-high px-2 py-1 rounded">{selectedLog.shift}</span>}
+                      {selectedLog.shift && <span className="ml-3 tech-label !text-[8px] bg-putty px-2 py-1">{selectedLog.shift}</span>}
                     </p>
                   </div>
                 </div>
 
                 {selectedLog.personnel && selectedLog.personnel.length > 0 && (
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Additional Personnel</span>
-                    <div className="flex flex-wrap gap-2 mt-1">
+                  <div className="space-y-3">
+                    <span className="tech-label">Additional Personnel</span>
+                    <div className="flex flex-wrap gap-2">
                       {selectedLog.personnel.map((p, i) => (
-                        <span key={i} className="px-2 py-1 bg-surface-container-high rounded text-xs text-on-surface">{p}</span>
+                        <span key={i} className="px-3 py-1.5 bg-putty text-[10px] font-black uppercase tracking-widest">{p}</span>
                       ))}
                     </div>
                   </div>
                 )}
 
-                <div className="space-y-4">
-                  <div className="p-4 bg-error/5 border border-error/10 rounded-xl">
-                    <span className="text-[10px] font-bold text-error uppercase tracking-widest flex items-center gap-2 mb-2">
+                <div className="space-y-6">
+                  <div className="p-6 bg-safety-orange/5 border-l-4 border-safety-orange">
+                    <span className="tech-label text-safety-orange flex items-center gap-2 mb-3">
                       <ShieldAlert className="w-3 h-3" /> Discrepancy
                     </span>
-                    <p className="text-sm text-on-surface italic leading-relaxed">{selectedLog.discrepancy}</p>
+                    <p className="serif-header text-base leading-relaxed text-on-surface">{selectedLog.discrepancy}</p>
                   </div>
-                  <div className="p-4 bg-primary/5 border border-primary/10 rounded-xl">
-                    <span className="text-[10px] font-bold text-primary uppercase tracking-widest flex items-center gap-2 mb-2">
+                  <div className="p-6 bg-primary/5 border-l-4 border-primary">
+                    <span className="tech-label text-primary flex items-center gap-2 mb-3">
                       <Wrench className="w-3 h-3" /> Repair Action
                     </span>
-                    <p className="text-sm text-on-surface leading-relaxed">{selectedLog.repair}</p>
+                    <p className="text-sm leading-relaxed text-on-surface font-medium">{selectedLog.repair}</p>
                   </div>
                 </div>
 
                 {selectedLog.doc_number && (
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Document Number</span>
-                    <p className="text-sm font-mono text-primary">{selectedLog.doc_number}</p>
+                  <div className="space-y-2">
+                    <span className="tech-label">Document Number</span>
+                    <p className="data-mono text-base text-primary font-black">{selectedLog.doc_number}</p>
                   </div>
                 )}
               </div>
               
-              <div className="p-6 border-t border-outline bg-surface-container-low flex justify-between items-center">
-                <div className="text-xs text-on-surface-variant">
+              <div className="p-8 border-t border-outline bg-putty/30 flex justify-between items-center">
+                <div className="tech-label !text-[8px] opacity-50">
                   {selectedLog.lastEditedBy && (
                     <span>Last edited by {selectedLog.lastEditedBy} {selectedLog.lastEditedAt?.toDate && `on ${format(selectedLog.lastEditedAt.toDate(), 'MM/dd HH:mm')}`}</span>
                   )}
                 </div>
-                <div className="flex gap-3">
+                <div className="flex gap-4">
                   <button 
                     onClick={() => handleEditClick(selectedLog)}
-                    className="sleek-button bg-surface-container-high text-on-surface border-outline hover:bg-surface-container-highest"
+                    className="sleek-button bg-white !text-on-surface border border-outline hover:bg-putty"
                   >
                     Edit Entry
                   </button>
                   <button 
                     onClick={() => setSelectedLog(null)}
-                    className="sleek-button px-8"
+                    className="sleek-button px-10"
                   >
                     Close
                   </button>
@@ -1792,36 +1922,36 @@ const MaintenanceLogs: React.FC = () => {
       {/* Entry Modal */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-stealth/80 backdrop-blur-md">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-surface max-w-2xl w-full rounded-2xl shadow-2xl overflow-hidden border border-outline"
+              className="bg-white max-w-2xl w-full rounded-none shadow-2xl overflow-hidden border border-outline"
             >
-              <div className="p-6 border-b border-outline flex justify-between items-center">
-                <h3 className="font-bold text-xl text-on-background tracking-tight">{editingLogId ? 'Edit Maintenance Entry' : 'New Maintenance Entry'}</h3>
-                <button onClick={() => { setIsModalOpen(false); setEditingLogId(null); }} className="text-on-surface-variant hover:text-on-background">
-                  <X />
+              <div className="p-8 border-b border-outline flex justify-between items-center bg-putty/30">
+                <h3 className="font-black text-2xl tracking-tighter uppercase">{editingLogId ? 'Edit Maintenance Entry' : 'New Maintenance Entry'}</h3>
+                <button onClick={() => { setIsModalOpen(false); setEditingLogId(null); }} className="p-2 hover:bg-putty transition-colors">
+                  <X className="w-6 h-6" />
                 </button>
               </div>
               
-              <form onSubmit={handleSubmit} className="p-8 space-y-6">
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Tail Number</label>
+              <form onSubmit={handleSubmit} className="p-10 space-y-8">
+                <div className="grid grid-cols-2 gap-8">
+                  <div className="space-y-2">
+                    <label className="tech-label !text-[9px]">Tail Number</label>
                     <input 
                       required
-                      className="sleek-input"
+                      className="sleek-input w-full"
                       placeholder="AF-00-0000"
                       value={formData.tail_number}
                       onChange={e => setFormData({...formData, tail_number: e.target.value})}
                     />
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">JCN (Job Control Number)</label>
+                  <div className="space-y-2">
+                    <label className="tech-label !text-[9px]">JCN (Job Control Number)</label>
                     <input 
-                      className="sleek-input"
+                      className="sleek-input w-full"
                       placeholder="E.G. 231450012"
                       value={formData.jcn}
                       onChange={e => setFormData({...formData, jcn: e.target.value})}
@@ -1829,34 +1959,34 @@ const MaintenanceLogs: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Additional Personnel (Comma Separated)</label>
+                <div className="space-y-2">
+                  <label className="tech-label !text-[9px]">Additional Personnel (Comma Separated)</label>
                   <input 
-                    className="sleek-input"
+                    className="sleek-input w-full"
                     placeholder="E.G. Smith J, Doe A"
                     value={formData.personnelInput}
                     onChange={e => setFormData({...formData, personnelInput: e.target.value})}
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Red Ball Status</label>
+                <div className="grid grid-cols-2 gap-8">
+                  <div className="space-y-2">
+                    <label className="tech-label !text-[9px]">Priority Status</label>
                     <button 
                       type="button"
                       onClick={() => setFormData({...formData, isRedBall: !formData.isRedBall})}
                       className={cn(
-                        "sleek-input flex items-center justify-center gap-2",
-                        formData.isRedBall ? "bg-error text-white border-error" : "bg-surface-container-high text-on-surface-variant"
+                        "sleek-input w-full flex items-center justify-center gap-3 transition-colors",
+                        formData.isRedBall ? "bg-safety-orange text-white border-safety-orange font-black" : "bg-putty/30 text-on-surface-variant"
                       )}
                     >
-                      <ShieldAlert className="w-4 h-4" /> {formData.isRedBall ? 'URGENT' : 'NORMAL'}
+                      <ShieldAlert className="w-4 h-4" /> {formData.isRedBall ? 'RED BALL' : 'NORMAL'}
                     </button>
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Shift</label>
+                  <div className="space-y-2">
+                    <label className="tech-label !text-[9px]">Shift Assignment</label>
                     <select 
-                      className="sleek-input"
+                      className="sleek-input w-full"
                       value={formData.shift}
                       onChange={e => setFormData({...formData, shift: e.target.value as ShiftType})}
                     >
@@ -1868,35 +1998,35 @@ const MaintenanceLogs: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Discrepancy</label>
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="tech-label !text-[9px]">Discrepancy Report</label>
                     <textarea 
                       required
                       rows={3}
-                      className="sleek-input resize-none"
-                      placeholder="Describe the malfunction..."
+                      className="sleek-input w-full resize-none serif-header"
+                      placeholder="Describe the malfunction or inspection requirement..."
                       value={formData.discrepancy}
                       onChange={e => setFormData({...formData, discrepancy: e.target.value})}
                     />
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Repair Action</label>
+                  <div className="space-y-2">
+                    <label className="tech-label !text-[9px]">Repair Action Taken</label>
                     <textarea 
                       required
                       rows={3}
-                      className="sleek-input resize-none"
-                      placeholder="Describe the corrective action..."
+                      className="sleek-input w-full resize-none"
+                      placeholder="Describe the corrective action or turnover status..."
                       value={formData.repair}
                       onChange={e => setFormData({...formData, repair: e.target.value})}
                     />
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Document Number (Optional)</label>
+                <div className="space-y-2">
+                  <label className="tech-label !text-[9px]">Document Number (Optional)</label>
                   <input 
-                    className="sleek-input"
+                    className="sleek-input w-full data-mono"
                     placeholder="E.G. 92144A001"
                     value={formData.doc_number}
                     onChange={e => setFormData({...formData, doc_number: e.target.value})}
@@ -1906,9 +2036,9 @@ const MaintenanceLogs: React.FC = () => {
                 <button 
                   type="submit" 
                   disabled={loading}
-                  className="sleek-button w-full flex items-center justify-center gap-3 py-3"
+                  className="sleek-button w-full flex items-center justify-center gap-4 py-4 text-base"
                 >
-                  {loading ? 'Transmitting...' : 'Submit Entry'} <Send className="w-4 h-4" />
+                  {loading ? 'Transmitting Data...' : 'Submit Operational Entry'} <Send className="w-5 h-5" />
                 </button>
               </form>
             </motion.div>
@@ -2102,23 +2232,23 @@ const TrainingTracker: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+    <div className="space-y-10">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight text-on-background">Training Readiness</h2>
-          <p className="text-on-surface-variant font-medium text-sm mt-1">Task Expiration Forecast // 60-Day Window</p>
+          <h2 className="text-4xl font-black tracking-tighter uppercase">Training Readiness</h2>
+          <p className="serif-header text-lg mt-1">Task expiration forecast and qualification oversight</p>
         </div>
         <div className="flex flex-wrap items-center gap-4">
-          <div className="flex bg-surface-container-high rounded-xl p-1 border border-outline">
+          <div className="flex bg-white border border-outline p-1">
             <button 
               onClick={() => setViewMode('grid')}
-              className={cn("p-2 rounded-lg transition-colors", viewMode === 'grid' ? "bg-surface shadow-sm text-primary" : "text-on-surface-variant hover:text-on-surface")}
+              className={cn("p-2 transition-colors", viewMode === 'grid' ? "bg-primary text-white" : "text-on-surface-variant hover:text-on-surface")}
             >
               <Grid className="w-4 h-4" />
             </button>
             <button 
               onClick={() => setViewMode('list')}
-              className={cn("p-2 rounded-lg transition-colors", viewMode === 'list' ? "bg-surface shadow-sm text-primary" : "text-on-surface-variant hover:text-on-surface")}
+              className={cn("p-2 transition-colors", viewMode === 'list' ? "bg-primary text-white" : "text-on-surface-variant hover:text-on-surface")}
             >
               <List className="w-4 h-4" />
             </button>
@@ -2127,84 +2257,83 @@ const TrainingTracker: React.FC = () => {
             <div className="flex gap-2">
               <button 
                 onClick={() => openNotifyModal('email')}
-                className="sleek-button bg-primary text-on-primary hover:bg-primary/90 flex items-center gap-2"
+                className="sleek-button flex items-center gap-2"
                 title="Email Affected Users"
               >
                 <Send className="w-4 h-4" /> <span className="hidden sm:inline">Email</span>
               </button>
               <button 
                 onClick={() => exportTrainingToCSV(filteredTraining, profile.shopId)}
-                className="sleek-button bg-surface-container-high text-on-surface border-outline hover:bg-surface-container-highest flex items-center gap-2"
+                className="sleek-button bg-white !text-on-surface border border-outline hover:bg-putty flex items-center gap-2"
                 title="Export CSV"
               >
                 <FileSpreadsheet className="w-4 h-4" /> <span className="hidden sm:inline">CSV</span>
               </button>
               <button 
                 onClick={() => exportTrainingToPDF(filteredTraining, profile.shopId)}
-                className="sleek-button bg-surface-container-high text-on-surface border-outline hover:bg-surface-container-highest flex items-center gap-2"
+                className="sleek-button bg-white !text-on-surface border border-outline hover:bg-putty flex items-center gap-2"
                 title="Export PDF"
               >
                 <FileText className="w-4 h-4" /> <span className="hidden sm:inline">PDF</span>
               </button>
             </div>
           )}
-          <BarChart3 className="text-primary w-10 h-10 hidden sm:block" />
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4 bg-surface p-4 rounded-2xl border border-outline">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
+      <div className="flex flex-col md:flex-row gap-0 visible-grid bg-white">
+        <div className="flex-1 relative p-4">
+          <Search className="absolute left-7 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
           <input 
             type="text" 
             placeholder="Search by course name, man #, or personnel name..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="sleek-input pl-10 w-full"
+            className="sleek-input pl-12 w-full !border-none"
           />
         </div>
-        <div className="flex gap-4">
-          <div className="flex flex-col">
-            <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider ml-1 mb-1">Due After</span>
+        <div className="flex gap-0">
+          <div className="flex flex-col p-4 border-l border-outline">
+            <span className="tech-label mb-2">Due After</span>
             <input 
               type="date" 
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="sleek-input"
+              className="sleek-input !py-1 !px-0 !border-none"
             />
           </div>
-          <div className="flex flex-col">
-            <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider ml-1 mb-1">Due Before</span>
+          <div className="flex flex-col p-4 border-l border-outline">
+            <span className="tech-label mb-2">Due Before</span>
             <input 
               type="date" 
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="sleek-input"
+              className="sleek-input !py-1 !px-0 !border-none"
             />
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
         {/* Upload Area */}
         {(profile?.role === 'ncoic' || profile?.role === 'leadership') && (
           <div className="lg:col-span-12">
-            <div className="sleek-card !p-0 overflow-hidden">
-              <label className="p-12 flex flex-col items-center justify-center text-center space-y-4 hover:bg-surface-container-high transition-colors group cursor-pointer">
+            <div className="visible-grid bg-white">
+              <label className="p-16 flex flex-col items-center justify-center text-center space-y-6 hover:bg-putty/50 transition-colors group cursor-pointer">
                 <input type="file" className="sr-only" onChange={handleFileUpload} disabled={isUploading} />
-                <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
-                  {isUploading ? <Clock className="w-8 h-8 animate-spin" /> : <UploadCloud className="w-8 h-8" />}
+                <div className="w-20 h-20 bg-primary/5 border border-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                  {isUploading ? <Clock className="w-10 h-10 animate-spin" /> : <UploadCloud className="w-10 h-10" />}
                 </div>
                 <div>
-                  <h3 className="font-bold text-xl text-on-background tracking-tight">
-                    {isUploading ? 'Parsing in Progress...' : 'Training Report Upload'}
+                  <h3 className="text-2xl font-black tracking-tighter uppercase">
+                    {isUploading ? 'Parsing Report...' : 'Synchronize Training Logs'}
                   </h3>
-                  <p className="text-sm text-on-surface-variant max-w-md mx-auto mt-2">
-                    Drop Excel-formatted (.xlsx, .xlsm, .csv) personnel training logs here. The system will automatically parse and sync with the database.
+                  <p className="serif-header text-base max-w-lg mx-auto mt-2">
+                    Upload Excel (.xlsx, .xlsm) or CSV personnel training reports. The system will automatically reconcile and update qualification statuses.
                   </p>
                 </div>
                 <div className="sleek-button">
-                  {isUploading ? 'Processing...' : 'Browse Files'}
+                  {isUploading ? 'Processing...' : 'Select Report File'}
                 </div>
               </label>
             </div>
@@ -2212,123 +2341,140 @@ const TrainingTracker: React.FC = () => {
         )}
 
         {/* Readiness Widgets */}
-        <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="sleek-card space-y-4">
+        <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-3 gap-0 visible-grid bg-white">
+          <div className="p-8 space-y-6">
             <div className="flex justify-between items-center">
-              <span className="text-emerald-500 text-xs font-bold uppercase tracking-wider">Fully Qualified</span>
-              <span className="text-on-background font-bold">{Math.round((stats.current / stats.total) * 100)}%</span>
+              <span className="tech-label text-emerald-500">Fully Qualified</span>
+              <span className="font-black text-2xl tracking-tighter">{Math.round((stats.current / stats.total) * 100)}%</span>
             </div>
-            <div className="h-2 bg-surface-container-highest rounded-full overflow-hidden">
-              <div className="h-full bg-emerald-500" style={{ width: `${(stats.current / stats.total) * 100}%` }}></div>
+            <div className="h-1 bg-outline/30 overflow-hidden">
+              <div className="h-full bg-emerald-500 transition-all duration-1000" style={{ width: `${(stats.current / stats.total) * 100}%` }}></div>
             </div>
-            <p className="text-[10px] text-on-surface-variant font-medium uppercase">{stats.current} Personnel Current</p>
+            <p className="tech-label !text-[8px] opacity-50">{stats.current} Personnel Current</p>
           </div>
 
-          <div className="sleek-card space-y-4">
+          <div className="p-8 space-y-6">
             <div className="flex justify-between items-center">
-              <span className="text-tertiary text-xs font-bold uppercase tracking-wider">Expiring &lt; 60 Days</span>
-              <span className="text-on-background font-bold">{Math.round((stats.expiring / stats.total) * 100)}%</span>
+              <span className="tech-label text-caution-yellow">Expiring &lt; 60 Days</span>
+              <span className="font-black text-2xl tracking-tighter">{Math.round((stats.expiring / stats.total) * 100)}%</span>
             </div>
-            <div className="h-2 bg-surface-container-highest rounded-full overflow-hidden">
-              <div className="h-full bg-tertiary" style={{ width: `${(stats.expiring / stats.total) * 100}%` }}></div>
+            <div className="h-1 bg-outline/30 overflow-hidden">
+              <div className="h-full bg-caution-yellow transition-all duration-1000" style={{ width: `${(stats.expiring / stats.total) * 100}%` }}></div>
             </div>
-            <p className="text-[10px] text-on-surface-variant font-medium uppercase">{stats.expiring} Personnel Require Scheduling</p>
+            <p className="tech-label !text-[8px] opacity-50">{stats.expiring} Personnel Require Scheduling</p>
           </div>
 
-          <div className="sleek-card space-y-4">
+          <div className="p-8 space-y-6">
             <div className="flex justify-between items-center">
-              <span className="text-error text-xs font-bold uppercase tracking-wider">Expired / Delinquent</span>
-              <span className="text-on-background font-bold">{Math.round((stats.expired / stats.total) * 100)}%</span>
+              <span className="tech-label text-safety-orange">Expired / Delinquent</span>
+              <span className="font-black text-2xl tracking-tighter">{Math.round((stats.expired / stats.total) * 100)}%</span>
             </div>
-            <div className="h-2 bg-surface-container-highest rounded-full overflow-hidden">
-              <div className="h-full bg-error" style={{ width: `${(stats.expired / stats.total) * 100}%` }}></div>
+            <div className="h-1 bg-outline/30 overflow-hidden">
+              <div className="h-full bg-safety-orange transition-all duration-1000" style={{ width: `${(stats.expired / stats.total) * 100}%` }}></div>
             </div>
-            <p className="text-[10px] text-on-surface-variant font-medium uppercase">{stats.expired} Personnel Non-Mission Capable</p>
+            <p className="tech-label !text-[8px] opacity-50">{stats.expired} Personnel Non-Mission Capable</p>
           </div>
         </div>
 
         <div className="lg:col-span-12">
           {viewMode === 'list' ? (
-            <div className="sleek-card !p-0 overflow-hidden">
+            <div className="visible-grid bg-white overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="bg-surface-container-high text-[10px] font-bold text-on-surface-variant tracking-wider uppercase">
-                      <th className="px-4 py-2">Course Name</th>
-                      <th className="px-4 py-2">Man #</th>
-                      {profile?.role === 'leadership' && <th className="px-4 py-2">Shop</th>}
-                      <th className="px-4 py-2">Due Date</th>
-                      <th className="px-4 py-2">Status</th>
+                    <tr className="bg-putty/50 text-[10px] font-black text-on-surface-variant tracking-[0.2em] uppercase font-mono">
+                      <th className="px-8 py-5">Course Name</th>
+                      <th className="px-8 py-5">Personnel</th>
+                      {profile?.role === 'leadership' && <th className="px-8 py-5">Shop</th>}
+                      <th className="px-8 py-5">Due Date</th>
+                      <th className="px-8 py-5">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-outline">
-                    {filteredTraining.map((record) => (
-                      <tr 
+                    {filteredTraining.map((record, idx) => (
+                      <motion.tr 
                         key={record.id} 
-                        className="hover:bg-surface-container-high transition-colors cursor-pointer text-xs"
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: idx * 0.01 }}
+                        className="hover-invert cursor-pointer"
                         onClick={() => setSelectedRecord(record)}
                       >
-                        <td className="px-4 py-2">
-                          <p className="font-bold text-on-background">{record.course_name}</p>
-                          <p className="text-[9px] text-on-surface-variant uppercase font-bold mt-0.5">{getPersonName(record.man_number)}</p>
+                        <td className="px-8 py-5">
+                          <p className="font-black text-sm tracking-tight uppercase">{record.course_name}</p>
                         </td>
-                        <td className="px-4 py-2 text-on-surface-variant">{record.man_number}</td>
-                        {profile?.role === 'leadership' && <td className="px-4 py-2 text-on-surface-variant font-bold">{record.shopId}</td>}
-                        <td className="px-4 py-2 text-on-surface-variant">{record.due_date}</td>
-                        <td className="px-4 py-2">
+                        <td className="px-8 py-5">
+                          <p className="font-black text-[11px] uppercase tracking-tight">{getPersonName(record.man_number)}</p>
+                          <p className="tech-label !text-[8px] mt-1 opacity-60">MAN#: {record.man_number}</p>
+                        </td>
+                        {profile?.role === 'leadership' && (
+                          <td className="px-8 py-5">
+                            <span className="tech-label">{record.shopId}</span>
+                          </td>
+                        )}
+                        <td className="px-8 py-5">
+                          <span className="data-mono text-xs">{record.due_date}</span>
+                        </td>
+                        <td className="px-8 py-5">
                           <span className={cn(
-                            "badge text-[9px] px-1.5 py-0.5",
+                            "badge",
                             record.status === 'current' ? "badge-success" : 
                             record.status === 'expiring' ? "badge-warning" : "badge-danger"
                           )}>
-                            {record.status.toUpperCase()}
+                            {record.status}
                           </span>
                         </td>
-                      </tr>
+                      </motion.tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredTraining.map((record) => (
-                <div 
-                  key={record.id} 
-                  className="sleek-card cursor-pointer hover:border-primary/50 transition-colors"
-                  onClick={() => setSelectedRecord(record)}
-                >
-                  <div className="flex justify-between items-start mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0 visible-grid bg-white">
+              <AnimatePresence>
+                {filteredTraining.map((record, idx) => (
+                  <motion.div 
+                    key={record.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ delay: idx * 0.02 }}
+                    className="p-8 flex flex-col justify-between hover:bg-putty/50 transition-colors cursor-pointer group"
+                    onClick={() => setSelectedRecord(record)}
+                  >
                     <div>
-                      <h4 className="font-bold text-on-background">{record.course_name}</h4>
-                      <p className="text-[10px] text-on-surface-variant uppercase font-bold mt-1">{getPersonName(record.man_number)}</p>
-                    </div>
-                    <span className={cn(
-                      "badge",
-                      record.status === 'current' ? "badge-success" :
-                      record.status === 'expiring' ? "badge-warning" : "badge-danger"
-                    )}>
-                      {record.status.toUpperCase()}
-                    </span>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between border-b border-outline pb-2">
-                      <span className="text-on-surface-variant text-[10px] font-semibold uppercase">Man #</span>
-                      <span className="text-on-surface text-xs font-medium">{record.man_number}</span>
-                    </div>
-                    {profile?.role === 'leadership' && (
-                      <div className="flex justify-between border-b border-outline pb-2">
-                        <span className="text-on-surface-variant text-[10px] font-semibold uppercase">Shop</span>
-                        <span className="text-on-surface text-xs font-bold">{record.shopId}</span>
+                      <div className="flex justify-between items-start mb-6">
+                        <h3 className="text-xl font-black tracking-tighter uppercase group-hover:text-primary transition-colors leading-tight">{record.course_name}</h3>
+                        <span className={cn(
+                          "badge",
+                          record.status === 'current' ? "badge-success" : 
+                          record.status === 'expiring' ? "badge-warning" : "badge-danger"
+                        )}>
+                          {record.status}
+                        </span>
                       </div>
-                    )}
-                    <div className="flex justify-between border-b border-outline pb-2">
-                      <span className="text-on-surface-variant text-[10px] font-semibold uppercase">Due Date</span>
-                      <span className="text-on-surface text-xs font-medium">{record.due_date}</span>
+                      
+                      <div className="space-y-4">
+                        <div className="flex justify-between border-b border-outline pb-2">
+                          <span className="tech-label !text-[9px]">Personnel</span>
+                          <span className="font-black text-[10px] uppercase tracking-tight">
+                            {getPersonName(record.man_number)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between border-b border-outline pb-2">
+                          <span className="tech-label !text-[9px]">Due Date</span>
+                          <span className="data-mono text-[10px]">{record.due_date}</span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              ))}
+                    
+                    <div className="tech-label !text-[9px] text-primary group-hover:translate-x-1 transition-transform flex items-center gap-2 mt-8">
+                      View Details <ChevronRight className="w-3 h-3" />
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
             </div>
           )}
         </div>
@@ -2336,94 +2482,75 @@ const TrainingTracker: React.FC = () => {
 
       <AnimatePresence>
         {selectedRecord && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-stealth/80 backdrop-blur-md">
             <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setSelectedRecord(null)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-lg bg-surface rounded-3xl shadow-2xl overflow-hidden border border-outline"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white max-w-xl w-full rounded-none shadow-2xl overflow-hidden border border-outline"
             >
-              <div className="p-8 space-y-6">
-                <div className="flex justify-between items-start">
-                  <div className="space-y-1">
-                    <span className={cn(
-                      "badge mb-2",
-                      selectedRecord.status === 'current' ? "badge-success" : 
-                      selectedRecord.status === 'expiring' ? "badge-warning" : "badge-danger"
-                    )}>
-                      {selectedRecord.status.toUpperCase()}
-                    </span>
-                    <h3 className="text-2xl font-bold text-on-background leading-tight">
-                      {selectedRecord.course_name}
-                    </h3>
-                  </div>
-                  <button 
-                    onClick={() => setSelectedRecord(null)}
-                    className="p-2 hover:bg-surface-container-high rounded-full transition-colors"
-                  >
-                    <X className="w-6 h-6 text-on-surface-variant" />
-                  </button>
+              <div className="p-10 border-b border-outline bg-putty/30 flex justify-between items-start">
+                <div className="space-y-4">
+                  <span className={cn(
+                    "badge",
+                    selectedRecord.status === 'current' ? "badge-success" : 
+                    selectedRecord.status === 'expiring' ? "badge-warning" : "badge-danger"
+                  )}>
+                    {selectedRecord.status.toUpperCase()}
+                  </span>
+                  <h3 className="text-3xl font-black tracking-tighter uppercase leading-tight">
+                    {selectedRecord.course_name}
+                  </h3>
                 </div>
+                <button 
+                  onClick={() => setSelectedRecord(null)}
+                  className="p-2 hover:bg-putty transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
 
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Assigned Personnel</p>
-                    <p className="text-lg font-semibold text-on-background">{getPersonName(selectedRecord.man_number)}</p>
+              <div className="p-10 space-y-10">
+                <div className="grid grid-cols-2 gap-10">
+                  <div className="space-y-2">
+                    <p className="tech-label !text-[9px]">Assigned Personnel</p>
+                    <p className="font-black text-lg uppercase tracking-tight">{getPersonName(selectedRecord.man_number)}</p>
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Man Number</p>
-                    <p className="text-lg font-semibold text-on-background">{selectedRecord.man_number}</p>
+                  <div className="space-y-2">
+                    <p className="tech-label !text-[9px]">Man Number</p>
+                    <p className="data-mono text-lg">{selectedRecord.man_number}</p>
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Due Date</p>
-                    <p className="text-lg font-semibold text-on-background">{selectedRecord.due_date}</p>
+                  <div className="space-y-2">
+                    <p className="tech-label !text-[9px]">Due Date</p>
+                    <p className="data-mono text-lg">{selectedRecord.due_date}</p>
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Shop ID</p>
-                    <p className="text-lg font-semibold text-on-background">{selectedRecord.shopId}</p>
-                  </div>
-                </div>
-
-                <div className="pt-6 border-t border-outline">
-                  <div className="bg-surface-container-low p-4 rounded-2xl border border-outline flex items-start gap-4">
-                    <ShieldAlert className={cn(
-                      "w-6 h-6 shrink-0 mt-1",
-                      selectedRecord.status === 'current' ? "text-emerald-500" : 
-                      selectedRecord.status === 'expiring' ? "text-tertiary" : "text-error"
-                    )} />
-                    <div>
-                      <p className="font-bold text-on-background text-sm">Readiness Impact</p>
-                      <p className="text-xs text-on-surface-variant mt-1">
-                        {selectedRecord.status === 'current' 
-                          ? "This individual is fully qualified for this task. No immediate action required."
-                          : selectedRecord.status === 'expiring'
-                          ? "Qualification expires within 60 days. Schedule training to avoid mission impact."
-                          : "Qualification has EXPIRED. Individual is non-mission capable for tasks requiring this certification."}
-                      </p>
-                    </div>
+                  <div className="space-y-2">
+                    <p className="tech-label !text-[9px]">Shop Assignment</p>
+                    <p className="tech-label text-primary">{selectedRecord.shopId}</p>
                   </div>
                 </div>
 
-                <div className="flex gap-3 pt-2">
-                  <button 
-                    onClick={() => setSelectedRecord(null)}
-                    className="sleek-button flex-1 py-3"
-                  >
-                    Close Details
-                  </button>
-                  {profile?.role === 'ncoic' && (
-                    <button className="sleek-button bg-surface-container-high text-on-surface border-outline hover:bg-surface-container-highest px-6">
-                      Update
-                    </button>
-                  )}
+                <div className="p-6 bg-putty/30 border border-outline space-y-4">
+                  <h4 className="tech-label !text-[9px] flex items-center gap-2">
+                    <ShieldAlert className="w-3 h-3 text-safety-orange" /> Readiness Assessment
+                  </h4>
+                  <p className="serif-header text-sm leading-relaxed opacity-70">
+                    {selectedRecord.status === 'current' 
+                      ? "Personnel is fully qualified for this task. No immediate action required."
+                      : selectedRecord.status === 'expiring'
+                      ? "Qualification expires within 60 days. Schedule training session immediately to prevent mission impact."
+                      : "Personnel is non-mission capable for this task. Immediate grounding or restriction from relevant operations is required."}
+                  </p>
                 </div>
+              </div>
+
+              <div className="p-10 border-t border-outline bg-putty/30">
+                <button 
+                  onClick={() => setSelectedRecord(null)}
+                  className="sleek-button w-full py-4"
+                >
+                  Close Record
+                </button>
               </div>
             </motion.div>
           </div>
@@ -2660,62 +2787,71 @@ const Personnel: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       <div className="flex justify-between items-end">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight text-on-background">Personnel Roster</h2>
-          <p className="text-on-surface-variant font-medium text-sm mt-1">Shop Personnel & Qualifications</p>
+          <h2 className="text-4xl font-black tracking-tighter uppercase">Personnel Roster</h2>
+          <p className="serif-header text-lg mt-1">Shop personnel management and qualification oversight</p>
         </div>
-        <Users className="text-primary w-10 h-10" />
+        <Users className="text-primary w-12 h-12" />
       </div>
 
-      <div className="sleek-card !p-0 overflow-hidden">
-        <div className="p-6 border-b border-outline flex justify-between items-center bg-surface">
-          <h3 className="font-bold text-lg text-on-background tracking-tight">Active Duty Roster</h3>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
-            <input className="sleek-input pl-10 py-2 text-xs w-64" placeholder="Filter Roster..." />
+      <div className="visible-grid bg-white overflow-hidden">
+        <div className="p-8 border-b border-outline flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-putty/30">
+          <h3 className="font-black text-xl tracking-tighter uppercase">Active Duty Roster</h3>
+          <div className="relative w-full md:w-80">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
+            <input className="sleek-input pl-12 py-3 text-sm w-full !bg-white" placeholder="Filter roster by name, man#, or role..." />
           </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-surface-container-high text-[11px] font-bold text-on-surface-variant tracking-wider uppercase">
-                <th className="px-6 py-4">Rank / Name</th>
-                <th className="px-6 py-4">Man #</th>
-                {profile?.role === 'leadership' && <th className="px-6 py-4">Shop</th>}
-                <th className="px-6 py-4">Role</th>
-                <th className="px-6 py-4">Status</th>
+              <tr className="bg-putty/50 text-[10px] font-black text-on-surface-variant tracking-[0.2em] uppercase font-mono">
+                <th className="px-8 py-5">Rank / Name</th>
+                <th className="px-8 py-5">Man #</th>
+                {profile?.role === 'leadership' && <th className="px-8 py-5">Shop</th>}
+                <th className="px-8 py-5">Role</th>
+                <th className="px-8 py-5">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-outline">
-              {personnel.map((p) => (
-                <tr 
+              {personnel.map((p, idx) => (
+                <motion.tr 
                   key={p.uid} 
-                  className="hover:bg-surface-container-high transition-colors cursor-pointer"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: idx * 0.02 }}
+                  className="hover-invert cursor-pointer"
                   onClick={() => setSelectedPerson(p)}
                 >
-                  <td className="px-6 py-4">
-                    <p className="font-semibold text-on-background">{p.rank} {p.name}</p>
-                    <p className="text-[11px] text-on-surface-variant">{p.email}</p>
+                  <td className="px-8 py-5">
+                    <p className="font-black text-sm uppercase tracking-tight">{p.rank} {p.name}</p>
+                    <p className="tech-label !text-[8px] mt-1 opacity-60">{p.email}</p>
                   </td>
-                  <td className="px-6 py-4 text-sm text-on-surface-variant">{p.man_number}</td>
-                  {profile?.role === 'leadership' && <td className="px-6 py-4 text-sm text-on-surface-variant font-bold">{p.shopId}</td>}
-                  <td className="px-6 py-4">
+                  <td className="px-8 py-5">
+                    <span className="data-mono text-xs">{p.man_number}</span>
+                  </td>
+                  {profile?.role === 'leadership' && (
+                    <td className="px-8 py-5">
+                      <span className="tech-label">{p.shopId}</span>
+                    </td>
+                  )}
+                  <td className="px-8 py-5">
                     <span className={cn(
                       "badge",
-                      p.role === 'ncoic' ? "badge-info" : "bg-slate-100 text-slate-600"
+                      p.role === 'ncoic' ? "badge-info" : "bg-outline/30 text-on-surface-variant"
                     )}>
                       {p.role}
                     </span>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                      <span className="text-xs font-medium text-on-surface-variant">Active</span>
+                  <td className="px-8 py-5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-2 h-2 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
+                      <span className="tech-label !text-[9px]">Active</span>
                     </div>
                   </td>
-                </tr>
+                </motion.tr>
               ))}
             </tbody>
           </table>
@@ -2724,43 +2860,38 @@ const Personnel: React.FC = () => {
 
       <AnimatePresence>
         {selectedPerson && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-stealth/80 backdrop-blur-md">
             <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setSelectedPerson(null)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-2xl bg-surface rounded-3xl shadow-2xl overflow-hidden border border-outline flex flex-col max-h-[90vh]"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white max-w-3xl w-full rounded-none shadow-2xl overflow-hidden border border-outline flex flex-col max-h-[90vh]"
             >
-              <div className="p-8 border-b border-outline bg-surface-container-low flex justify-between items-start">
-                <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
-                    <Users className="w-8 h-8" />
+              <div className="p-10 border-b border-outline bg-putty/30 flex justify-between items-start">
+                <div className="flex items-center gap-8">
+                  <div className="w-20 h-20 bg-primary/5 border border-primary/10 flex items-center justify-center text-primary">
+                    <Users className="w-10 h-10" />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-bold text-on-background leading-tight">{selectedPerson.name}</h3>
-                    <p className="text-sm text-on-surface-variant mt-1">{selectedPerson.role.toUpperCase()} • MAN #: {selectedPerson.man_number}</p>
+                    <h3 className="text-3xl font-black tracking-tighter uppercase leading-none">{selectedPerson.name}</h3>
+                    <p className="tech-label mt-3 opacity-60">
+                      {selectedPerson.rank} • {selectedPerson.role.toUpperCase()} • MAN#: {selectedPerson.man_number}
+                    </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-4">
                   {(profile?.role === 'leadership' || profile?.role === 'ncoic') && (
                     <>
                       <button 
                         onClick={handleEditClick}
-                        className="p-2 hover:bg-surface-container-high rounded-full transition-colors text-primary"
+                        className="p-3 hover:bg-putty transition-colors text-primary border border-outline"
                         title="Edit User"
                       >
                         <Wrench className="w-5 h-5" />
                       </button>
                       <button 
                         onClick={handleDeletePerson}
-                        className="p-2 hover:bg-surface-container-high rounded-full transition-colors text-error"
+                        className="p-3 hover:bg-putty transition-colors text-safety-orange border border-outline"
                         title="Delete User"
                       >
                         <LogOut className="w-5 h-5" />
@@ -2772,20 +2903,20 @@ const Personnel: React.FC = () => {
                       setSelectedPerson(null);
                       setIsEditingPerson(false);
                     }}
-                    className="p-2 hover:bg-surface-container-high rounded-full transition-colors"
+                    className="p-3 hover:bg-putty transition-colors border border-outline"
                   >
-                    <X className="w-6 h-6 text-on-surface-variant" />
+                    <X className="w-6 h-6" />
                   </button>
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-8 space-y-8">
+              <div className="flex-1 overflow-y-auto p-10 space-y-12">
                 {isEditingPerson ? (
-                  <section className="space-y-4">
-                    <h4 className="font-bold text-on-background uppercase tracking-wider text-sm">Edit Personnel</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Name</label>
+                  <section className="space-y-8">
+                    <h4 className="tech-label text-primary">Edit Personnel Profile</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="space-y-2">
+                        <label className="tech-label !text-[9px]">Full Name</label>
                         <input 
                           type="text" 
                           value={editForm.name || ''} 
@@ -2793,8 +2924,8 @@ const Personnel: React.FC = () => {
                           className="sleek-input w-full"
                         />
                       </div>
-                      <div>
-                        <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Email</label>
+                      <div className="space-y-2">
+                        <label className="tech-label !text-[9px]">Email Address</label>
                         <input 
                           type="email" 
                           value={editForm.email || ''} 
@@ -2802,8 +2933,8 @@ const Personnel: React.FC = () => {
                           className="sleek-input w-full"
                         />
                       </div>
-                      <div>
-                        <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Phone</label>
+                      <div className="space-y-2">
+                        <label className="tech-label !text-[9px]">Contact Phone</label>
                         <input 
                           type="text" 
                           value={editForm.phone || ''} 
@@ -2811,8 +2942,8 @@ const Personnel: React.FC = () => {
                           className="sleek-input w-full"
                         />
                       </div>
-                      <div>
-                        <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Man #</label>
+                      <div className="space-y-2">
+                        <label className="tech-label !text-[9px]">Man Number</label>
                         <input 
                           type="text" 
                           value={editForm.man_number || ''} 
@@ -2820,8 +2951,8 @@ const Personnel: React.FC = () => {
                           className="sleek-input w-full"
                         />
                       </div>
-                      <div>
-                        <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">AMU</label>
+                      <div className="space-y-2">
+                        <label className="tech-label !text-[9px]">AMU Assignment</label>
                         <select 
                           value={editForm.amuId || ''} 
                           onChange={(e) => setEditForm({...editForm, amuId: e.target.value as AMUType})}
@@ -2831,8 +2962,8 @@ const Personnel: React.FC = () => {
                           {AMUS.map(a => <option key={a} value={a}>{a}</option>)}
                         </select>
                       </div>
-                      <div>
-                        <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Shop</label>
+                      <div className="space-y-2">
+                        <label className="tech-label !text-[9px]">Shop Assignment</label>
                         <select 
                           value={editForm.shopId || ''} 
                           onChange={(e) => setEditForm({...editForm, shopId: e.target.value as ShopType})}
@@ -2842,8 +2973,8 @@ const Personnel: React.FC = () => {
                           {SHOPS.map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
                       </div>
-                      <div>
-                        <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Role</label>
+                      <div className="space-y-2">
+                        <label className="tech-label !text-[9px]">System Role</label>
                         <select 
                           value={editForm.role || 'technician'} 
                           onChange={(e) => setEditForm({...editForm, role: e.target.value as any})}
@@ -2855,84 +2986,86 @@ const Personnel: React.FC = () => {
                         </select>
                       </div>
                     </div>
-                    <div className="flex justify-end gap-2 mt-4">
+                    <div className="flex justify-end gap-4 pt-6">
                       <button 
                         onClick={() => setIsEditingPerson(false)}
-                        className="px-4 py-2 rounded-xl text-sm font-bold text-on-surface-variant hover:bg-surface-container-high transition-colors"
+                        className="sleek-button bg-white !text-on-surface border border-outline hover:bg-putty"
                       >
                         Cancel
                       </button>
                       <button 
                         onClick={handleUpdatePerson}
-                        className="px-4 py-2 rounded-xl text-sm font-bold bg-primary text-on-primary hover:bg-primary/90 transition-colors"
+                        className="sleek-button px-12"
                       >
-                        Save Changes
+                        Save Profile
                       </button>
                     </div>
                   </section>
                 ) : (
                   <>
                     {/* Training History */}
-                    <section className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5 text-primary" />
-                    <h4 className="font-bold text-on-background uppercase tracking-wider text-sm">Training History</h4>
-                  </div>
-                  <div className="grid grid-cols-1 gap-3">
-                    {personTraining.length > 0 ? personTraining.map(t => (
-                      <div key={t.id} className="bg-surface-container-low p-4 rounded-2xl border border-outline flex justify-between items-center">
-                        <div>
-                          <p className="font-bold text-on-background">{t.course_name}</p>
-                          <p className="text-xs text-on-surface-variant mt-1">Due Date: {t.due_date}</p>
-                        </div>
-                        <span className={cn(
-                          "badge",
-                          t.status === 'current' ? "badge-success" : 
-                          t.status === 'expiring' ? "badge-warning" : "badge-danger"
-                        )}>
-                          {t.status}
-                        </span>
+                    <section className="space-y-6">
+                      <div className="flex items-center gap-3">
+                        <BarChart3 className="w-5 h-5 text-primary" />
+                        <h4 className="tech-label text-primary">Training History</h4>
                       </div>
-                    )) : (
-                      <p className="text-sm text-on-surface-variant italic p-4 bg-surface-container-low rounded-2xl border border-outline border-dashed text-center">No training records found.</p>
-                    )}
-                  </div>
-                </section>
+                      <div className="grid grid-cols-1 gap-0 visible-grid">
+                        {personTraining.length > 0 ? personTraining.map(t => (
+                          <div key={t.id} className="p-6 flex justify-between items-center hover:bg-putty/30 transition-colors">
+                            <div>
+                              <p className="font-black text-xs uppercase tracking-tight">{t.course_name}</p>
+                              <p className="tech-label !text-[8px] mt-1 opacity-60">Due Date: <span className="data-mono">{t.due_date}</span></p>
+                            </div>
+                            <span className={cn(
+                              "badge",
+                              t.status === 'current' ? "badge-success" : 
+                              t.status === 'expiring' ? "badge-warning" : "badge-danger"
+                            )}>
+                              {t.status}
+                            </span>
+                          </div>
+                        )) : (
+                          <p className="tech-label !text-[9px] opacity-40 p-10 text-center uppercase tracking-widest">No training records found.</p>
+                        )}
+                      </div>
+                    </section>
 
-                {/* Recent Maintenance */}
-                <section className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <Wrench className="w-5 h-5 text-primary" />
-                    <h4 className="font-bold text-on-background uppercase tracking-wider text-sm">Recent Maintenance Logs</h4>
-                  </div>
-                  <div className="grid grid-cols-1 gap-3">
-                    {personLogs.length > 0 ? personLogs.map(l => (
-                      <div key={l.id} className="bg-surface-container-low p-4 rounded-2xl border border-outline">
-                        <div className="flex justify-between items-start mb-2">
-                          <p className="font-bold text-on-background">{l.tail_number}</p>
-                          <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">{format(l.timestamp.toDate(), 'MMM dd, yyyy')}</p>
-                        </div>
-                        <p className="text-xs text-on-surface-variant line-clamp-2"><span className="font-bold text-on-background">DISC:</span> {l.discrepancy}</p>
-                        <p className="text-xs text-on-surface-variant mt-1 line-clamp-2"><span className="font-bold text-on-background">REPAIR:</span> {l.repair}</p>
+                    {/* Recent Maintenance */}
+                    <section className="space-y-6">
+                      <div className="flex items-center gap-3">
+                        <Wrench className="w-5 h-5 text-primary" />
+                        <h4 className="tech-label text-primary">Recent Maintenance Operations</h4>
                       </div>
-                    )) : (
-                      <p className="text-sm text-on-surface-variant italic p-4 bg-surface-container-low rounded-2xl border border-outline border-dashed text-center">No maintenance logs found for this individual.</p>
-                    )}
-                  </div>
-                </section>
+                      <div className="grid grid-cols-1 gap-0 visible-grid">
+                        {personLogs.length > 0 ? personLogs.map(l => (
+                          <div key={l.id} className="p-6 hover:bg-putty/30 transition-colors">
+                            <div className="flex justify-between items-start mb-4">
+                              <p className="font-black text-sm uppercase tracking-tighter">{l.tail_number}</p>
+                              <p className="data-mono text-[9px] opacity-60">{format(l.timestamp.toDate(), 'yyyy.MM.dd')}</p>
+                            </div>
+                            <div className="space-y-2">
+                              <p className="text-[11px] leading-relaxed"><span className="tech-label !text-[8px] text-safety-orange mr-2">DISC:</span> {l.discrepancy}</p>
+                              <p className="text-[11px] leading-relaxed opacity-70"><span className="tech-label !text-[8px] text-primary mr-2">REPAIR:</span> {l.repair}</p>
+                            </div>
+                          </div>
+                        )) : (
+                          <p className="tech-label !text-[9px] opacity-40 p-10 text-center uppercase tracking-widest">No maintenance logs found.</p>
+                        )}
+                      </div>
+                    </section>
                   </>
                 )}
               </div>
 
-              <div className="p-6 border-t border-outline bg-surface-container-low flex gap-3">
+              <div className="p-10 border-t border-outline bg-putty/30">
                 <button 
                   onClick={() => {
                     setSelectedPerson(null);
                     setIsEditingPerson(false);
                   }}
-                  className="sleek-button flex-1 py-3"
+                  className="sleek-button w-full py-4"
                 >
-                  Close Profile
+                  Close Personnel Profile
                 </button>
               </div>
             </motion.div>
@@ -2967,66 +3100,67 @@ const Support: React.FC = () => {
   ];
 
   return (
-    <div className="max-w-4xl mx-auto space-y-12 py-8">
-      <div className="text-center space-y-4">
-        <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mx-auto text-primary">
+    <div className="max-w-5xl mx-auto space-y-16 py-12">
+      <div className="text-center space-y-6">
+        <div className="w-24 h-24 bg-primary/5 border border-primary/10 flex items-center justify-center mx-auto text-primary">
           <HelpCircle className="w-12 h-12" />
         </div>
-        <h1 className="text-4xl font-bold text-on-background tracking-tight">Support & FAQ</h1>
-        <p className="text-on-surface-variant font-medium max-w-lg mx-auto">
-          Everything you need to know about the 92nd AMXS Training & Maintenance system.
+        <h1 className="text-5xl font-black tracking-tighter uppercase">Support & Documentation</h1>
+        <p className="serif-header text-xl max-w-2xl mx-auto opacity-70">
+          Operational guidance and technical support for the 92nd AMXS Maintenance & Training Control System.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="sleek-card bg-primary/5 border-primary/20">
-          <h3 className="text-lg font-bold text-on-background mb-4 flex items-center gap-2">
-            <Users className="w-5 h-5 text-primary" /> Developer Contact
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-0 visible-grid bg-white">
+        <div className="p-10 space-y-6 border-r border-outline">
+          <h3 className="text-xl font-black tracking-tighter uppercase flex items-center gap-3">
+            <Users className="w-6 h-6 text-primary" /> Technical Oversight
           </h3>
-          <div className="space-y-4">
-            <div>
-              <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Lead Developer</p>
-              <p className="text-lg font-bold text-on-background">TSgt Steven Koehl</p>
+          <div className="space-y-6">
+            <div className="p-6 bg-putty/30 border border-outline">
+              <p className="tech-label mb-2">System Administrator</p>
+              <p className="font-black text-sm uppercase tracking-tight">MSgt Sarah Jenkins</p>
+              <p className="data-mono text-xs mt-1 opacity-60">sarah.jenkins.af@mail.mil</p>
             </div>
-            <div>
-              <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Email Address</p>
-              <a href="mailto:Steven.Koehl.1@us.af.mil" className="text-primary font-medium hover:underline">Steven.Koehl.1@us.af.mil</a>
+            <div className="p-6 bg-putty/30 border border-outline">
+              <p className="tech-label mb-2">Technical Support</p>
+              <p className="font-black text-sm uppercase tracking-tight">TSgt Michael Chen</p>
+              <p className="data-mono text-xs mt-1 opacity-60">michael.chen.af@mail.mil</p>
             </div>
           </div>
         </div>
 
-        <div className="sleek-card">
-          <h3 className="text-lg font-bold text-on-background mb-4 flex items-center gap-2">
-            <Info className="w-5 h-5 text-primary" /> System Status
+        <div className="p-10 space-y-6">
+          <h3 className="text-xl font-black tracking-tighter uppercase flex items-center gap-3">
+            <ShieldAlert className="w-6 h-6 text-safety-orange" /> Emergency Procedures
           </h3>
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-3 bg-surface-container-high rounded-xl">
-              <span className="text-sm font-medium">Database Connection</span>
-              <span className="badge badge-success">Operational</span>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-surface-container-high rounded-xl">
-              <span className="text-sm font-medium">Authentication Service</span>
-              <span className="badge badge-success">Operational</span>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-surface-container-high rounded-xl">
-              <span className="text-sm font-medium">SMS Gateway</span>
-              <span className="badge badge-success">Operational</span>
-            </div>
+            <p className="serif-header text-sm leading-relaxed">
+              In the event of system downtime or critical data discrepancies, please follow the manual turnover procedures outlined in AMXS-OI 21-101.
+            </p>
+            <ul className="space-y-3">
+              {['Notify MOC immediately', 'Initiate paper AFTO Form 781A', 'Contact Shift Lead for manual log entry'].map((step, i) => (
+                <li key={i} className="flex items-center gap-3 text-xs font-bold uppercase tracking-tight">
+                  <span className="w-5 h-5 bg-safety-orange text-white flex items-center justify-center text-[10px]">{i+1}</span>
+                  {step}
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       </div>
 
-      <div className="space-y-4">
-        <h3 className="text-2xl font-bold text-on-background px-2">Frequently Asked Questions</h3>
-        <div className="space-y-3">
+      <div className="space-y-8">
+        <h2 className="text-3xl font-black tracking-tighter uppercase text-center">Frequently Asked Questions</h2>
+        <div className="grid grid-cols-1 gap-0 visible-grid bg-white">
           {faqs.map((faq, i) => (
-            <div key={i} className="sleek-card !p-0 overflow-hidden border border-outline">
+            <div key={i} className="border-b border-outline last:border-b-0">
               <button 
                 onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                className="w-full p-6 flex items-center justify-between text-left hover:bg-surface-container-low transition-colors"
+                className="w-full p-8 flex justify-between items-center hover:bg-putty/30 transition-colors text-left"
               >
-                <span className="font-bold text-on-background">{faq.q}</span>
-                <ChevronDown className={cn("w-5 h-5 text-on-surface-variant transition-transform", openFaq === i && "rotate-180")} />
+                <span className="font-black text-sm uppercase tracking-tight">{faq.q}</span>
+                <ChevronRight className={cn("w-5 h-5 transition-transform", openFaq === i ? "rotate-90" : "")} />
               </button>
               <AnimatePresence>
                 {openFaq === i && (
@@ -3036,7 +3170,7 @@ const Support: React.FC = () => {
                     exit={{ height: 0, opacity: 0 }}
                     className="overflow-hidden"
                   >
-                    <div className="p-6 pt-0 text-on-surface-variant text-sm leading-relaxed border-t border-outline/50">
+                    <div className="p-8 pt-0 serif-header text-base leading-relaxed opacity-70">
                       {faq.a}
                     </div>
                   </motion.div>
@@ -3045,6 +3179,16 @@ const Support: React.FC = () => {
             </div>
           ))}
         </div>
+      </div>
+
+      <div className="visible-grid bg-stealth p-12 text-center space-y-8">
+        <h3 className="text-2xl font-black tracking-tighter uppercase text-white">Need a Guided Tour?</h3>
+        <p className="serif-header text-lg text-white/60 max-w-xl mx-auto">
+          If you're new to the platform or need a refresher on the latest features, our interactive walkthrough can help.
+        </p>
+        <button className="sleek-button bg-white !text-stealth hover:bg-putty px-12 py-4">
+          Restart System Walkthrough
+        </button>
       </div>
     </div>
   );
