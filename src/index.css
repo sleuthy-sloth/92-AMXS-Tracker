@@ -45,7 +45,7 @@
   --color-surface: #ffffff;
   --color-on-surface: #1B365D;
   --color-surface-variant: #e7e7e4;
-  --color-on-surface-variant: #64748b;
+  --color-on-surface-variant: #334155;
   --color-outline: #d1d1cf;
   --color-outline-variant: #b5b5b2;
   --color-sidebar: #1B365D;
@@ -78,7 +78,7 @@
 }
 
 .glass-dark {
-  @apply bg-af-blue/80 backdrop-blur-lg border border-white/10;
+  @apply bg-af-blue/90 backdrop-blur-lg border border-white/10;
 }
 
 .sleek-button {
@@ -86,7 +86,7 @@
 }
 
 .sleek-input {
-  @apply bg-surface border border-outline rounded-none text-on-surface placeholder-on-surface-variant/50 px-4 py-2.5 text-sm font-mono focus:ring-0 focus:border-primary outline-none transition-all;
+  @apply bg-surface border border-outline rounded-none text-on-surface placeholder-on-surface-variant/60 px-4 py-2.5 text-sm font-mono focus:ring-0 focus:border-primary outline-none transition-all;
 }
 
 .badge {
@@ -94,16 +94,16 @@
 }
 
 .badge-info { @apply bg-primary-container text-on-primary-container; }
-.badge-warning { @apply bg-caution-yellow/20 text-caution-yellow border border-caution-yellow/30; }
-.badge-success { @apply bg-emerald-100 text-emerald-800; }
-.badge-danger { @apply bg-safety-orange/20 text-safety-orange border border-safety-orange/30; }
+.badge-warning { @apply bg-caution-yellow/20 text-caution-yellow border border-caution-yellow/40; }
+.badge-success { @apply bg-emerald-100 text-emerald-900; }
+.badge-danger { @apply bg-safety-orange/20 text-safety-orange border border-safety-orange/40; }
 
 .tech-label {
-  @apply text-[10px] font-black text-on-surface-variant uppercase tracking-[0.2em] font-mono;
+  @apply text-[11px] font-black text-on-surface-variant uppercase tracking-[0.15em] font-mono;
 }
 
 .serif-header {
-  @apply font-serif italic font-normal text-on-surface-variant/70;
+  @apply font-serif italic font-normal text-on-surface-variant;
 }
 
 .data-mono {
