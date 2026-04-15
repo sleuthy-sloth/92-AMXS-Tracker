@@ -173,6 +173,34 @@ const useAuth = () => {
 
 // --- Components ---
 
+const seedDatabase = async () => {
+  try {
+    const usersSnap = await getDocs(collection(db, 'users'));
+    if (usersSnap.empty) {
+      console.log('Seeding database...');
+      const batch = writeBatch(db);
+      
+      MOCK_PERSONNEL.forEach(p => {
+        batch.set(doc(db, 'users', p.uid), p);
+      });
+      
+      MOCK_TRAINING.forEach(t => {
+        batch.set(doc(db, 'training', t.id || `mock-${Math.random()}`), t);
+      });
+      
+      MOCK_LOGS.forEach(l => {
+        const logToSave = { ...l, timestamp: serverTimestamp() };
+        batch.set(doc(db, 'logs', l.id || `mock-${Math.random()}`), logToSave);
+      });
+      
+      await batch.commit();
+      console.log('Database seeded successfully.');
+    }
+  } catch (error) {
+    console.error('Error seeding database:', error);
+  }
+};
+
 const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -193,6 +221,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   };
 
   useEffect(() => {
+    seedDatabase();
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
@@ -268,9 +297,17 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     setLoading(false);
   };
 
-  const setShop = (shop: ShopType) => {
-    if (profile && user?.uid === 'mock-user-123') {
-      setProfile({ ...profile, shopId: shop });
+  const setShop = async (shop: ShopType) => {
+    if (profile) {
+      const updatedProfile = { ...profile, shopId: shop };
+      setProfile(updatedProfile);
+      if (user?.uid === 'mock-user-123') {
+        try {
+          await updateDoc(doc(db, 'users', 'mock-user-123'), { shopId: shop });
+        } catch (e) {
+          console.error('Error updating shop in Firestore', e);
+        }
+      }
     }
   };
 
@@ -729,22 +766,6 @@ const Onboarding: React.FC = () => {
   useEffect(() => {
     if (!profile) return;
 
-    if (profile.uid === 'mock-user-123') {
-      setPendingUsers([
-        { 
-          uid: 'mock-pending-1', 
-          name: 'DOE, Jane', 
-          email: 'doe.jane@92amxs.af.mil', 
-          role: 'pending', 
-          status: 'pending', 
-          man_number: '',
-          shopId: '',
-          createdAt: { toDate: () => new Date() } 
-        } as any
-      ]);
-      return;
-    }
-
     const q = query(collection(db, 'users'), where('status', '==', 'pending'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setPendingUsers(snapshot.docs.map(doc => ({ ...doc.data() } as UserProfile)));
@@ -947,13 +968,6 @@ const Dashboard: React.FC = () => {
 
     const isLeadership = profile.role === 'leadership';
 
-    if (profile.uid === 'mock-user-123') {
-      setLogs(isLeadership ? MOCK_LOGS : MOCK_LOGS.filter(l => l.shopId === profile.shopId));
-      setPersonnel(isLeadership ? MOCK_PERSONNEL : MOCK_PERSONNEL.filter(p => p.shopId === profile.shopId));
-      setTraining(isLeadership ? MOCK_TRAINING : MOCK_TRAINING.filter(t => t.shopId === profile.shopId));
-      return;
-    }
-
     const qLogs = isLeadership 
       ? query(collection(db, 'logs'), orderBy('timestamp', 'desc'))
       : query(collection(db, 'logs'), where('shopId', '==', profile.shopId), orderBy('timestamp', 'desc'));
@@ -1095,11 +1109,6 @@ const MaintenanceLogs: React.FC = () => {
 
     const isLeadership = profile.role === 'leadership';
 
-    if (profile.uid === 'mock-user-123') {
-      setLogs(isLeadership ? MOCK_LOGS : MOCK_LOGS.filter(l => l.shopId === profile.shopId));
-      return;
-    }
-
     const q = isLeadership
       ? query(collection(db, 'logs'), orderBy('timestamp', 'desc'))
       : query(collection(db, 'logs'), where('shopId', '==', profile.shopId), orderBy('timestamp', 'desc'));
@@ -1118,27 +1127,6 @@ const MaintenanceLogs: React.FC = () => {
     const personnelArray = formData.personnelInput.split(',').map(p => p.trim()).filter(p => p);
     
     try {
-      if (profile.uid === 'mock-user-123') {
-        const newLog: MaintenanceLog = {
-          id: `mock-${Date.now()}`,
-          tail_number: formData.tail_number,
-          jcn: formData.jcn,
-          discrepancy: formData.discrepancy,
-          repair: formData.repair,
-          doc_number: formData.doc_number,
-          isRedBall: formData.isRedBall,
-          shopId: profile.shopId,
-          technician_name: profile.name,
-          man_number: profile.man_number,
-          personnel: personnelArray,
-          timestamp: { toDate: () => new Date() } as any
-        };
-        setLogs([newLog, ...logs]);
-        setIsModalOpen(false);
-        setFormData({ tail_number: '', jcn: '', discrepancy: '', repair: '', doc_number: '', personnelInput: '', isRedBall: false });
-        return;
-      }
-
       const newLog: MaintenanceLog = {
         tail_number: formData.tail_number,
         jcn: formData.jcn,
@@ -1493,20 +1481,6 @@ const TrainingTracker: React.FC = () => {
     const isLeadership = profile.role === 'leadership';
     const isTechnician = profile.role === 'technician';
 
-    if (profile.uid === 'mock-user-123') {
-      if (isLeadership) {
-        setTraining(MOCK_TRAINING);
-        setPersonnel(MOCK_PERSONNEL);
-      } else if (isTechnician) {
-        setTraining(MOCK_TRAINING.filter(t => t.man_number === profile.man_number));
-        setPersonnel(MOCK_PERSONNEL.filter(p => p.man_number === profile.man_number));
-      } else {
-        setTraining(MOCK_TRAINING.filter(t => t.shopId === profile.shopId));
-        setPersonnel(MOCK_PERSONNEL.filter(p => p.shopId === profile.shopId));
-      }
-      return;
-    }
-
     let qTraining;
     if (isLeadership) {
       qTraining = query(collection(db, 'training'));
@@ -1582,15 +1556,7 @@ const TrainingTracker: React.FC = () => {
             status
           };
 
-          if (profile.uid === 'mock-user-123') {
-            newRecords.push({ id: `mock-${Math.random()}`, ...trainingData });
-          } else {
-            await addDoc(collection(db, 'training'), trainingData);
-          }
-        }
-
-        if (profile.uid === 'mock-user-123') {
-          setTraining([...newRecords, ...training]);
+          await addDoc(collection(db, 'training'), trainingData);
         }
       };
       reader.readAsDataURL(file);
@@ -2107,11 +2073,6 @@ const Personnel: React.FC = () => {
 
     const isLeadership = profile.role === 'leadership';
 
-    if (profile.uid === 'mock-user-123') {
-      setPersonnel(isLeadership ? MOCK_PERSONNEL : MOCK_PERSONNEL.filter(p => p.shopId === profile.shopId));
-      return;
-    }
-
     const q = isLeadership
       ? query(collection(db, 'users'), where('status', '==', 'active'))
       : query(collection(db, 'users'), where('shopId', '==', profile.shopId), where('status', '==', 'active'));
@@ -2124,12 +2085,6 @@ const Personnel: React.FC = () => {
 
   useEffect(() => {
     if (!selectedPerson || !profile) return;
-
-    if (profile.uid === 'mock-user-123') {
-      setPersonTraining(MOCK_TRAINING.filter(t => t.man_number === selectedPerson.man_number));
-      setPersonLogs(MOCK_LOGS.filter(l => l.man_number === selectedPerson.man_number));
-      return;
-    }
 
     const qTraining = query(
       collection(db, 'training'),
@@ -2161,7 +2116,7 @@ const Personnel: React.FC = () => {
   };
 
   const handleUpdatePerson = async () => {
-    if (!selectedPerson || profile?.uid === 'mock-user-123') return;
+    if (!selectedPerson) return;
     try {
       await updateDoc(doc(db, 'users', selectedPerson.uid), {
         ...editForm
@@ -2174,7 +2129,7 @@ const Personnel: React.FC = () => {
   };
 
   const handleDeletePerson = async () => {
-    if (!selectedPerson || profile?.uid === 'mock-user-123') return;
+    if (!selectedPerson) return;
     if (window.confirm(`Are you sure you want to remove ${selectedPerson.name}?`)) {
       try {
         await updateDoc(doc(db, 'users', selectedPerson.uid), {
