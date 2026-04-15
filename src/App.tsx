@@ -403,7 +403,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     <div className="min-h-screen flex bg-background">
       {/* Sidebar */}
       <aside className={cn(
-        "fixed inset-y-0 left-0 z-40 w-[260px] bg-stealth text-white transform transition-transform duration-300 md:translate-x-0 md:static flex flex-col border-r border-white/10",
+        "fixed inset-y-0 left-0 z-40 w-[260px] bg-sidebar text-white transform transition-transform duration-300 md:translate-x-0 md:static flex flex-col border-r border-white/10",
         isSidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="logo flex items-center gap-3 px-8 py-10">
@@ -411,13 +411,13 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             92
           </div>
           <div>
-            <div className="font-black text-lg tracking-[0.2em] uppercase leading-none">AMXS</div>
-            <div className="tech-label text-white/50 mt-1">Logistics Control</div>
+            <div className="font-black text-lg tracking-[0.2em] uppercase leading-none text-white">AMXS</div>
+            <div className="tech-label text-white/60 mt-1">Logistics Control</div>
           </div>
         </div>
 
         <nav className="flex-grow px-4 space-y-1">
-          <p className="tech-label text-white/30 px-4 mb-4">Operations</p>
+          <p className="tech-label text-white/40 px-4 mb-4">Operations</p>
           {navItems.map((item) => (
             <Link
               key={item.path}
@@ -439,7 +439,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         <div className="p-8 border-t border-white/10">
           {/* Demo Mode Toggle */}
           <div className="mb-8">
-            <p className="tech-label text-white/30 mb-3">System Environment</p>
+            <p className="tech-label text-white/40 mb-3">System Environment</p>
             <button 
               onClick={toggleDemoMode}
               className={cn(
@@ -466,7 +466,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 <p className="tech-label text-white/60 mb-2">Simulated Role</p>
                 <button 
                   onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
-                  className="w-full flex items-center justify-between bg-white/10 border border-white/20 px-4 py-3 text-white hover:bg-white/20 transition-colors"
+                  className="w-full flex items-center justify-between bg-white/5 border border-white/10 px-4 py-3 text-white hover:bg-white/10 transition-colors"
                 >
                   <span className="font-black text-[11px] tracking-widest uppercase">{profile?.role}</span>
                   <ChevronDown className={cn("w-3 h-3 transition-transform", isRoleDropdownOpen && "rotate-180")} />
@@ -478,7 +478,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 10 }}
-                      className="absolute bottom-full left-0 w-full mb-2 bg-stealth border border-white/20 shadow-2xl overflow-hidden z-50"
+                      className="absolute bottom-full left-0 w-full mb-2 bg-sidebar border border-white/10 shadow-2xl overflow-hidden z-50"
                     >
                       {['technician', 'ncoic', 'leadership'].map(role => (
                         <button
@@ -504,7 +504,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 <p className="text-[11px] uppercase tracking-widest text-white/60 mb-2 font-bold">Preview AMU</p>
                 <button 
                   onClick={() => setIsAMUDropdownOpen(!isAMUDropdownOpen)}
-                  className="w-full flex items-center justify-between bg-white/10 border border-white/20 px-3 py-2 text-white hover:bg-white/20 transition-colors"
+                  className="w-full flex items-center justify-between bg-white/5 border border-white/10 px-3 py-2 text-white hover:bg-white/10 transition-colors"
                 >
                   <span className="font-bold">{profile?.amuId}</span>
                   <ChevronDown className={cn("w-3 h-3 transition-transform", isAMUDropdownOpen && "rotate-180")} />
@@ -516,7 +516,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 10 }}
-                      className="absolute bottom-full left-0 w-full mb-2 bg-stealth border border-white/20 shadow-xl overflow-hidden z-50"
+                      className="absolute bottom-full left-0 w-full mb-2 bg-sidebar border border-white/10 shadow-xl overflow-hidden z-50"
                     >
                       {AMUS.map(amu => (
                         <button
@@ -542,7 +542,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 <p className="text-[11px] uppercase tracking-widest text-white/60 mb-2 font-bold">Preview Shop</p>
                 <button 
                   onClick={() => setIsShopDropdownOpen(!isShopDropdownOpen)}
-                  className="w-full flex items-center justify-between bg-white/10 border border-white/20 px-3 py-2 text-white hover:bg-white/20 transition-colors"
+                  className="w-full flex items-center justify-between bg-white/5 border border-white/10 px-3 py-2 text-white hover:bg-white/10 transition-colors"
                 >
                   <span className="font-bold">{profile?.shopId}</span>
                   <ChevronDown className={cn("w-3 h-3 transition-transform", isShopDropdownOpen && "rotate-180")} />
@@ -554,7 +554,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 10 }}
-                      className="absolute bottom-full left-0 w-full mb-2 bg-stealth border border-white/20 shadow-xl overflow-hidden z-50"
+                      className="absolute bottom-full left-0 w-full mb-2 bg-sidebar border border-white/10 shadow-xl overflow-hidden z-50"
                     >
                       {SHOPS.map(shop => (
                         <button
@@ -579,12 +579,12 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           )}
 
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-white/5 rounded-none flex items-center justify-center border border-white/10">
+            <div className="w-10 h-10 bg-white/10 rounded-none flex items-center justify-center border border-white/10">
               <Users className="text-white w-5 h-5" />
             </div>
             <div className="overflow-hidden">
               <p className="font-bold text-white truncate">{profile?.name}</p>
-              <p className="text-[10px] uppercase tracking-wider text-white/40 font-bold">AMU: {profile?.amuId} • {profile?.shopId}</p>
+              <p className="text-[10px] uppercase tracking-wider text-white/60 font-bold">AMU: {profile?.amuId} • {profile?.shopId}</p>
             </div>
           </div>
           <button 
@@ -600,14 +600,14 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       <main className="flex-1 flex flex-col min-h-screen">
         <header className="flex justify-between items-start p-8">
           <div>
-            <h1 className="text-2xl font-bold text-white">
+            <h1 className="text-2xl font-bold text-slate-900">
               {navItems.find(i => i.path === location.pathname)?.name || 'Dashboard'}
             </h1>
-            <p className="text-white/60 text-sm">92nd Aircraft Maintenance Squadron • Fairchild AFB</p>
+            <p className="text-slate-600 text-sm">92nd Aircraft Maintenance Squadron • Fairchild AFB</p>
           </div>
           <div className="text-right hidden sm:block">
-            <div className="font-semibold text-white">{profile?.rank} {profile?.name}</div>
-            <div className="text-xs text-white/60 uppercase tracking-wider">{profile?.role} • {profile?.amuId} • {profile?.shopId}</div>
+            <div className="font-semibold text-slate-900">{profile?.rank} {profile?.name}</div>
+            <div className="text-xs text-slate-600 uppercase tracking-wider">{profile?.role} • {profile?.amuId} • {profile?.shopId}</div>
           </div>
         </header>
 
@@ -658,16 +658,16 @@ const Login: React.FC = () => {
       <div className="max-w-md w-full text-center space-y-12">
         <div className="flex flex-col items-center gap-6">
           <div className="w-24 h-24 bg-stealth border border-outline flex items-center justify-center shadow-2xl">
-            <Terminal className="text-white w-12 h-12" />
+            <Terminal className="text-slate-900 w-12 h-12" />
           </div>
           <div>
-            <h1 className="text-5xl font-black text-white tracking-tighter uppercase leading-none">92ND AMXS</h1>
-            <p className="serif-header text-lg mt-2 text-white/60">Logistics Control & Training Oversight</p>
+            <h1 className="text-5xl font-black text-slate-900 tracking-tighter uppercase leading-none">92ND AMXS</h1>
+            <p className="serif-header text-lg mt-2 text-slate-600">Logistics Control & Training Oversight</p>
           </div>
         </div>
         
         <div className="visible-grid bg-surface p-10 space-y-10 shadow-xl">
-          <p className="serif-header text-sm leading-relaxed text-white/70">
+          <p className="serif-header text-sm leading-relaxed text-slate-600">
             Access to the 92nd AMXS Maintenance & Training system is restricted to authorized personnel only. All activity is logged and monitored.
           </p>
 
@@ -688,14 +688,14 @@ const Login: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <button 
                   onClick={() => bypassLogin('leadership')}
-                  className="sleek-button bg-white/5 !text-white border border-outline hover:bg-white/10 py-4 flex flex-col items-center gap-2"
+                  className="sleek-button bg-slate-50 \!text-slate-900 border border-outline hover:bg-slate-100 py-4 flex flex-col items-center gap-2"
                 >
                   <ShieldAlert className="w-5 h-5 text-safety-orange" />
                   <span className="tech-label">Demo Sandbox</span>
                 </button>
                 <button 
                   onClick={() => setIsEmailMode(true)}
-                  className="sleek-button bg-white/5 !text-white border border-outline hover:bg-white/10 py-4 flex flex-col items-center gap-2"
+                  className="sleek-button bg-slate-50 \!text-slate-900 border border-outline hover:bg-slate-100 py-4 flex flex-col items-center gap-2"
                 >
                   <Lock className="w-5 h-5 text-primary" />
                   <span className="tech-label">Master Admin</span>
@@ -820,8 +820,8 @@ const Setup: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="max-w-xl w-full space-y-12">
         <div className="text-center space-y-4">
-          <h2 className="text-4xl font-black tracking-tighter uppercase text-white">Access Request</h2>
-          <p className="serif-header text-lg text-white/60">Submit operational details for NCOIC verification</p>
+          <h2 className="text-4xl font-black tracking-tighter uppercase text-slate-900">Access Request</h2>
+          <p className="serif-header text-lg text-slate-600">Submit operational details for NCOIC verification</p>
         </div>
 
         <form onSubmit={handleSubmit} className="visible-grid bg-surface p-12 space-y-10 shadow-xl">
@@ -917,22 +917,22 @@ const PendingApproval: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="max-w-md w-full text-center space-y-12">
         <div className="flex flex-col items-center gap-6">
-          <div className="w-24 h-24 bg-white/5 border border-outline flex items-center justify-center">
+          <div className="w-24 h-24 bg-slate-50 border border-outline flex items-center justify-center">
             <Clock className="text-primary w-12 h-12" />
           </div>
           <div>
-            <h1 className="text-4xl font-black tracking-tighter uppercase leading-none text-white">Access Pending</h1>
-            <p className="serif-header text-lg mt-2 text-white/60">Your account is currently awaiting NCOIC verification.</p>
+            <h1 className="text-4xl font-black tracking-tighter uppercase leading-none text-slate-900">Access Pending</h1>
+            <p className="serif-header text-lg mt-2 text-slate-600">Your account is currently awaiting NCOIC verification.</p>
           </div>
         </div>
         
         <div className="visible-grid bg-surface p-10 space-y-8 shadow-xl">
-          <p className="serif-header text-sm leading-relaxed text-white/70">
+          <p className="serif-header text-sm leading-relaxed text-slate-600">
             Once an administrator assigns your shop and validates your man number, you will be granted full operational access to the system.
           </p>
           <button 
             onClick={logout}
-            className="sleek-button w-full py-4 bg-transparent !text-white border border-outline hover:bg-white/5"
+            className="sleek-button w-full py-4 bg-transparent \!text-slate-900 border border-outline hover:bg-slate-50"
           >
             Sign Out
           </button>
@@ -1011,8 +1011,8 @@ const Onboarding: React.FC = () => {
     <div className="space-y-10">
       <div className="flex justify-between items-end">
         <div>
-          <h2 className="text-4xl font-black tracking-tighter uppercase text-white">Personnel Onboarding</h2>
-          <p className="serif-header text-lg mt-1 text-white/60">Review and approve system access requests</p>
+          <h2 className="text-4xl font-black tracking-tighter uppercase text-slate-900">Personnel Onboarding</h2>
+          <p className="serif-header text-lg mt-1 text-slate-600">Review and approve system access requests</p>
         </div>
         <UserPlus className="text-primary w-12 h-12" />
       </div>
@@ -1021,15 +1021,15 @@ const Onboarding: React.FC = () => {
         {pendingUsers.length > 0 ? pendingUsers.map(u => (
           <div key={u.uid} className="visible-grid bg-surface p-8 flex items-center justify-between shadow-md">
             <div className="flex items-center gap-6">
-              <div className="w-16 h-16 bg-white/5 border border-outline flex items-center justify-center text-primary">
+              <div className="w-16 h-16 bg-slate-50 border border-outline flex items-center justify-center text-primary">
                 <Users className="w-8 h-8" />
               </div>
               <div>
-                <h3 className="text-xl font-black tracking-tighter uppercase text-white">{u.rank} {u.name}</h3>
-                <p className="tech-label text-white/40">{u.email}</p>
+                <h3 className="text-xl font-black tracking-tighter uppercase text-slate-900">{u.rank} {u.name}</h3>
+                <p className="tech-label text-slate-500">{u.email}</p>
                 <div className="flex gap-4 mt-3">
-                  <span className="tech-label bg-white/5 px-2 py-0.5 text-white/60">SHOP: {u.shopId}</span>
-                  <span className="tech-label bg-white/5 px-2 py-0.5 text-white/60">MAN #: {u.man_number}</span>
+                  <span className="tech-label bg-slate-50 px-2 py-0.5 text-slate-600">SHOP: {u.shopId}</span>
+                  <span className="tech-label bg-slate-50 px-2 py-0.5 text-slate-600">MAN #: {u.man_number}</span>
                 </div>
               </div>
             </div>
@@ -1050,8 +1050,8 @@ const Onboarding: React.FC = () => {
           </div>
         )) : (
           <div className="visible-grid bg-surface py-24 text-center space-y-4 border-dashed">
-            <Clock className="w-12 h-12 text-white/10 mx-auto" />
-            <p className="tech-label text-white/30 uppercase tracking-[0.3em]">No pending access requests found.</p>
+            <Clock className="w-12 h-12 text-slate-200 mx-auto" />
+            <p className="tech-label text-slate-400 uppercase tracking-[0.3em]">No pending access requests found.</p>
           </div>
         )}
       </div>
@@ -1065,12 +1065,12 @@ const Onboarding: React.FC = () => {
               exit={{ opacity: 0, scale: 0.95 }}
               className="bg-surface w-full max-w-2xl rounded-none shadow-2xl border border-outline overflow-hidden"
             >
-              <div className="p-10 border-b border-outline bg-white/5 flex justify-between items-center">
+              <div className="p-10 border-b border-outline bg-slate-50 flex justify-between items-center">
                 <div>
-                  <h3 className="text-3xl font-black tracking-tighter uppercase leading-none text-white">Onboard Personnel</h3>
-                  <p className="tech-label mt-3 text-white/40">Assign credentials for {selectedUser.name}</p>
+                  <h3 className="text-3xl font-black tracking-tighter uppercase leading-none text-slate-900">Onboard Personnel</h3>
+                  <p className="tech-label mt-3 text-slate-500">Assign credentials for {selectedUser.name}</p>
                 </div>
-                <button onClick={() => setSelectedUser(null)} className="p-2 hover:bg-white/10 transition-colors text-white">
+                <button onClick={() => setSelectedUser(null)} className="p-2 hover:bg-slate-100 transition-colors text-slate-900">
                   <X className="w-6 h-6" />
                 </button>
               </div>
@@ -1143,7 +1143,7 @@ const Onboarding: React.FC = () => {
                   <button 
                     type="button"
                     onClick={() => setSelectedUser(null)}
-                    className="sleek-button bg-transparent !text-white border border-outline hover:bg-white/10 flex-1"
+                    className="sleek-button bg-transparent \!text-slate-900 border border-outline hover:bg-slate-100 flex-1"
                   >
                     Cancel
                   </button>
@@ -1363,7 +1363,7 @@ const Dashboard: React.FC = () => {
             <div className="p-8 flex justify-between items-center border-b border-outline">
               <div>
                 <h3 className="text-2xl font-black tracking-tighter uppercase">Personnel Roster</h3>
-                <p className="serif-header text-sm text-white/60">Active duty personnel and qualification status</p>
+                <p className="serif-header text-sm text-slate-600">Active duty personnel and qualification status</p>
               </div>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
@@ -1586,8 +1586,8 @@ const MaintenanceLogs: React.FC = () => {
     <div className="space-y-10">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div>
-          <h2 className="text-4xl font-black tracking-tighter uppercase text-white">Maintenance Logs</h2>
-          <p className="serif-header text-lg mt-1 text-white/60">Real-time turnover and discrepancy tracking</p>
+          <h2 className="text-4xl font-black tracking-tighter uppercase text-slate-900">Maintenance Logs</h2>
+          <p className="serif-header text-lg mt-1 text-slate-600">Real-time turnover and discrepancy tracking</p>
         </div>
         <div className="flex flex-wrap gap-4">
           <div className="flex bg-surface border border-outline p-1">
@@ -1608,14 +1608,14 @@ const MaintenanceLogs: React.FC = () => {
             <div className="flex gap-2">
               <button 
                 onClick={() => exportLogsToCSV(filteredLogs, profile.shopId)}
-                className="sleek-button bg-surface !text-white border border-outline hover:bg-white/5 flex items-center gap-2"
+                className="sleek-button bg-surface \!text-slate-900 border border-outline hover:bg-slate-50 flex items-center gap-2"
                 title="Export CSV"
               >
                 <FileSpreadsheet className="w-4 h-4" /> <span className="hidden sm:inline">CSV</span>
               </button>
               <button 
                 onClick={() => exportLogsToPDF(filteredLogs, profile.shopId)}
-                className="sleek-button bg-surface !text-white border border-outline hover:bg-white/5 flex items-center gap-2"
+                className="sleek-button bg-surface \!text-slate-900 border border-outline hover:bg-slate-50 flex items-center gap-2"
                 title="Export PDF"
               >
                 <FileText className="w-4 h-4" /> <span className="hidden sm:inline">PDF</span>
@@ -1639,7 +1639,7 @@ const MaintenanceLogs: React.FC = () => {
             {['Days', 'Swings', 'Nights'].map((shift, i) => (
               <div key={shift} className={cn(
                 "flex-1 flex items-center justify-center border-r border-outline last:border-r-0",
-                i === 0 ? "bg-primary/10" : i === 1 ? "bg-caution-yellow/10" : "bg-white/5"
+                i === 0 ? "bg-primary/10" : i === 1 ? "bg-caution-yellow/10" : "bg-slate-50"
               )}>
                 <span className="tech-label text-[10px] opacity-50 font-bold">{shift}</span>
               </div>
@@ -1711,7 +1711,7 @@ const MaintenanceLogs: React.FC = () => {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-white/5 text-[10px] font-black text-on-surface-variant tracking-[0.2em] uppercase font-mono">
+                <tr className="bg-slate-50 text-[10px] font-black text-on-surface-variant tracking-[0.2em] uppercase font-mono">
                   <th className="px-8 py-5">Tail / JCN</th>
                   <th className="px-8 py-5">Date / Shift</th>
                   <th className="px-8 py-5">Personnel</th>
@@ -1740,19 +1740,19 @@ const MaintenanceLogs: React.FC = () => {
                       {log.shift && <span className="tech-label text-[10px] mt-1 block opacity-70 font-bold">{log.shift} Shift</span>}
                     </td>
                     <td className="px-8 py-5">
-                      <p className="font-black text-[12px] uppercase tracking-tight text-white">{log.technician_name}</p>
+                      <p className="font-black text-[12px] uppercase tracking-tight text-slate-900">{log.technician_name}</p>
                       {log.personnel && log.personnel.length > 0 && (
-                        <p className="tech-label text-[10px] mt-1 text-white/40 font-bold">+{log.personnel.length} Support</p>
+                        <p className="tech-label text-[10px] mt-1 text-slate-500 font-bold">+{log.personnel.length} Support</p>
                       )}
                     </td>
                     <td className="px-8 py-5 max-w-xs">
-                      <p className="serif-header text-xs line-clamp-2 text-white/60">{log.discrepancy}</p>
+                      <p className="serif-header text-xs line-clamp-2 text-slate-600">{log.discrepancy}</p>
                     </td>
                     <td className="px-8 py-5">
                       {log.isRedBall ? (
                         <span className="badge badge-danger">RED BALL</span>
                       ) : (
-                        <span className="badge bg-white/10 text-white/40">NORMAL</span>
+                        <span className="badge bg-slate-100 text-slate-500">NORMAL</span>
                       )}
                     </td>
                   </motion.tr>
@@ -1777,10 +1777,10 @@ const MaintenanceLogs: React.FC = () => {
                 <div>
                   <div className="flex justify-between items-start mb-6">
                     <div>
-                      <p className="tech-label mb-1 text-white/40">
+                      <p className="tech-label mb-1 text-slate-500">
                         {log.jcn ? `JCN: ${log.jcn}` : `ID: #${log.id?.slice(0, 6)}`}
                       </p>
-                      <h3 className="text-2xl font-black tracking-tighter uppercase group-hover:text-primary transition-colors text-white">{log.tail_number}</h3>
+                      <h3 className="text-2xl font-black tracking-tighter uppercase group-hover:text-primary transition-colors text-slate-900">{log.tail_number}</h3>
                     </div>
                     {log.isRedBall && (
                       <span className="badge badge-danger">Red Ball</span>
@@ -1834,7 +1834,7 @@ const MaintenanceLogs: React.FC = () => {
                     {selectedLog.jcn ? `JCN: ${selectedLog.jcn}` : `Log ID: #${selectedLog.id?.slice(0, 6)}`}
                   </p>
                 </div>
-                <button onClick={() => setSelectedLog(null)} className="p-2 hover:bg-white/10 transition-colors text-white">
+                <button onClick={() => setSelectedLog(null)} className="p-2 hover:bg-slate-100 transition-colors text-slate-900">
                   <X className="w-6 h-6" />
                 </button>
               </div>
@@ -1888,7 +1888,7 @@ const MaintenanceLogs: React.FC = () => {
                 )}
               </div>
               
-              <div className="p-8 border-t border-outline bg-white/5 flex justify-between items-center">
+              <div className="p-8 border-t border-outline bg-slate-50 flex justify-between items-center">
                 <div className="tech-label !text-[8px] opacity-50">
                   {selectedLog.lastEditedBy && (
                     <span>Last edited by {selectedLog.lastEditedBy} {selectedLog.lastEditedAt?.toDate && `on ${format(selectedLog.lastEditedAt.toDate(), 'MM/dd HH:mm')}`}</span>
@@ -2230,8 +2230,8 @@ const TrainingTracker: React.FC = () => {
     <div className="space-y-10">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div>
-          <h2 className="text-4xl font-black tracking-tighter uppercase text-white">Training Readiness</h2>
-          <p className="serif-header text-lg mt-1 text-white/60">Task expiration forecast and qualification oversight</p>
+          <h2 className="text-4xl font-black tracking-tighter uppercase text-slate-900">Training Readiness</h2>
+          <p className="serif-header text-lg mt-1 text-slate-600">Task expiration forecast and qualification oversight</p>
         </div>
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex bg-surface border border-outline p-1">
@@ -2259,14 +2259,14 @@ const TrainingTracker: React.FC = () => {
               </button>
               <button 
                 onClick={() => exportTrainingToCSV(filteredTraining, profile.shopId)}
-                className="sleek-button bg-surface !text-white border border-outline hover:bg-white/5 flex items-center gap-2"
+                className="sleek-button bg-surface \!text-slate-900 border border-outline hover:bg-slate-50 flex items-center gap-2"
                 title="Export CSV"
               >
                 <FileSpreadsheet className="w-4 h-4" /> <span className="hidden sm:inline">CSV</span>
               </button>
               <button 
                 onClick={() => exportTrainingToPDF(filteredTraining, profile.shopId)}
-                className="sleek-button bg-surface !text-white border border-outline hover:bg-white/5 flex items-center gap-2"
+                className="sleek-button bg-surface \!text-slate-900 border border-outline hover:bg-slate-50 flex items-center gap-2"
                 title="Export PDF"
               >
                 <FileText className="w-4 h-4" /> <span className="hidden sm:inline">PDF</span>
@@ -2314,16 +2314,16 @@ const TrainingTracker: React.FC = () => {
         {(profile?.role === 'ncoic' || profile?.role === 'leadership') && (
           <div className="lg:col-span-12">
             <div className="visible-grid bg-surface">
-              <label className="p-16 flex flex-col items-center justify-center text-center space-y-6 hover:bg-white/5 transition-colors group cursor-pointer">
+              <label className="p-16 flex flex-col items-center justify-center text-center space-y-6 hover:bg-slate-50 transition-colors group cursor-pointer">
                 <input type="file" className="sr-only" onChange={handleFileUpload} disabled={isUploading} />
                 <div className="w-20 h-20 bg-primary/10 border border-primary/20 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
                   {isUploading ? <Clock className="w-10 h-10 animate-spin" /> : <UploadCloud className="w-10 h-10" />}
                 </div>
                 <div>
-                  <h3 className="text-2xl font-black tracking-tighter uppercase text-white">
+                  <h3 className="text-2xl font-black tracking-tighter uppercase text-slate-900">
                     {isUploading ? 'Parsing Report...' : 'Synchronize Training Logs'}
                   </h3>
-                  <p className="serif-header text-base max-w-lg mx-auto mt-2 text-white/60">
+                  <p className="serif-header text-base max-w-lg mx-auto mt-2 text-slate-600">
                     Upload Excel (.xlsx, .xlsm) or CSV personnel training reports. The system will automatically reconcile and update qualification statuses.
                   </p>
                 </div>
@@ -2340,34 +2340,34 @@ const TrainingTracker: React.FC = () => {
           <div className="p-8 space-y-6">
             <div className="flex justify-between items-center">
               <span className="tech-label text-emerald-500 font-bold">Fully Qualified</span>
-              <span className="font-black text-2xl tracking-tighter text-white">{Math.round((stats.current / stats.total) * 100)}%</span>
+              <span className="font-black text-2xl tracking-tighter text-slate-900">{Math.round((stats.current / stats.total) * 100)}%</span>
             </div>
-            <div className="h-2 bg-white/5 overflow-hidden">
+            <div className="h-2 bg-slate-50 overflow-hidden">
               <div className="h-full bg-emerald-500 transition-all duration-1000" style={{ width: `${(stats.current / stats.total) * 100}%` }}></div>
             </div>
-            <p className="tech-label text-[10px] opacity-70 text-white/60">{stats.current} Personnel Current</p>
+            <p className="tech-label text-[10px] opacity-70 text-slate-600">{stats.current} Personnel Current</p>
           </div>
 
           <div className="p-8 space-y-6">
             <div className="flex justify-between items-center">
               <span className="tech-label text-caution-yellow font-bold">Expiring &lt; 60 Days</span>
-              <span className="font-black text-2xl tracking-tighter text-white">{Math.round((stats.expiring / stats.total) * 100)}%</span>
+              <span className="font-black text-2xl tracking-tighter text-slate-900">{Math.round((stats.expiring / stats.total) * 100)}%</span>
             </div>
-            <div className="h-2 bg-white/5 overflow-hidden">
+            <div className="h-2 bg-slate-50 overflow-hidden">
               <div className="h-full bg-caution-yellow transition-all duration-1000" style={{ width: `${(stats.expiring / stats.total) * 100}%` }}></div>
             </div>
-            <p className="tech-label text-[10px] opacity-70 text-white/60">{stats.expiring} Personnel Require Scheduling</p>
+            <p className="tech-label text-[10px] opacity-70 text-slate-600">{stats.expiring} Personnel Require Scheduling</p>
           </div>
 
           <div className="p-8 space-y-6">
             <div className="flex justify-between items-center">
               <span className="tech-label text-safety-orange font-bold">Expired / Delinquent</span>
-              <span className="font-black text-2xl tracking-tighter text-white">{Math.round((stats.expired / stats.total) * 100)}%</span>
+              <span className="font-black text-2xl tracking-tighter text-slate-900">{Math.round((stats.expired / stats.total) * 100)}%</span>
             </div>
-            <div className="h-2 bg-white/5 overflow-hidden">
+            <div className="h-2 bg-slate-50 overflow-hidden">
               <div className="h-full bg-safety-orange transition-all duration-1000" style={{ width: `${(stats.expired / stats.total) * 100}%` }}></div>
             </div>
-            <p className="tech-label text-[10px] opacity-70 text-white/60">{stats.expired} Personnel Non-Mission Capable</p>
+            <p className="tech-label text-[10px] opacity-70 text-slate-600">{stats.expired} Personnel Non-Mission Capable</p>
           </div>
         </div>
 
@@ -2377,7 +2377,7 @@ const TrainingTracker: React.FC = () => {
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="bg-white/5 text-[10px] font-black text-on-surface-variant tracking-[0.2em] uppercase font-mono">
+                    <tr className="bg-slate-50 text-[10px] font-black text-on-surface-variant tracking-[0.2em] uppercase font-mono">
                       <th className="px-8 py-5">Course Name</th>
                       <th className="px-8 py-5">Personnel</th>
                       {profile?.role === 'leadership' && <th className="px-8 py-5">Shop</th>}
@@ -2396,11 +2396,11 @@ const TrainingTracker: React.FC = () => {
                         onClick={() => setSelectedRecord(record)}
                       >
                         <td className="px-8 py-5">
-                          <p className="font-black text-sm tracking-tight uppercase text-white">{record.course_name}</p>
+                          <p className="font-black text-sm tracking-tight uppercase text-slate-900">{record.course_name}</p>
                         </td>
                         <td className="px-8 py-5">
-                          <p className="font-black text-[12px] uppercase tracking-tight text-white">{getPersonName(record.man_number)}</p>
-                          <p className="tech-label text-[10px] mt-1 text-white/40">MAN#: {record.man_number}</p>
+                          <p className="font-black text-[12px] uppercase tracking-tight text-slate-900">{getPersonName(record.man_number)}</p>
+                          <p className="tech-label text-[10px] mt-1 text-slate-500">MAN#: {record.man_number}</p>
                         </td>
                         {profile?.role === 'leadership' && (
                           <td className="px-8 py-5">
@@ -2794,15 +2794,15 @@ const Personnel: React.FC = () => {
     <div className="space-y-10">
       <div className="flex justify-between items-end">
         <div>
-          <h2 className="text-4xl font-black tracking-tighter uppercase text-white">Personnel Roster</h2>
-          <p className="serif-header text-lg mt-1 text-white/60">Shop personnel management and qualification oversight</p>
+          <h2 className="text-4xl font-black tracking-tighter uppercase text-slate-900">Personnel Roster</h2>
+          <p className="serif-header text-lg mt-1 text-slate-600">Shop personnel management and qualification oversight</p>
         </div>
         <Users className="text-primary w-12 h-12" />
       </div>
 
       <div className="visible-grid bg-surface overflow-hidden">
-        <div className="p-8 border-b border-outline flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white/5">
-          <h3 className="font-black text-xl tracking-tighter uppercase text-white">Active Duty Roster</h3>
+        <div className="p-8 border-b border-outline flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-slate-50">
+          <h3 className="font-black text-xl tracking-tighter uppercase text-slate-900">Active Duty Roster</h3>
           <div className="relative w-full md:w-80">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
             <input className="sleek-input pl-12 py-3 text-sm w-full !bg-background" placeholder="Filter roster by name, man#, or role..." />
@@ -2830,11 +2830,11 @@ const Personnel: React.FC = () => {
                   onClick={() => setSelectedPerson(p)}
                 >
                   <td className="px-8 py-5">
-                    <p className="font-black text-sm uppercase tracking-tight text-white">{p.rank} {p.name}</p>
+                    <p className="font-black text-sm uppercase tracking-tight text-slate-900">{p.rank} {p.name}</p>
                     <p className="tech-label !text-[8px] mt-1 opacity-60">{p.email}</p>
                   </td>
                   <td className="px-8 py-5">
-                    <span className="data-mono text-xs text-white/80">{p.man_number}</span>
+                    <span className="data-mono text-xs text-slate-700">{p.man_number}</span>
                   </td>
                   {profile?.role === 'leadership' && (
                     <td className="px-8 py-5">
@@ -2844,7 +2844,7 @@ const Personnel: React.FC = () => {
                   <td className="px-8 py-5">
                     <span className={cn(
                       "badge",
-                      p.role === 'ncoic' ? "badge-info" : "bg-white/10 text-white/40"
+                      p.role === 'ncoic' ? "badge-info" : "bg-slate-100 text-slate-500"
                     )}>
                       {p.role}
                     </span>
@@ -3109,26 +3109,26 @@ const Support: React.FC = () => {
         <div className="w-24 h-24 bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto text-primary">
           <HelpCircle className="w-12 h-12" />
         </div>
-        <h1 className="text-5xl font-black tracking-tighter uppercase text-white">Support & Documentation</h1>
-        <p className="serif-header text-xl max-w-2xl mx-auto text-white/60">
+        <h1 className="text-5xl font-black tracking-tighter uppercase text-slate-900">Support & Documentation</h1>
+        <p className="serif-header text-xl max-w-2xl mx-auto text-slate-600">
           Operational guidance and technical support for the 92nd AMXS Maintenance & Training Control System.
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-0 visible-grid bg-surface">
         <div className="p-10 space-y-6 border-r border-outline">
-          <h3 className="text-xl font-black tracking-tighter uppercase flex items-center gap-3 text-white">
+          <h3 className="text-xl font-black tracking-tighter uppercase flex items-center gap-3 text-slate-900">
             <Users className="w-6 h-6 text-primary" /> Technical Oversight
           </h3>
           <div className="space-y-6">
-            <div className="p-6 bg-white/5 border border-outline">
+            <div className="p-6 bg-slate-50 border border-outline">
               <p className="tech-label mb-2">System Administrator</p>
-              <p className="font-black text-sm uppercase tracking-tight text-white">MSgt Sarah Jenkins</p>
+              <p className="font-black text-sm uppercase tracking-tight text-slate-900">MSgt Sarah Jenkins</p>
               <p className="data-mono text-xs mt-1 opacity-60">sarah.jenkins.af@mail.mil</p>
             </div>
-            <div className="p-6 bg-white/5 border border-outline">
+            <div className="p-6 bg-slate-50 border border-outline">
               <p className="tech-label mb-2">Technical Support</p>
-              <p className="font-black text-sm uppercase tracking-tight text-white">TSgt Michael Chen</p>
+              <p className="font-black text-sm uppercase tracking-tight text-slate-900">TSgt Michael Chen</p>
               <p className="data-mono text-xs mt-1 opacity-60">michael.chen.af@mail.mil</p>
             </div>
           </div>
@@ -3186,11 +3186,11 @@ const Support: React.FC = () => {
       </div>
 
       <div className="visible-grid bg-stealth p-12 text-center space-y-8">
-        <h3 className="text-2xl font-black tracking-tighter uppercase text-white">Need a Guided Tour?</h3>
-        <p className="serif-header text-lg text-white/60 max-w-xl mx-auto">
+        <h3 className="text-2xl font-black tracking-tighter uppercase text-slate-900">Need a Guided Tour?</h3>
+        <p className="serif-header text-lg text-slate-600 max-w-xl mx-auto">
           If you're new to the platform or need a refresher on the latest features, our interactive walkthrough can help.
         </p>
-        <button className="sleek-button bg-transparent !text-white border border-outline hover:bg-white/10 px-12 py-4">
+        <button className="sleek-button bg-transparent \!text-slate-900 border border-outline hover:bg-slate-100 px-12 py-4">
           Restart System Walkthrough
         </button>
       </div>
