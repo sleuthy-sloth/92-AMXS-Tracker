@@ -3136,25 +3136,6 @@ const Support: React.FC = () => {
             </div>
           </div>
         </div>
-
-        <div className="p-10 space-y-6">
-          <h3 className="text-xl font-black tracking-tighter uppercase flex items-center gap-3">
-            <ShieldAlert className="w-6 h-6 text-safety-orange" /> Emergency Procedures
-          </h3>
-          <div className="space-y-4">
-            <p className="serif-header text-sm leading-relaxed">
-              In the event of system downtime or critical data discrepancies, please follow the manual turnover procedures outlined in AMXS-OI 21-101.
-            </p>
-            <ul className="space-y-3">
-              {['Notify MOC immediately', 'Initiate paper AFTO Form 781A', 'Contact Shift Lead for manual log entry'].map((step, i) => (
-                <li key={i} className="flex items-center gap-3 text-xs font-bold uppercase tracking-tight">
-                  <span className="w-5 h-5 bg-safety-orange text-white flex items-center justify-center text-[10px]">{i+1}</span>
-                  {step}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
       </div>
 
       <div className="space-y-8">
