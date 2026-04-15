@@ -225,7 +225,9 @@ const MOCK_PERSONNEL: UserProfile[] = [
   { uid: 'mock-user-5', name: 'JOHNSON, K', rank: 'MSgt', man_number: '22223', shopId: 'CREW_CHIEFS', amuId: 'GREEN', role: 'ncoic', email: 'johnson.k@92amxs.af.mil', phone: '5550104', status: 'active', isDemo: true },
   // JETS
   { uid: 'mock-user-6', name: 'BROWN, T', rank: 'SrA', man_number: '33333', shopId: 'JETS', amuId: 'SILVER', role: 'technician', email: 'brown.t@92amxs.af.mil', phone: '5550105', status: 'active', isDemo: true },
-  { uid: 'mock-user-7', name: 'DAVIS, L', rank: 'TSgt', man_number: '33334', shopId: 'JETS', amuId: 'SILVER', role: 'ncoic', email: 'davis.l@92amxs.af.mil', phone: '5550106', status: 'active', isDemo: true }
+  { uid: 'mock-user-7', name: 'DAVIS, L', rank: 'TSgt', man_number: '33334', shopId: 'JETS', amuId: 'SILVER', role: 'ncoic', email: 'davis.l@92amxs.af.mil', phone: '5550106', status: 'active', isDemo: true },
+  { uid: 'mock-user-8', name: 'WILSON, M', rank: 'A1C', man_number: '44444', shopId: 'E&E', amuId: 'BLUE', role: 'technician', email: 'wilson.m@92amxs.af.mil', phone: '5550107', status: 'active', isDemo: true },
+  { uid: 'mock-user-9', name: 'TAYLOR, S', rank: 'SSgt', man_number: '55555', shopId: 'E&E', amuId: 'BLUE', role: 'ncoic', email: 'taylor.s@92amxs.af.mil', phone: '5550108', status: 'active', isDemo: true }
 ];
 
 const MOCK_TRAINING: TrainingRecord[] = [
@@ -236,7 +238,10 @@ const MOCK_TRAINING: TrainingRecord[] = [
   // CREW CHIEFS
   { id: 't4', man_number: '22222', course_name: 'Tire & Wheel Maintenance', due_date: '2026-05-20', shopId: 'CREW_CHIEFS', amuId: 'GREEN', status: 'current', isDemo: true },
   // JETS
-  { id: 't5', man_number: '33333', course_name: 'F108 Engine Overhaul', due_date: '2026-08-15', shopId: 'JETS', amuId: 'SILVER', status: 'current', isDemo: true }
+  { id: 't5', man_number: '33333', course_name: 'F108 Engine Overhaul', due_date: '2026-08-15', shopId: 'JETS', amuId: 'SILVER', status: 'current', isDemo: true },
+  // E&E
+  { id: 't6', man_number: '44444', course_name: 'Electrical Systems Safety', due_date: '2026-06-01', shopId: 'E&E', amuId: 'BLUE', status: 'current', isDemo: true },
+  { id: 't7', man_number: '55555', course_name: 'Battery Maintenance', due_date: '2026-07-15', shopId: 'E&E', amuId: 'BLUE', status: 'current', isDemo: true }
 ];
 
 // --- Contexts ---

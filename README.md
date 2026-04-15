@@ -1,20 +1,33 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# 92nd AMXS Maintenance & Training Tracker
 
-# Run and deploy your AI Studio app
+A comprehensive, real-time turnover and training tracking system designed specifically for the 92nd Aircraft Maintenance Squadron (AMXS). This application streamlines maintenance operations, enhances communication between shifts, and ensures personnel training records are up-to-date and accessible.
 
-This contains everything you need to run your app locally.
+## Features
 
-View your app in AI Studio: https://ai.studio/apps/ba42b82e-8952-4f40-acb4-a97b4a7ea0ab
+### 1. Maintenance Log & Turnover
+*   **Real-time Discrepancy Tracking:** Log aircraft discrepancies, repair actions, and document numbers instantly.
+*   **Shift Management:** Track maintenance activities by shift (Days, Swings, Nights, Weekend Duty).
+*   **Urgency Indicators:** Identify "Red Ball" maintenance items for immediate visibility.
+*   **Personnel Attribution:** Assign primary technicians and additional supporting personnel to each log entry.
+*   **Edit Tracking:** Full audit trail for log entries, showing who made changes and when.
+*   **Export Capabilities:** Generate CSV or PDF reports for turnover briefings and historical analysis.
 
-## Run Locally
+### 2. Personnel Management
+*   **Centralized Roster:** View and manage personnel status, roles, and shop assignments.
+*   **Role-Based Access:** Secure access control with distinct views for Technicians, NCOICs, and Leadership.
+*   **Status Tracking:** Monitor personnel availability and active status.
 
-**Prerequisites:**  Node.js
+### 3. Training Tracker
+*   **Qualification Monitoring:** Track training records, course names, and due dates.
+*   **Expiration Alerts:** Proactively identify expiring or expired training requirements.
+*   **Reporting:** Export training compliance reports for leadership review.
 
+### 4. Demo Sandbox
+*   **Safe Testing Environment:** A dedicated demo mode allows users to explore all features using mock data without impacting the live production database.
+*   **Role Simulation:** Seamlessly switch between different user roles to test feature visibility and permissions.
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## Technology Stack
+*   **Frontend:** React, TypeScript, Tailwind CSS
+*   **Backend/Database:** Firebase (Firestore)
+*   **State Management:** React Context API
+*   **Data Visualization/Formatting:** date-fns, Lucide React icons
