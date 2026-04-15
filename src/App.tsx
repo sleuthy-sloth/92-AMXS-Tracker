@@ -688,17 +688,17 @@ const Login: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <button 
                   onClick={() => bypassLogin('leadership')}
-                  className="sleek-button bg-slate-50 \!text-slate-900 border border-outline hover:bg-slate-100 py-4 flex flex-col items-center gap-2"
+                  className="sleek-button bg-slate-100 !text-slate-900 border border-slate-300 hover:bg-slate-200 py-4 flex flex-col items-center gap-2"
                 >
                   <ShieldAlert className="w-5 h-5 text-safety-orange" />
-                  <span className="tech-label">Demo Sandbox</span>
+                  <span className="tech-label text-slate-900">Demo Sandbox</span>
                 </button>
                 <button 
                   onClick={() => setIsEmailMode(true)}
-                  className="sleek-button bg-slate-50 \!text-slate-900 border border-outline hover:bg-slate-100 py-4 flex flex-col items-center gap-2"
+                  className="sleek-button bg-slate-100 !text-slate-900 border border-slate-300 hover:bg-slate-200 py-4 flex flex-col items-center gap-2"
                 >
                   <Lock className="w-5 h-5 text-primary" />
-                  <span className="tech-label">Master Admin</span>
+                  <span className="tech-label text-slate-900">Master Admin</span>
                 </button>
               </div>
             </div>
