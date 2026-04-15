@@ -1175,13 +1175,36 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     if (!profile) return;
 
+    if (isDemoMode) {
+      const isLeadership = profile.role === 'leadership';
+      
+      const filteredMockLogs = MOCK_LOGS.filter(l => {
+        if (isLeadership) return true;
+        return l.amuId === profile.amuId && l.shopId === profile.shopId;
+      });
+      setLogs(filteredMockLogs);
+
+      const filteredMockPersonnel = MOCK_PERSONNEL.filter(p => {
+        if (isLeadership) return true;
+        return p.amuId === profile.amuId && p.shopId === profile.shopId;
+      });
+      setPersonnel(filteredMockPersonnel);
+
+      const filteredMockTraining = MOCK_TRAINING.filter(t => {
+        if (isLeadership) return true;
+        return t.amuId === profile.amuId && t.shopId === profile.shopId;
+      });
+      setTraining(filteredMockTraining);
+      return;
+    }
+
     const isLeadership = profile.role === 'leadership';
 
     let qLogs;
     if (isLeadership) {
       qLogs = query(
         collection(db, 'logs'), 
-        where('isDemo', '==', isDemoMode),
+        where('isDemo', '==', false),
         orderBy('timestamp', 'desc')
       );
     } else {
@@ -1189,7 +1212,7 @@ const Dashboard: React.FC = () => {
         collection(db, 'logs'), 
         where('amuId', '==', profile.amuId),
         where('shopId', '==', profile.shopId), 
-        where('isDemo', '==', isDemoMode),
+        where('isDemo', '==', false),
         orderBy('timestamp', 'desc')
       );
     }
@@ -1202,14 +1225,14 @@ const Dashboard: React.FC = () => {
     if (isLeadership) {
       qPersonnel = query(
         collection(db, 'users'),
-        where('isDemo', '==', isDemoMode)
+        where('isDemo', '==', false)
       );
     } else {
       qPersonnel = query(
         collection(db, 'users'), 
         where('amuId', '==', profile.amuId),
         where('shopId', '==', profile.shopId),
-        where('isDemo', '==', isDemoMode)
+        where('isDemo', '==', false)
       );
     }
     
@@ -1221,14 +1244,14 @@ const Dashboard: React.FC = () => {
     if (isLeadership) {
       qTraining = query(
         collection(db, 'training'),
-        where('isDemo', '==', isDemoMode)
+        where('isDemo', '==', false)
       );
     } else {
       qTraining = query(
         collection(db, 'training'), 
         where('amuId', '==', profile.amuId),
         where('shopId', '==', profile.shopId),
-        where('isDemo', '==', isDemoMode)
+        where('isDemo', '==', false)
       );
     }
     
@@ -1353,13 +1376,23 @@ const MaintenanceLogs: React.FC = () => {
   useEffect(() => {
     if (!profile) return;
 
+    if (isDemoMode) {
+      const isLeadership = profile.role === 'leadership';
+      const filteredMockLogs = MOCK_LOGS.filter(log => {
+        if (isLeadership) return true;
+        return log.amuId === profile.amuId && log.shopId === profile.shopId;
+      });
+      setLogs(filteredMockLogs);
+      return;
+    }
+
     const isLeadership = profile.role === 'leadership';
 
     let q;
     if (isLeadership) {
       q = query(
         collection(db, 'logs'), 
-        where('isDemo', '==', isDemoMode),
+        where('isDemo', '==', false),
         orderBy('timestamp', 'desc')
       );
     } else {
@@ -1367,7 +1400,7 @@ const MaintenanceLogs: React.FC = () => {
         collection(db, 'logs'), 
         where('amuId', '==', profile.amuId),
         where('shopId', '==', profile.shopId), 
-        where('isDemo', '==', isDemoMode),
+        where('isDemo', '==', false),
         orderBy('timestamp', 'desc')
       );
     }
@@ -1902,6 +1935,26 @@ const TrainingTracker: React.FC = () => {
   useEffect(() => {
     if (!profile) return;
 
+    if (isDemoMode) {
+      const isLeadership = profile.role === 'leadership';
+      const isTechnician = profile.role === 'technician';
+      
+      const filteredMockTraining = MOCK_TRAINING.filter(t => {
+        if (isLeadership) return true;
+        if (isTechnician) return t.man_number === profile.man_number;
+        return t.amuId === profile.amuId && t.shopId === profile.shopId;
+      });
+      setTraining(filteredMockTraining);
+
+      const filteredMockPersonnel = MOCK_PERSONNEL.filter(p => {
+        if (isLeadership) return true;
+        if (isTechnician) return p.man_number === profile.man_number;
+        return p.amuId === profile.amuId && p.shopId === profile.shopId;
+      });
+      setPersonnel(filteredMockPersonnel);
+      return;
+    }
+
     const isLeadership = profile.role === 'leadership';
     const isTechnician = profile.role === 'technician';
 
@@ -1909,20 +1962,20 @@ const TrainingTracker: React.FC = () => {
     if (isLeadership) {
       qTraining = query(
         collection(db, 'training'),
-        where('isDemo', '==', isDemoMode)
+        where('isDemo', '==', false)
       );
     } else if (isTechnician) {
       qTraining = query(
         collection(db, 'training'), 
         where('man_number', '==', profile.man_number),
-        where('isDemo', '==', isDemoMode)
+        where('isDemo', '==', false)
       );
     } else {
       qTraining = query(
         collection(db, 'training'), 
         where('amuId', '==', profile.amuId),
         where('shopId', '==', profile.shopId),
-        where('isDemo', '==', isDemoMode)
+        where('isDemo', '==', false)
       );
     }
     
@@ -1934,20 +1987,20 @@ const TrainingTracker: React.FC = () => {
     if (isLeadership) {
       qPersonnel = query(
         collection(db, 'users'),
-        where('isDemo', '==', isDemoMode)
+        where('isDemo', '==', false)
       );
     } else if (isTechnician) {
       qPersonnel = query(
         collection(db, 'users'), 
         where('man_number', '==', profile.man_number),
-        where('isDemo', '==', isDemoMode)
+        where('isDemo', '==', false)
       );
     } else {
       qPersonnel = query(
         collection(db, 'users'), 
         where('amuId', '==', profile.amuId),
         where('shopId', '==', profile.shopId),
-        where('isDemo', '==', isDemoMode)
+        where('isDemo', '==', false)
       );
     }
     
@@ -2498,6 +2551,16 @@ const Personnel: React.FC = () => {
   useEffect(() => {
     if (!profile) return;
 
+    if (isDemoMode) {
+      const isLeadership = profile.role === 'leadership';
+      const filteredMockPersonnel = MOCK_PERSONNEL.filter(p => {
+        if (isLeadership) return true;
+        return p.amuId === profile.amuId && p.shopId === profile.shopId;
+      });
+      setPersonnel(filteredMockPersonnel);
+      return;
+    }
+
     const isLeadership = profile.role === 'leadership';
 
     let q;
@@ -2505,7 +2568,7 @@ const Personnel: React.FC = () => {
       q = query(
         collection(db, 'users'), 
         where('status', '==', 'active'),
-        where('isDemo', '==', isDemoMode)
+        where('isDemo', '==', false)
       );
     } else {
       q = query(
@@ -2513,7 +2576,7 @@ const Personnel: React.FC = () => {
         where('amuId', '==', profile.amuId),
         where('shopId', '==', profile.shopId), 
         where('status', '==', 'active'),
-        where('isDemo', '==', isDemoMode)
+        where('isDemo', '==', false)
       );
     }
     
