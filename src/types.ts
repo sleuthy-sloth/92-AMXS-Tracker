@@ -47,3 +47,15 @@ export interface TrainingRecord {
   status: 'current' | 'expiring' | 'expired';
   isDemo?: boolean;
 }
+
+export interface DIFMLog {
+  id?: string;
+  tail_number: string;
+  discrepancy: string;
+  status: 'due-in' | 'awaiting-parts' | 'in-repair' | 'complete';
+  shopId: string;
+  amuId: AMUType;
+  technician_name: string;
+  timestamp: any; // Firestore Timestamp
+  isDemo?: boolean;
+}
