@@ -403,11 +403,11 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     <div className="min-h-screen flex bg-background">
       {/* Sidebar */}
       <aside className={cn(
-        "fixed inset-y-0 left-0 z-40 w-[260px] glass-dark text-white transform transition-transform duration-300 md:translate-x-0 md:static flex flex-col border-r border-white/10",
+        "fixed inset-y-0 left-0 z-40 w-[260px] bg-stealth text-white transform transition-transform duration-300 md:translate-x-0 md:static flex flex-col border-r border-white/10",
         isSidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="logo flex items-center gap-3 px-8 py-10">
-          <div className="logo-box w-10 h-10 bg-white text-af-blue rounded-none flex items-center justify-center font-black text-xl">
+          <div className="logo-box w-10 h-10 bg-primary text-white rounded-none flex items-center justify-center font-black text-xl">
             92
           </div>
           <div>
@@ -426,7 +426,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               className={cn(
                 "flex items-center gap-3 px-4 py-3 text-[11px] font-black uppercase tracking-widest transition-all",
                 location.pathname === item.path 
-                  ? "bg-white text-af-blue" 
+                  ? "bg-white/10 text-primary border-r-2 border-primary" 
                   : "text-white/60 hover:text-white hover:bg-white/5"
               )}
             >
@@ -504,7 +504,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 <p className="text-[11px] uppercase tracking-widest text-white/60 mb-2 font-bold">Preview AMU</p>
                 <button 
                   onClick={() => setIsAMUDropdownOpen(!isAMUDropdownOpen)}
-                  className="w-full flex items-center justify-between bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white hover:bg-white/20 transition-colors"
+                  className="w-full flex items-center justify-between bg-white/10 border border-white/20 px-3 py-2 text-white hover:bg-white/20 transition-colors"
                 >
                   <span className="font-bold">{profile?.amuId}</span>
                   <ChevronDown className={cn("w-3 h-3 transition-transform", isAMUDropdownOpen && "rotate-180")} />
@@ -516,7 +516,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 10 }}
-                      className="absolute bottom-full left-0 w-full mb-2 bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden z-50"
+                      className="absolute bottom-full left-0 w-full mb-2 bg-stealth border border-white/20 shadow-xl overflow-hidden z-50"
                     >
                       {AMUS.map(amu => (
                         <button
@@ -527,7 +527,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                           }}
                           className={cn(
                             "w-full text-left px-4 py-2 text-xs hover:bg-white/10 transition-colors",
-                            profile?.amuId === amu ? "text-primary font-bold" : "text-slate-200"
+                            profile?.amuId === amu ? "text-primary font-bold" : "text-white/60"
                           )}
                         >
                           {amu}
@@ -542,7 +542,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 <p className="text-[11px] uppercase tracking-widest text-white/60 mb-2 font-bold">Preview Shop</p>
                 <button 
                   onClick={() => setIsShopDropdownOpen(!isShopDropdownOpen)}
-                  className="w-full flex items-center justify-between bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white hover:bg-white/20 transition-colors"
+                  className="w-full flex items-center justify-between bg-white/10 border border-white/20 px-3 py-2 text-white hover:bg-white/20 transition-colors"
                 >
                   <span className="font-bold">{profile?.shopId}</span>
                   <ChevronDown className={cn("w-3 h-3 transition-transform", isShopDropdownOpen && "rotate-180")} />
@@ -554,7 +554,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 10 }}
-                      className="absolute bottom-full left-0 w-full mb-2 bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden z-50"
+                      className="absolute bottom-full left-0 w-full mb-2 bg-stealth border border-white/20 shadow-xl overflow-hidden z-50"
                     >
                       {SHOPS.map(shop => (
                         <button
@@ -565,7 +565,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                           }}
                           className={cn(
                             "w-full text-left px-4 py-2 text-xs hover:bg-white/10 transition-colors",
-                            profile?.shopId === shop ? "text-primary font-bold" : "text-slate-200"
+                            profile?.shopId === shop ? "text-primary font-bold" : "text-white/60"
                           )}
                         >
                           {shop}
@@ -579,17 +579,17 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           )}
 
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700">
-              <Users className="text-slate-200 w-5 h-5" />
+            <div className="w-10 h-10 bg-white/5 rounded-none flex items-center justify-center border border-white/10">
+              <Users className="text-white w-5 h-5" />
             </div>
             <div className="overflow-hidden">
-              <p className="font-bold text-slate-100 truncate">{profile?.name}</p>
-              <p className="text-[10px] uppercase tracking-wider text-white/60 font-bold">AMU: {profile?.amuId} • {profile?.shopId}</p>
+              <p className="font-bold text-white truncate">{profile?.name}</p>
+              <p className="text-[10px] uppercase tracking-wider text-white/40 font-bold">AMU: {profile?.amuId} • {profile?.shopId}</p>
             </div>
           </div>
           <button 
             onClick={logout}
-            className="flex items-center gap-2 hover:text-safety-orange transition-colors text-white/80 font-bold"
+            className="flex items-center gap-2 hover:text-safety-orange transition-colors text-white/60 font-bold text-xs uppercase tracking-widest"
           >
             <LogOut className="w-4 h-4" /> Sign Out
           </button>
@@ -600,14 +600,14 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       <main className="flex-1 flex flex-col min-h-screen">
         <header className="flex justify-between items-start p-8">
           <div>
-            <h1 className="text-2xl font-bold text-on-background">
+            <h1 className="text-2xl font-bold text-white">
               {navItems.find(i => i.path === location.pathname)?.name || 'Dashboard'}
             </h1>
-            <p className="text-on-surface-variant text-sm">92nd Aircraft Maintenance Squadron • Fairchild AFB</p>
+            <p className="text-white/60 text-sm">92nd Aircraft Maintenance Squadron • Fairchild AFB</p>
           </div>
           <div className="text-right hidden sm:block">
-            <div className="font-semibold text-on-background">{profile?.rank} {profile?.name}</div>
-            <div className="text-xs text-on-surface-variant uppercase tracking-wider">{profile?.role} • {profile?.amuId} • {profile?.shopId}</div>
+            <div className="font-semibold text-white">{profile?.rank} {profile?.name}</div>
+            <div className="text-xs text-white/60 uppercase tracking-wider">{profile?.role} • {profile?.amuId} • {profile?.shopId}</div>
           </div>
         </header>
 
@@ -654,20 +654,20 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-putty/20 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="max-w-md w-full text-center space-y-12">
         <div className="flex flex-col items-center gap-6">
           <div className="w-24 h-24 bg-stealth border border-outline flex items-center justify-center shadow-2xl">
             <Terminal className="text-white w-12 h-12" />
           </div>
           <div>
-            <h1 className="text-5xl font-black text-stealth tracking-tighter uppercase leading-none">92ND AMXS</h1>
-            <p className="serif-header text-lg mt-2">Logistics Control & Training Oversight</p>
+            <h1 className="text-5xl font-black text-white tracking-tighter uppercase leading-none">92ND AMXS</h1>
+            <p className="serif-header text-lg mt-2 text-white/60">Logistics Control & Training Oversight</p>
           </div>
         </div>
         
-        <div className="visible-grid bg-white p-10 space-y-10 shadow-xl">
-          <p className="serif-header text-sm leading-relaxed">
+        <div className="visible-grid bg-surface p-10 space-y-10 shadow-xl">
+          <p className="serif-header text-sm leading-relaxed text-white/70">
             Access to the 92nd AMXS Maintenance & Training system is restricted to authorized personnel only. All activity is logged and monitored.
           </p>
 
@@ -682,20 +682,20 @@ const Login: React.FC = () => {
               
               <div className="relative py-4">
                 <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-outline"></div></div>
-                <div className="relative flex justify-center"><span className="bg-white px-4 tech-label">Developer Access</span></div>
+                <div className="relative flex justify-center"><span className="bg-surface px-4 tech-label">Developer Access</span></div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <button 
                   onClick={() => bypassLogin('leadership')}
-                  className="sleek-button bg-putty/30 !text-stealth border border-outline hover:bg-putty py-4 flex flex-col items-center gap-2"
+                  className="sleek-button bg-white/5 !text-white border border-outline hover:bg-white/10 py-4 flex flex-col items-center gap-2"
                 >
                   <ShieldAlert className="w-5 h-5 text-safety-orange" />
                   <span className="tech-label">Demo Sandbox</span>
                 </button>
                 <button 
                   onClick={() => setIsEmailMode(true)}
-                  className="sleek-button bg-putty/30 !text-stealth border border-outline hover:bg-putty py-4 flex flex-col items-center gap-2"
+                  className="sleek-button bg-white/5 !text-white border border-outline hover:bg-white/10 py-4 flex flex-col items-center gap-2"
                 >
                   <Lock className="w-5 h-5 text-primary" />
                   <span className="tech-label">Master Admin</span>
@@ -817,14 +817,14 @@ const Setup: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-putty/20 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="max-w-xl w-full space-y-12">
         <div className="text-center space-y-4">
-          <h2 className="text-4xl font-black tracking-tighter uppercase">Access Request</h2>
-          <p className="serif-header text-lg">Submit operational details for NCOIC verification</p>
+          <h2 className="text-4xl font-black tracking-tighter uppercase text-white">Access Request</h2>
+          <p className="serif-header text-lg text-white/60">Submit operational details for NCOIC verification</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="visible-grid bg-white p-12 space-y-10 shadow-xl">
+        <form onSubmit={handleSubmit} className="visible-grid bg-surface p-12 space-y-10 shadow-xl">
           <div className="space-y-8">
             <div className="grid grid-cols-2 gap-8">
               <div className="space-y-2">
@@ -914,25 +914,25 @@ const Setup: React.FC = () => {
 const PendingApproval: React.FC = () => {
   const { logout } = useAuth();
   return (
-    <div className="min-h-screen flex items-center justify-center bg-putty/20 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="max-w-md w-full text-center space-y-12">
         <div className="flex flex-col items-center gap-6">
-          <div className="w-24 h-24 bg-putty/30 border border-outline flex items-center justify-center">
+          <div className="w-24 h-24 bg-white/5 border border-outline flex items-center justify-center">
             <Clock className="text-primary w-12 h-12" />
           </div>
           <div>
-            <h1 className="text-4xl font-black tracking-tighter uppercase leading-none">Access Pending</h1>
-            <p className="serif-header text-lg mt-2">Your account is currently awaiting NCOIC verification.</p>
+            <h1 className="text-4xl font-black tracking-tighter uppercase leading-none text-white">Access Pending</h1>
+            <p className="serif-header text-lg mt-2 text-white/60">Your account is currently awaiting NCOIC verification.</p>
           </div>
         </div>
         
-        <div className="visible-grid bg-white p-10 space-y-8 shadow-xl">
-          <p className="serif-header text-sm leading-relaxed">
+        <div className="visible-grid bg-surface p-10 space-y-8 shadow-xl">
+          <p className="serif-header text-sm leading-relaxed text-white/70">
             Once an administrator assigns your shop and validates your man number, you will be granted full operational access to the system.
           </p>
           <button 
             onClick={logout}
-            className="sleek-button w-full py-4 bg-white !text-stealth border border-outline hover:bg-putty"
+            className="sleek-button w-full py-4 bg-transparent !text-white border border-outline hover:bg-white/5"
           >
             Sign Out
           </button>
@@ -1011,25 +1011,25 @@ const Onboarding: React.FC = () => {
     <div className="space-y-10">
       <div className="flex justify-between items-end">
         <div>
-          <h2 className="text-4xl font-black tracking-tighter uppercase">Personnel Onboarding</h2>
-          <p className="serif-header text-lg mt-1">Review and approve system access requests</p>
+          <h2 className="text-4xl font-black tracking-tighter uppercase text-white">Personnel Onboarding</h2>
+          <p className="serif-header text-lg mt-1 text-white/60">Review and approve system access requests</p>
         </div>
         <UserPlus className="text-primary w-12 h-12" />
       </div>
 
       <div className="grid grid-cols-1 gap-6">
         {pendingUsers.length > 0 ? pendingUsers.map(u => (
-          <div key={u.uid} className="visible-grid bg-white p-8 flex items-center justify-between shadow-md">
+          <div key={u.uid} className="visible-grid bg-surface p-8 flex items-center justify-between shadow-md">
             <div className="flex items-center gap-6">
-              <div className="w-16 h-16 bg-putty/30 border border-outline flex items-center justify-center text-primary">
+              <div className="w-16 h-16 bg-white/5 border border-outline flex items-center justify-center text-primary">
                 <Users className="w-8 h-8" />
               </div>
               <div>
-                <h3 className="text-xl font-black tracking-tighter uppercase">{u.rank} {u.name}</h3>
-                <p className="tech-label opacity-70">{u.email}</p>
+                <h3 className="text-xl font-black tracking-tighter uppercase text-white">{u.rank} {u.name}</h3>
+                <p className="tech-label text-white/40">{u.email}</p>
                 <div className="flex gap-4 mt-3">
-                  <span className="tech-label bg-putty px-2 py-0.5">SHOP: {u.shopId}</span>
-                  <span className="tech-label bg-putty px-2 py-0.5">MAN #: {u.man_number}</span>
+                  <span className="tech-label bg-white/5 px-2 py-0.5 text-white/60">SHOP: {u.shopId}</span>
+                  <span className="tech-label bg-white/5 px-2 py-0.5 text-white/60">MAN #: {u.man_number}</span>
                 </div>
               </div>
             </div>
@@ -1042,35 +1042,35 @@ const Onboarding: React.FC = () => {
               </button>
               <button 
                 onClick={() => handleReject(u.uid)}
-                className="sleek-button bg-white !text-safety-orange border border-outline hover:bg-safety-orange/5 px-8 py-3"
+                className="sleek-button bg-transparent !text-safety-orange border border-outline hover:bg-safety-orange/10 px-8 py-3"
               >
                 Reject
               </button>
             </div>
           </div>
         )) : (
-          <div className="visible-grid bg-white py-24 text-center space-y-4 border-dashed">
-            <Clock className="w-12 h-12 text-primary/20 mx-auto" />
-            <p className="tech-label opacity-50 uppercase tracking-[0.3em]">No pending access requests found.</p>
+          <div className="visible-grid bg-surface py-24 text-center space-y-4 border-dashed">
+            <Clock className="w-12 h-12 text-white/10 mx-auto" />
+            <p className="tech-label text-white/30 uppercase tracking-[0.3em]">No pending access requests found.</p>
           </div>
         )}
       </div>
 
       <AnimatePresence>
         {selectedUser && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-stealth/80 backdrop-blur-md">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/90 backdrop-blur-md">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white w-full max-w-2xl rounded-none shadow-2xl border border-outline overflow-hidden"
+              className="bg-surface w-full max-w-2xl rounded-none shadow-2xl border border-outline overflow-hidden"
             >
-              <div className="p-10 border-b border-outline bg-putty/30 flex justify-between items-center">
+              <div className="p-10 border-b border-outline bg-white/5 flex justify-between items-center">
                 <div>
-                  <h3 className="text-3xl font-black tracking-tighter uppercase leading-none">Onboard Personnel</h3>
-                  <p className="tech-label mt-3 opacity-70">Assign credentials for {selectedUser.name}</p>
+                  <h3 className="text-3xl font-black tracking-tighter uppercase leading-none text-white">Onboard Personnel</h3>
+                  <p className="tech-label mt-3 text-white/40">Assign credentials for {selectedUser.name}</p>
                 </div>
-                <button onClick={() => setSelectedUser(null)} className="p-2 hover:bg-putty transition-colors">
+                <button onClick={() => setSelectedUser(null)} className="p-2 hover:bg-white/10 transition-colors text-white">
                   <X className="w-6 h-6" />
                 </button>
               </div>
@@ -1143,7 +1143,7 @@ const Onboarding: React.FC = () => {
                   <button 
                     type="button"
                     onClick={() => setSelectedUser(null)}
-                    className="sleek-button bg-white !text-stealth border border-outline hover:bg-putty flex-1"
+                    className="sleek-button bg-transparent !text-white border border-outline hover:bg-white/10 flex-1"
                   >
                     Cancel
                   </button>
@@ -1281,7 +1281,7 @@ const Dashboard: React.FC = () => {
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="md:col-span-2 md:row-span-2 p-10 flex flex-col justify-between bg-white"
+          className="md:col-span-2 md:row-span-2 p-10 flex flex-col justify-between bg-surface"
         >
           <div>
             <p className="tech-label mb-2">Personnel Readiness</p>
@@ -1298,7 +1298,7 @@ const Dashboard: React.FC = () => {
                     key={i} 
                     className={cn(
                       "aspect-square rounded-none transition-all duration-500",
-                      isActive ? "bg-primary" : (isExpiring ? "bg-caution-yellow" : "bg-outline")
+                      isActive ? "bg-primary" : (isExpiring ? "bg-caution-yellow" : "bg-outline/20")
                     )} 
                   />
                 );
@@ -1311,7 +1311,7 @@ const Dashboard: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="p-8 flex flex-col justify-between bg-white"
+          className="p-8 flex flex-col justify-between bg-surface"
         >
           <p className="tech-label">Active Logs</p>
           <div className="text-5xl font-black tracking-tighter mt-4">{logs.length}</div>
@@ -1322,7 +1322,7 @@ const Dashboard: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="p-8 flex flex-col justify-between bg-white border-l border-outline"
+          className="p-8 flex flex-col justify-between bg-surface border-l border-outline"
         >
           <p className="tech-label text-safety-orange font-bold">Red Ball Items</p>
           <div className="text-5xl font-black tracking-tighter text-safety-orange mt-4">{urgentLogs}</div>
@@ -1333,20 +1333,20 @@ const Dashboard: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="p-8 flex flex-col justify-between bg-white border-l border-outline"
+          className="p-8 flex flex-col justify-between bg-surface border-l border-outline"
         >
           <p className="tech-label text-caution-yellow font-bold">Expiring Training</p>
           <div className="text-5xl font-black tracking-tighter text-caution-yellow mt-4">
             {training.filter(t => t.status === 'expiring').length}
           </div>
-          <p className="text-[11px] font-bold text-caution-yellow/70 uppercase tracking-widest mt-2">Due < 60 Days</p>
+          <p className="text-[11px] font-bold text-caution-yellow/70 uppercase tracking-widest mt-2">Due &lt; 60 Days</p>
         </motion.div>
 
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="p-8 flex flex-col justify-between bg-white border-l border-outline"
+          className="p-8 flex flex-col justify-between bg-surface border-l border-outline"
         >
           <p className="tech-label text-safety-orange font-bold">Overdue Training</p>
           <div className="text-5xl font-black tracking-tighter text-safety-orange mt-4">
@@ -1359,15 +1359,15 @@ const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Personnel Roster */}
         <div className="lg:col-span-12">
-          <div className="visible-grid bg-white">
+          <div className="visible-grid bg-surface">
             <div className="p-8 flex justify-between items-center border-b border-outline">
               <div>
                 <h3 className="text-2xl font-black tracking-tighter uppercase">Personnel Roster</h3>
-                <p className="serif-header text-sm">Active duty personnel and qualification status</p>
+                <p className="serif-header text-sm text-white/60">Active duty personnel and qualification status</p>
               </div>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
-                <input className="sleek-input pl-10 py-2 text-xs w-80" placeholder="Filter Roster..." />
+                <input className="sleek-input pl-10 py-2 text-xs w-80 !bg-background" placeholder="Filter Roster..." />
               </div>
             </div>
             <div className="overflow-x-auto">
@@ -1586,11 +1586,11 @@ const MaintenanceLogs: React.FC = () => {
     <div className="space-y-10">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div>
-          <h2 className="text-4xl font-black tracking-tighter uppercase">Maintenance Logs</h2>
-          <p className="serif-header text-lg mt-1">Real-time turnover and discrepancy tracking</p>
+          <h2 className="text-4xl font-black tracking-tighter uppercase text-white">Maintenance Logs</h2>
+          <p className="serif-header text-lg mt-1 text-white/60">Real-time turnover and discrepancy tracking</p>
         </div>
         <div className="flex flex-wrap gap-4">
-          <div className="flex bg-white border border-outline p-1">
+          <div className="flex bg-surface border border-outline p-1">
             <button 
               onClick={() => setViewMode('grid')}
               className={cn("p-2 transition-colors", viewMode === 'grid' ? "bg-primary text-white" : "text-on-surface-variant hover:text-on-surface")}
@@ -1608,14 +1608,14 @@ const MaintenanceLogs: React.FC = () => {
             <div className="flex gap-2">
               <button 
                 onClick={() => exportLogsToCSV(filteredLogs, profile.shopId)}
-                className="sleek-button bg-white !text-on-surface border border-outline hover:bg-putty flex items-center gap-2"
+                className="sleek-button bg-surface !text-white border border-outline hover:bg-white/5 flex items-center gap-2"
                 title="Export CSV"
               >
                 <FileSpreadsheet className="w-4 h-4" /> <span className="hidden sm:inline">CSV</span>
               </button>
               <button 
                 onClick={() => exportLogsToPDF(filteredLogs, profile.shopId)}
-                className="sleek-button bg-white !text-on-surface border border-outline hover:bg-putty flex items-center gap-2"
+                className="sleek-button bg-surface !text-white border border-outline hover:bg-white/5 flex items-center gap-2"
                 title="Export PDF"
               >
                 <FileText className="w-4 h-4" /> <span className="hidden sm:inline">PDF</span>
@@ -1632,14 +1632,14 @@ const MaintenanceLogs: React.FC = () => {
       </div>
 
       {/* Shift Timeline Visualization */}
-      <div className="visible-grid bg-white p-8">
+      <div className="visible-grid bg-surface p-8">
         <p className="tech-label mb-6">24-Hour Operations Timeline</p>
-        <div className="relative h-12 bg-putty/50 border border-outline flex items-center">
+        <div className="relative h-12 bg-background border border-outline flex items-center">
           <div className="absolute inset-0 flex">
             {['Days', 'Swings', 'Nights'].map((shift, i) => (
               <div key={shift} className={cn(
                 "flex-1 flex items-center justify-center border-r border-outline last:border-r-0",
-                i === 0 ? "bg-primary/5" : i === 1 ? "bg-caution-yellow/5" : "bg-stealth/5"
+                i === 0 ? "bg-primary/10" : i === 1 ? "bg-caution-yellow/10" : "bg-white/5"
               )}>
                 <span className="tech-label text-[10px] opacity-50 font-bold">{shift}</span>
               </div>
@@ -1673,7 +1673,7 @@ const MaintenanceLogs: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-0 visible-grid bg-white">
+      <div className="flex flex-col md:flex-row gap-0 visible-grid bg-surface">
         <div className="flex-1 relative p-4">
           <Search className="absolute left-7 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
           <input 
@@ -1681,7 +1681,7 @@ const MaintenanceLogs: React.FC = () => {
             placeholder="Search by tail number, name, JCN, or discrepancy..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="sleek-input pl-12 w-full !border-none"
+            className="sleek-input pl-12 w-full !border-none !bg-transparent"
           />
         </div>
         <div className="flex gap-0">
@@ -1691,7 +1691,7 @@ const MaintenanceLogs: React.FC = () => {
               type="date" 
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="sleek-input !py-1 !px-0 !border-none"
+              className="sleek-input !py-1 !px-0 !border-none !bg-transparent"
             />
           </div>
           <div className="flex flex-col p-4 border-l border-outline">
@@ -1700,18 +1700,18 @@ const MaintenanceLogs: React.FC = () => {
               type="date" 
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="sleek-input !py-1 !px-0 !border-none"
+              className="sleek-input !py-1 !px-0 !border-none !bg-transparent"
             />
           </div>
         </div>
       </div>
 
       {viewMode === 'list' ? (
-        <div className="visible-grid bg-white overflow-hidden">
+        <div className="visible-grid bg-surface overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-putty/50 text-[10px] font-black text-on-surface-variant tracking-[0.2em] uppercase font-mono">
+                <tr className="bg-white/5 text-[10px] font-black text-on-surface-variant tracking-[0.2em] uppercase font-mono">
                   <th className="px-8 py-5">Tail / JCN</th>
                   <th className="px-8 py-5">Date / Shift</th>
                   <th className="px-8 py-5">Personnel</th>
@@ -1740,19 +1740,19 @@ const MaintenanceLogs: React.FC = () => {
                       {log.shift && <span className="tech-label text-[10px] mt-1 block opacity-70 font-bold">{log.shift} Shift</span>}
                     </td>
                     <td className="px-8 py-5">
-                      <p className="font-black text-[12px] uppercase tracking-tight">{log.technician_name}</p>
+                      <p className="font-black text-[12px] uppercase tracking-tight text-white">{log.technician_name}</p>
                       {log.personnel && log.personnel.length > 0 && (
-                        <p className="tech-label text-[10px] mt-1 opacity-70 font-bold">+{log.personnel.length} Support</p>
+                        <p className="tech-label text-[10px] mt-1 text-white/40 font-bold">+{log.personnel.length} Support</p>
                       )}
                     </td>
                     <td className="px-8 py-5 max-w-xs">
-                      <p className="serif-header text-xs line-clamp-2">{log.discrepancy}</p>
+                      <p className="serif-header text-xs line-clamp-2 text-white/60">{log.discrepancy}</p>
                     </td>
                     <td className="px-8 py-5">
                       {log.isRedBall ? (
                         <span className="badge badge-danger">RED BALL</span>
                       ) : (
-                        <span className="badge bg-outline/30 text-on-surface-variant">NORMAL</span>
+                        <span className="badge bg-white/10 text-white/40">NORMAL</span>
                       )}
                     </td>
                   </motion.tr>
@@ -1777,10 +1777,10 @@ const MaintenanceLogs: React.FC = () => {
                 <div>
                   <div className="flex justify-between items-start mb-6">
                     <div>
-                      <p className="tech-label mb-1 opacity-60">
+                      <p className="tech-label mb-1 text-white/40">
                         {log.jcn ? `JCN: ${log.jcn}` : `ID: #${log.id?.slice(0, 6)}`}
                       </p>
-                      <h3 className="text-2xl font-black tracking-tighter uppercase group-hover:text-primary transition-colors">{log.tail_number}</h3>
+                      <h3 className="text-2xl font-black tracking-tighter uppercase group-hover:text-primary transition-colors text-white">{log.tail_number}</h3>
                     </div>
                     {log.isRedBall && (
                       <span className="badge badge-danger">Red Ball</span>
@@ -1834,7 +1834,7 @@ const MaintenanceLogs: React.FC = () => {
                     {selectedLog.jcn ? `JCN: ${selectedLog.jcn}` : `Log ID: #${selectedLog.id?.slice(0, 6)}`}
                   </p>
                 </div>
-                <button onClick={() => setSelectedLog(null)} className="p-2 hover:bg-putty transition-colors">
+                <button onClick={() => setSelectedLog(null)} className="p-2 hover:bg-white/10 transition-colors text-white">
                   <X className="w-6 h-6" />
                 </button>
               </div>
@@ -1888,7 +1888,7 @@ const MaintenanceLogs: React.FC = () => {
                 )}
               </div>
               
-              <div className="p-8 border-t border-outline bg-putty/30 flex justify-between items-center">
+              <div className="p-8 border-t border-outline bg-white/5 flex justify-between items-center">
                 <div className="tech-label !text-[8px] opacity-50">
                   {selectedLog.lastEditedBy && (
                     <span>Last edited by {selectedLog.lastEditedBy} {selectedLog.lastEditedAt?.toDate && `on ${format(selectedLog.lastEditedAt.toDate(), 'MM/dd HH:mm')}`}</span>
@@ -2230,11 +2230,11 @@ const TrainingTracker: React.FC = () => {
     <div className="space-y-10">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div>
-          <h2 className="text-4xl font-black tracking-tighter uppercase">Training Readiness</h2>
-          <p className="serif-header text-lg mt-1">Task expiration forecast and qualification oversight</p>
+          <h2 className="text-4xl font-black tracking-tighter uppercase text-white">Training Readiness</h2>
+          <p className="serif-header text-lg mt-1 text-white/60">Task expiration forecast and qualification oversight</p>
         </div>
         <div className="flex flex-wrap items-center gap-4">
-          <div className="flex bg-white border border-outline p-1">
+          <div className="flex bg-surface border border-outline p-1">
             <button 
               onClick={() => setViewMode('grid')}
               className={cn("p-2 transition-colors", viewMode === 'grid' ? "bg-primary text-white" : "text-on-surface-variant hover:text-on-surface")}
@@ -2259,14 +2259,14 @@ const TrainingTracker: React.FC = () => {
               </button>
               <button 
                 onClick={() => exportTrainingToCSV(filteredTraining, profile.shopId)}
-                className="sleek-button bg-white !text-on-surface border border-outline hover:bg-putty flex items-center gap-2"
+                className="sleek-button bg-surface !text-white border border-outline hover:bg-white/5 flex items-center gap-2"
                 title="Export CSV"
               >
                 <FileSpreadsheet className="w-4 h-4" /> <span className="hidden sm:inline">CSV</span>
               </button>
               <button 
                 onClick={() => exportTrainingToPDF(filteredTraining, profile.shopId)}
-                className="sleek-button bg-white !text-on-surface border border-outline hover:bg-putty flex items-center gap-2"
+                className="sleek-button bg-surface !text-white border border-outline hover:bg-white/5 flex items-center gap-2"
                 title="Export PDF"
               >
                 <FileText className="w-4 h-4" /> <span className="hidden sm:inline">PDF</span>
@@ -2276,7 +2276,7 @@ const TrainingTracker: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-0 visible-grid bg-white">
+      <div className="flex flex-col md:flex-row gap-0 visible-grid bg-surface">
         <div className="flex-1 relative p-4">
           <Search className="absolute left-7 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
           <input 
@@ -2284,7 +2284,7 @@ const TrainingTracker: React.FC = () => {
             placeholder="Search by course name, man #, or personnel name..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="sleek-input pl-12 w-full !border-none"
+            className="sleek-input pl-12 w-full !border-none !bg-transparent"
           />
         </div>
         <div className="flex gap-0">
@@ -2294,7 +2294,7 @@ const TrainingTracker: React.FC = () => {
               type="date" 
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="sleek-input !py-1 !px-0 !border-none"
+              className="sleek-input !py-1 !px-0 !border-none !bg-transparent"
             />
           </div>
           <div className="flex flex-col p-4 border-l border-outline">
@@ -2303,7 +2303,7 @@ const TrainingTracker: React.FC = () => {
               type="date" 
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="sleek-input !py-1 !px-0 !border-none"
+              className="sleek-input !py-1 !px-0 !border-none !bg-transparent"
             />
           </div>
         </div>
@@ -2313,17 +2313,17 @@ const TrainingTracker: React.FC = () => {
         {/* Upload Area */}
         {(profile?.role === 'ncoic' || profile?.role === 'leadership') && (
           <div className="lg:col-span-12">
-            <div className="visible-grid bg-white">
-              <label className="p-16 flex flex-col items-center justify-center text-center space-y-6 hover:bg-putty/50 transition-colors group cursor-pointer">
+            <div className="visible-grid bg-surface">
+              <label className="p-16 flex flex-col items-center justify-center text-center space-y-6 hover:bg-white/5 transition-colors group cursor-pointer">
                 <input type="file" className="sr-only" onChange={handleFileUpload} disabled={isUploading} />
-                <div className="w-20 h-20 bg-primary/5 border border-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                <div className="w-20 h-20 bg-primary/10 border border-primary/20 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
                   {isUploading ? <Clock className="w-10 h-10 animate-spin" /> : <UploadCloud className="w-10 h-10" />}
                 </div>
                 <div>
-                  <h3 className="text-2xl font-black tracking-tighter uppercase">
+                  <h3 className="text-2xl font-black tracking-tighter uppercase text-white">
                     {isUploading ? 'Parsing Report...' : 'Synchronize Training Logs'}
                   </h3>
-                  <p className="serif-header text-base max-w-lg mx-auto mt-2">
+                  <p className="serif-header text-base max-w-lg mx-auto mt-2 text-white/60">
                     Upload Excel (.xlsx, .xlsm) or CSV personnel training reports. The system will automatically reconcile and update qualification statuses.
                   </p>
                 </div>
@@ -2336,48 +2336,48 @@ const TrainingTracker: React.FC = () => {
         )}
 
         {/* Readiness Widgets */}
-        <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-3 gap-0 visible-grid bg-white">
+        <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-3 gap-0 visible-grid bg-surface">
           <div className="p-8 space-y-6">
             <div className="flex justify-between items-center">
-              <span className="tech-label text-emerald-600 font-bold">Fully Qualified</span>
-              <span className="font-black text-2xl tracking-tighter">{Math.round((stats.current / stats.total) * 100)}%</span>
+              <span className="tech-label text-emerald-500 font-bold">Fully Qualified</span>
+              <span className="font-black text-2xl tracking-tighter text-white">{Math.round((stats.current / stats.total) * 100)}%</span>
             </div>
-            <div className="h-2 bg-outline/30 overflow-hidden">
+            <div className="h-2 bg-white/5 overflow-hidden">
               <div className="h-full bg-emerald-500 transition-all duration-1000" style={{ width: `${(stats.current / stats.total) * 100}%` }}></div>
             </div>
-            <p className="tech-label text-[10px] opacity-70">{stats.current} Personnel Current</p>
+            <p className="tech-label text-[10px] opacity-70 text-white/60">{stats.current} Personnel Current</p>
           </div>
 
           <div className="p-8 space-y-6">
             <div className="flex justify-between items-center">
-              <span className="tech-label text-caution-yellow font-bold">Expiring < 60 Days</span>
-              <span className="font-black text-2xl tracking-tighter">{Math.round((stats.expiring / stats.total) * 100)}%</span>
+              <span className="tech-label text-caution-yellow font-bold">Expiring &lt; 60 Days</span>
+              <span className="font-black text-2xl tracking-tighter text-white">{Math.round((stats.expiring / stats.total) * 100)}%</span>
             </div>
-            <div className="h-2 bg-outline/30 overflow-hidden">
+            <div className="h-2 bg-white/5 overflow-hidden">
               <div className="h-full bg-caution-yellow transition-all duration-1000" style={{ width: `${(stats.expiring / stats.total) * 100}%` }}></div>
             </div>
-            <p className="tech-label text-[10px] opacity-70">{stats.expiring} Personnel Require Scheduling</p>
+            <p className="tech-label text-[10px] opacity-70 text-white/60">{stats.expiring} Personnel Require Scheduling</p>
           </div>
 
           <div className="p-8 space-y-6">
             <div className="flex justify-between items-center">
               <span className="tech-label text-safety-orange font-bold">Expired / Delinquent</span>
-              <span className="font-black text-2xl tracking-tighter">{Math.round((stats.expired / stats.total) * 100)}%</span>
+              <span className="font-black text-2xl tracking-tighter text-white">{Math.round((stats.expired / stats.total) * 100)}%</span>
             </div>
-            <div className="h-2 bg-outline/30 overflow-hidden">
+            <div className="h-2 bg-white/5 overflow-hidden">
               <div className="h-full bg-safety-orange transition-all duration-1000" style={{ width: `${(stats.expired / stats.total) * 100}%` }}></div>
             </div>
-            <p className="tech-label text-[10px] opacity-70">{stats.expired} Personnel Non-Mission Capable</p>
+            <p className="tech-label text-[10px] opacity-70 text-white/60">{stats.expired} Personnel Non-Mission Capable</p>
           </div>
         </div>
 
         <div className="lg:col-span-12">
           {viewMode === 'list' ? (
-            <div className="visible-grid bg-white overflow-hidden">
+            <div className="visible-grid bg-surface overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="bg-putty/50 text-[10px] font-black text-on-surface-variant tracking-[0.2em] uppercase font-mono">
+                    <tr className="bg-white/5 text-[10px] font-black text-on-surface-variant tracking-[0.2em] uppercase font-mono">
                       <th className="px-8 py-5">Course Name</th>
                       <th className="px-8 py-5">Personnel</th>
                       {profile?.role === 'leadership' && <th className="px-8 py-5">Shop</th>}
@@ -2396,11 +2396,11 @@ const TrainingTracker: React.FC = () => {
                         onClick={() => setSelectedRecord(record)}
                       >
                         <td className="px-8 py-5">
-                          <p className="font-black text-sm tracking-tight uppercase">{record.course_name}</p>
+                          <p className="font-black text-sm tracking-tight uppercase text-white">{record.course_name}</p>
                         </td>
                         <td className="px-8 py-5">
-                          <p className="font-black text-[12px] uppercase tracking-tight">{getPersonName(record.man_number)}</p>
-                          <p className="tech-label text-[10px] mt-1 opacity-70">MAN#: {record.man_number}</p>
+                          <p className="font-black text-[12px] uppercase tracking-tight text-white">{getPersonName(record.man_number)}</p>
+                          <p className="tech-label text-[10px] mt-1 text-white/40">MAN#: {record.man_number}</p>
                         </td>
                         {profile?.role === 'leadership' && (
                           <td className="px-8 py-5">
@@ -2794,18 +2794,18 @@ const Personnel: React.FC = () => {
     <div className="space-y-10">
       <div className="flex justify-between items-end">
         <div>
-          <h2 className="text-4xl font-black tracking-tighter uppercase">Personnel Roster</h2>
-          <p className="serif-header text-lg mt-1">Shop personnel management and qualification oversight</p>
+          <h2 className="text-4xl font-black tracking-tighter uppercase text-white">Personnel Roster</h2>
+          <p className="serif-header text-lg mt-1 text-white/60">Shop personnel management and qualification oversight</p>
         </div>
         <Users className="text-primary w-12 h-12" />
       </div>
 
-      <div className="visible-grid bg-white overflow-hidden">
-        <div className="p-8 border-b border-outline flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-putty/30">
-          <h3 className="font-black text-xl tracking-tighter uppercase">Active Duty Roster</h3>
+      <div className="visible-grid bg-surface overflow-hidden">
+        <div className="p-8 border-b border-outline flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white/5">
+          <h3 className="font-black text-xl tracking-tighter uppercase text-white">Active Duty Roster</h3>
           <div className="relative w-full md:w-80">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
-            <input className="sleek-input pl-12 py-3 text-sm w-full !bg-white" placeholder="Filter roster by name, man#, or role..." />
+            <input className="sleek-input pl-12 py-3 text-sm w-full !bg-background" placeholder="Filter roster by name, man#, or role..." />
           </div>
         </div>
         <div className="overflow-x-auto">
@@ -2830,11 +2830,11 @@ const Personnel: React.FC = () => {
                   onClick={() => setSelectedPerson(p)}
                 >
                   <td className="px-8 py-5">
-                    <p className="font-black text-sm uppercase tracking-tight">{p.rank} {p.name}</p>
+                    <p className="font-black text-sm uppercase tracking-tight text-white">{p.rank} {p.name}</p>
                     <p className="tech-label !text-[8px] mt-1 opacity-60">{p.email}</p>
                   </td>
                   <td className="px-8 py-5">
-                    <span className="data-mono text-xs">{p.man_number}</span>
+                    <span className="data-mono text-xs text-white/80">{p.man_number}</span>
                   </td>
                   {profile?.role === 'leadership' && (
                     <td className="px-8 py-5">
@@ -2844,7 +2844,7 @@ const Personnel: React.FC = () => {
                   <td className="px-8 py-5">
                     <span className={cn(
                       "badge",
-                      p.role === 'ncoic' ? "badge-info" : "bg-outline/30 text-on-surface-variant"
+                      p.role === 'ncoic' ? "badge-info" : "bg-white/10 text-white/40"
                     )}>
                       {p.role}
                     </span>
@@ -3106,29 +3106,29 @@ const Support: React.FC = () => {
   return (
     <div className="max-w-5xl mx-auto space-y-16 py-12">
       <div className="text-center space-y-6">
-        <div className="w-24 h-24 bg-primary/5 border border-primary/10 flex items-center justify-center mx-auto text-primary">
+        <div className="w-24 h-24 bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto text-primary">
           <HelpCircle className="w-12 h-12" />
         </div>
-        <h1 className="text-5xl font-black tracking-tighter uppercase">Support & Documentation</h1>
-        <p className="serif-header text-xl max-w-2xl mx-auto opacity-70">
+        <h1 className="text-5xl font-black tracking-tighter uppercase text-white">Support & Documentation</h1>
+        <p className="serif-header text-xl max-w-2xl mx-auto text-white/60">
           Operational guidance and technical support for the 92nd AMXS Maintenance & Training Control System.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-0 visible-grid bg-white">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-0 visible-grid bg-surface">
         <div className="p-10 space-y-6 border-r border-outline">
-          <h3 className="text-xl font-black tracking-tighter uppercase flex items-center gap-3">
+          <h3 className="text-xl font-black tracking-tighter uppercase flex items-center gap-3 text-white">
             <Users className="w-6 h-6 text-primary" /> Technical Oversight
           </h3>
           <div className="space-y-6">
-            <div className="p-6 bg-putty/30 border border-outline">
+            <div className="p-6 bg-white/5 border border-outline">
               <p className="tech-label mb-2">System Administrator</p>
-              <p className="font-black text-sm uppercase tracking-tight">MSgt Sarah Jenkins</p>
+              <p className="font-black text-sm uppercase tracking-tight text-white">MSgt Sarah Jenkins</p>
               <p className="data-mono text-xs mt-1 opacity-60">sarah.jenkins.af@mail.mil</p>
             </div>
-            <div className="p-6 bg-putty/30 border border-outline">
+            <div className="p-6 bg-white/5 border border-outline">
               <p className="tech-label mb-2">Technical Support</p>
-              <p className="font-black text-sm uppercase tracking-tight">TSgt Michael Chen</p>
+              <p className="font-black text-sm uppercase tracking-tight text-white">TSgt Michael Chen</p>
               <p className="data-mono text-xs mt-1 opacity-60">michael.chen.af@mail.mil</p>
             </div>
           </div>
@@ -3156,7 +3156,7 @@ const Support: React.FC = () => {
 
       <div className="space-y-8">
         <h2 className="text-3xl font-black tracking-tighter uppercase text-center">Frequently Asked Questions</h2>
-        <div className="grid grid-cols-1 gap-0 visible-grid bg-white">
+        <div className="grid grid-cols-1 gap-0 visible-grid bg-surface">
           {faqs.map((faq, i) => (
             <div key={i} className="border-b border-outline last:border-b-0">
               <button 
@@ -3190,7 +3190,7 @@ const Support: React.FC = () => {
         <p className="serif-header text-lg text-white/60 max-w-xl mx-auto">
           If you're new to the platform or need a refresher on the latest features, our interactive walkthrough can help.
         </p>
-        <button className="sleek-button bg-white !text-stealth hover:bg-putty px-12 py-4">
+        <button className="sleek-button bg-transparent !text-white border border-outline hover:bg-white/10 px-12 py-4">
           Restart System Walkthrough
         </button>
       </div>
