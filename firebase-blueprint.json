@@ -44,6 +44,20 @@
         "status": { "type": "string", "enum": ["current", "expiring", "expired"] }
       },
       "required": ["man_number", "course_name", "due_date", "shopId", "status"]
+    },
+    "DIFM": {
+      "title": "DIFM Log",
+      "description": "Due-In From Maintenance log entry",
+      "type": "object",
+      "properties": {
+        "tail_number": { "type": "string" },
+        "discrepancy": { "type": "string" },
+        "status": { "type": "string", "enum": ["due-in", "awaiting-parts", "in-repair", "complete"] },
+        "shopId": { "type": "string" },
+        "technician_name": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["tail_number", "discrepancy", "status", "shopId", "technician_name", "timestamp"]
     }
   },
   "firestore": {
@@ -58,6 +72,10 @@
     "/training/{trainingId}": {
       "schema": "Training",
       "description": "Training records"
+    },
+    "/difm/{difmId}": {
+      "schema": "DIFM",
+      "description": "DIFM logs"
     }
   }
 }
