@@ -3098,8 +3098,16 @@ const Support: React.FC = () => {
       a: "Currently, maintenance logs are permanent once submitted to ensure data integrity. If a mistake was made, please submit a new entry with the correct information and note the correction."
     },
     {
-      q: "How do I reset my guided walkthrough?",
-      a: "You can restart the tour by clicking the 'Restart Walkthrough' button at the top of this page. This will guide you through the features relevant to your current access level."
+      q: "How do I gain administrative access?",
+      a: "Administrative access is restricted to authorized personnel only. If you require admin privileges, contact the System Administrator directly with your justification."
+    },
+    {
+      q: "What should I do if the system is slow or unresponsive?",
+      a: "First, refresh your browser. If the issue persists, check your network connection. If it still fails, report the issue to the Technical Support contact listed on this page."
+    },
+    {
+      q: "How are maintenance discrepancies tracked?",
+      a: "Discrepancies are tracked in real-time via the Maintenance Logs page. Ensure all entries are accurate and complete to maintain data integrity across shifts."
     }
   ];
 
@@ -3122,14 +3130,9 @@ const Support: React.FC = () => {
           </h3>
           <div className="space-y-6">
             <div className="p-6 bg-slate-50 border border-outline">
-              <p className="tech-label mb-2">System Administrator</p>
-              <p className="font-black text-sm uppercase tracking-tight text-slate-900">MSgt Sarah Jenkins</p>
-              <p className="data-mono text-xs mt-1 opacity-60">sarah.jenkins.af@mail.mil</p>
-            </div>
-            <div className="p-6 bg-slate-50 border border-outline">
-              <p className="tech-label mb-2">Technical Support</p>
-              <p className="font-black text-sm uppercase tracking-tight text-slate-900">TSgt Michael Chen</p>
-              <p className="data-mono text-xs mt-1 opacity-60">michael.chen.af@mail.mil</p>
+              <p className="tech-label mb-2">System Administrator & Developer</p>
+              <p className="font-black text-sm uppercase tracking-tight text-slate-900">TSgt Steven Koehl</p>
+              <p className="data-mono text-xs mt-1 opacity-60">Steven.Koehl.1@us.af.mil</p>
             </div>
           </div>
         </div>
@@ -3185,15 +3188,7 @@ const Support: React.FC = () => {
         </div>
       </div>
 
-      <div className="visible-grid bg-stealth p-12 text-center space-y-8">
-        <h3 className="text-2xl font-black tracking-tighter uppercase text-slate-900">Need a Guided Tour?</h3>
-        <p className="serif-header text-lg text-slate-600 max-w-xl mx-auto">
-          If you're new to the platform or need a refresher on the latest features, our interactive walkthrough can help.
-        </p>
-        <button className="sleek-button bg-transparent \!text-slate-900 border border-outline hover:bg-slate-100 px-12 py-4">
-          Restart System Walkthrough
-        </button>
-      </div>
+      {/* Removed Guided Tour Section */}
     </div>
   );
 };
