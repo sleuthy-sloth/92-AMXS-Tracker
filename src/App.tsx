@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { Component, createContext, useContext, useEffect, useState } from 'react';
 import { 
   BrowserRouter as Router, 
   Routes, 
@@ -19,6 +19,7 @@ import {
 import { 
   doc, 
   getDoc, 
+  getDocs,
   setDoc, 
   collection, 
   query, 
@@ -27,6 +28,7 @@ import {
   addDoc, 
   updateDoc,
   deleteDoc,
+  writeBatch,
   serverTimestamp,
   orderBy
 } from 'firebase/firestore';
@@ -49,17 +51,91 @@ import {
   FileSpreadsheet,
   FileText,
   ChevronDown,
+  ChevronRight,
+  ChevronLeft,
   UserPlus,
   Mail,
   Lock,
   List,
   Grid,
-  MessageSquare
+  MessageSquare,
+  HelpCircle,
+  Info
 } from 'lucide-react';
 import { format, addDays, isBefore, parseISO } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
 
-import { auth, db, handleFirestoreError, OperationType } from './firebase';
+import { auth, db, handleFirestoreError, OperationType, FirestoreErrorInfo } from './firebase';
+
+// --- Error Boundary ---
+
+class ErrorBoundary extends Component<{ children: React.ReactNode }, { hasError: boolean, error: any }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error("Uncaught error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      let displayError = "Something went wrong.";
+      let details = null;
+
+      try {
+        const parsed = JSON.parse(this.state.error.message) as FirestoreErrorInfo;
+        if (parsed.error) {
+          displayError = "Database Access Error";
+          details = (
+            <div className="mt-4 p-4 bg-error/10 border border-error/20 rounded-xl text-left">
+              <p className="text-error font-bold text-sm">Operation: {parsed.operationType.toUpperCase()}</p>
+              <p className="text-on-surface-variant text-xs mt-1">Path: {parsed.path || 'Unknown'}</p>
+              <p className="text-on-surface text-sm mt-2 font-mono">{parsed.error}</p>
+              <div className="mt-4 pt-4 border-t border-error/10">
+                <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Auth Context</p>
+                <p className="text-xs text-on-surface-variant">User ID: {parsed.authInfo.userId || 'Not Logged In'}</p>
+                <p className="text-xs text-on-surface-variant">Email: {parsed.authInfo.email || 'N/A'}</p>
+              </div>
+            </div>
+          );
+        }
+      } catch (e) {
+        displayError = this.state.error.message || String(this.state.error);
+      }
+
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background p-6">
+          <div className="max-w-md w-full sleek-card text-center space-y-6">
+            <div className="w-16 h-16 bg-error/10 rounded-2xl flex items-center justify-center mx-auto text-error">
+              <ShieldAlert className="w-8 h-8" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold text-on-background tracking-tight">{displayError}</h2>
+              <p className="text-on-surface-variant text-sm">
+                The application encountered a critical error. Please try refreshing the page or contact support if the issue persists.
+              </p>
+            </div>
+            {details}
+            <button 
+              onClick={() => window.location.reload()}
+              className="sleek-button w-full bg-primary text-white"
+            >
+              Refresh Application
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 import { cn } from './lib/utils';
 import { UserProfile, MaintenanceLog, TrainingRecord, UserRole } from './types';
 import { parseTrainingReport } from './services/parserService';
@@ -72,7 +148,7 @@ import {
 
 // --- Constants & Mock Data ---
 
-const SHOPS = ['AVIONICS', 'CREW_CHIEFS', 'JETS', 'RADAR'] as const;
+const SHOPS = ['AVIONICS', 'CREW_CHIEFS', 'JETS', 'E&E', 'LEADERSHIP'] as const;
 type ShopType = typeof SHOPS[number];
 
 const MOCK_LOGS: MaintenanceLog[] = [
@@ -126,15 +202,15 @@ const MOCK_LOGS: MaintenanceLog[] = [
 
 const MOCK_PERSONNEL: UserProfile[] = [
   // AVIONICS
-  { uid: 'mock-user-123', name: 'PREVIEW USER', man_number: '99999', shopId: 'AVIONICS', role: 'ncoic', email: 'dev.preview@92amxs.af.mil', phone: '5672016985', carrier: 'tmobile', status: 'active' },
-  { uid: 'mock-user-2', name: 'DOE, J', man_number: '12345', shopId: 'AVIONICS', role: 'technician', email: 'doe.j@92amxs.af.mil', phone: '5550101', carrier: 'verizon', status: 'active' },
-  { uid: 'mock-user-3', name: 'SMITH, A', man_number: '54321', shopId: 'AVIONICS', role: 'technician', email: 'smith.a@92amxs.af.mil', phone: '5550102', carrier: 'att', status: 'active' },
+  { uid: 'mock-user-123', name: 'PREVIEW USER', rank: 'TSgt', man_number: '99999', shopId: 'AVIONICS', role: 'ncoic', email: 'dev.preview@92amxs.af.mil', phone: '5672016985', carrier: 'tmobile', status: 'active', hasSeenTour: true },
+  { uid: 'mock-user-2', name: 'DOE, J', rank: 'SrA', man_number: '12345', shopId: 'AVIONICS', role: 'technician', email: 'doe.j@92amxs.af.mil', phone: '5550101', carrier: 'verizon', status: 'active', hasSeenTour: true },
+  { uid: 'mock-user-3', name: 'SMITH, A', rank: 'A1C', man_number: '54321', shopId: 'AVIONICS', role: 'technician', email: 'smith.a@92amxs.af.mil', phone: '5550102', carrier: 'att', status: 'active', hasSeenTour: true },
   // CREW CHIEFS
-  { uid: 'mock-user-4', name: 'MILLER, R', man_number: '22222', shopId: 'CREW_CHIEFS', role: 'technician', email: 'miller.r@92amxs.af.mil', phone: '5550103', carrier: 'tmobile', status: 'active' },
-  { uid: 'mock-user-5', name: 'JOHNSON, K', man_number: '22223', shopId: 'CREW_CHIEFS', role: 'ncoic', email: 'johnson.k@92amxs.af.mil', phone: '5550104', carrier: 'verizon', status: 'active' },
+  { uid: 'mock-user-4', name: 'MILLER, R', rank: 'SSgt', man_number: '22222', shopId: 'CREW_CHIEFS', role: 'technician', email: 'miller.r@92amxs.af.mil', phone: '5550103', carrier: 'tmobile', status: 'active', hasSeenTour: true },
+  { uid: 'mock-user-5', name: 'JOHNSON, K', rank: 'MSgt', man_number: '22223', shopId: 'CREW_CHIEFS', role: 'ncoic', email: 'johnson.k@92amxs.af.mil', phone: '5550104', carrier: 'verizon', status: 'active', hasSeenTour: true },
   // JETS
-  { uid: 'mock-user-6', name: 'BROWN, T', man_number: '33333', shopId: 'JETS', role: 'technician', email: 'brown.t@92amxs.af.mil', phone: '5550105', carrier: 'att', status: 'active' },
-  { uid: 'mock-user-7', name: 'DAVIS, L', man_number: '33334', shopId: 'JETS', role: 'ncoic', email: 'davis.l@92amxs.af.mil', phone: '5550106', carrier: 'sprint', status: 'active' }
+  { uid: 'mock-user-6', name: 'BROWN, T', rank: 'SrA', man_number: '33333', shopId: 'JETS', role: 'technician', email: 'brown.t@92amxs.af.mil', phone: '5550105', carrier: 'att', status: 'active', hasSeenTour: true },
+  { uid: 'mock-user-7', name: 'DAVIS, L', rank: 'TSgt', man_number: '33334', shopId: 'JETS', role: 'ncoic', email: 'davis.l@92amxs.af.mil', phone: '5550106', carrier: 'sprint', status: 'active', hasSeenTour: true }
 ];
 
 const MOCK_TRAINING: TrainingRecord[] = [
@@ -197,7 +273,7 @@ const seedDatabase = async () => {
       console.log('Database seeded successfully.');
     }
   } catch (error) {
-    console.error('Error seeding database:', error);
+    handleFirestoreError(error, OperationType.WRITE, 'seeding');
   }
 };
 
@@ -221,11 +297,14 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   };
 
   useEffect(() => {
-    seedDatabase();
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
         await fetchProfile(currentUser.uid);
+        // Seed database if admin logs in and it's empty
+        if (currentUser.email === 'spkoehl@gmail.com') {
+          await seedDatabase();
+        }
       } else {
         setProfile(null);
       }
@@ -265,6 +344,8 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   const logout = async () => {
     try {
       await signOut(auth);
+      setUser(null);
+      setProfile(null);
     } catch (error) {
       console.error('Logout error:', error);
     }
@@ -284,12 +365,14 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     const mockProfile: UserProfile = {
       uid: 'mock-user-123',
       name: 'PREVIEW USER',
+      rank: 'TSgt',
       man_number: '99999',
       shopId: 'AVIONICS',
       role: role,
       email: 'dev.preview@92amxs.af.mil',
       phone: '555-0123',
-      status: 'active'
+      status: 'active',
+      hasSeenTour: true
     };
     
     setUser(mockUser);
@@ -329,6 +412,150 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   );
 };
 
+const Tour: React.FC = () => {
+  const { profile } = useAuth();
+  const [step, setStep] = useState(0);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    if (profile && profile.hasSeenTour === false) {
+      const timer = setTimeout(() => setIsVisible(true), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [profile]);
+
+  if (!profile || !isVisible) return null;
+
+  const technicianSteps = [
+    {
+      title: "Welcome to 92nd AMXS Log!",
+      content: "This system helps you track maintenance and training in real-time. Let's take a quick tour.",
+      target: "Dashboard"
+    },
+    {
+      title: "Maintenance Logs",
+      content: "Submit your turnover and discrepancy repairs here. It's the source of truth for the shop.",
+      target: "Maintenance"
+    },
+    {
+      title: "Training Tracker",
+      content: "Check your specific training requirements and due dates. Stay green!",
+      target: "Training"
+    },
+    {
+      title: "Need Help?",
+      content: "The Support page has FAQs and contact info for the developer, TSgt Koehl.",
+      target: "Support"
+    }
+  ];
+
+  const ncoicSteps = [
+    {
+      title: "NCOIC Command Center",
+      content: "As an NCOIC, you have full control over your shop's data and personnel.",
+      target: "Dashboard"
+    },
+    {
+      title: "Onboarding",
+      content: "New members will show up here. You assign their shop, man number, and role.",
+      target: "Onboarding"
+    },
+    {
+      title: "Training Management",
+      content: "Upload training reports and notify your team of upcoming expirations via Email or SMS.",
+      target: "Training"
+    },
+    {
+      title: "Shop Roster",
+      content: "Manage your personnel, edit profiles, or remove members who have PCS'd.",
+      target: "Personnel"
+    }
+  ];
+
+  const leadershipSteps = [
+    {
+      title: "Squadron Overview",
+      content: "Leadership access provides a birds-eye view of all shops in the 92nd AMXS.",
+      target: "Dashboard"
+    },
+    {
+      title: "Global Maintenance",
+      content: "View and search maintenance logs across the entire squadron.",
+      target: "Maintenance"
+    },
+    {
+      title: "Squadron Readiness",
+      content: "Monitor training health for all shops and identify readiness gaps.",
+      target: "Training"
+    }
+  ];
+
+  const steps = profile.role === 'leadership' ? leadershipSteps : 
+                profile.role === 'ncoic' ? ncoicSteps : technicianSteps;
+
+  const handleNext = () => {
+    if (step < steps.length - 1) {
+      setStep(step + 1);
+    } else {
+      completeTour();
+    }
+  };
+
+  const completeTour = async () => {
+    setIsVisible(false);
+    try {
+      await updateDoc(doc(db, 'users', profile.uid), { hasSeenTour: true });
+    } catch (e) {
+      console.error("Error saving tour status", e);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px]">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        className="bg-surface max-w-md w-full rounded-3xl shadow-2xl border border-primary/30 overflow-hidden"
+      >
+        <div className="p-8 space-y-6">
+          <div className="flex justify-between items-center">
+            <span className="badge badge-info">Step {step + 1} of {steps.length}</span>
+            <button onClick={completeTour} className="text-on-surface-variant hover:text-on-surface text-xs font-bold uppercase tracking-widest">Skip</button>
+          </div>
+          
+          <div className="space-y-2">
+            <h3 className="text-2xl font-bold text-on-background tracking-tight">{steps[step].title}</h3>
+            <p className="text-on-surface-variant leading-relaxed">{steps[step].content}</p>
+          </div>
+
+          <div className="pt-4 flex gap-3">
+            {step > 0 && (
+              <button 
+                onClick={() => setStep(step - 1)}
+                className="sleek-button flex-1 bg-surface-container-highest text-on-surface flex items-center justify-center gap-2"
+              >
+                <ChevronLeft className="w-4 h-4" /> Back
+              </button>
+            )}
+            <button 
+              onClick={handleNext}
+              className="sleek-button flex-1 bg-primary text-white flex items-center justify-center gap-2"
+            >
+              {step === steps.length - 1 ? 'Finish' : 'Next'} <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+        <div className="bg-primary/5 p-4 border-t border-primary/10 flex items-center gap-3">
+          <Info className="w-4 h-4 text-primary" />
+          <p className="text-[10px] text-primary/80 font-medium uppercase tracking-wider">
+            Target Feature: <span className="font-bold">{steps[step].target}</span>
+          </p>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, profile, logout, setShop } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -340,6 +567,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     { name: 'Maintenance Log', path: '/maintenance', icon: Wrench },
     { name: 'Training Tracker', path: '/training', icon: BarChart3 },
     { name: 'Personnel', path: '/personnel', icon: Users },
+    { name: 'Support', path: '/support', icon: HelpCircle },
   ];
 
   if (profile?.role === 'ncoic' || profile?.role === 'leadership') {
@@ -348,6 +576,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   return (
     <div className="min-h-screen flex bg-background">
+      <Tour />
       {/* Sidebar */}
       <aside className={cn(
         "fixed inset-y-0 left-0 z-40 w-[240px] bg-sidebar text-white transform transition-transform duration-300 md:translate-x-0 md:static flex flex-col",
@@ -448,7 +677,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             <p className="text-on-surface-variant text-sm">92nd Aircraft Maintenance Squadron • Fairchild AFB</p>
           </div>
           <div className="text-right hidden sm:block">
-            <div className="font-semibold text-on-background">{profile?.name}</div>
+            <div className="font-semibold text-on-background">{profile?.rank} {profile?.name}</div>
             <div className="text-xs text-on-surface-variant uppercase tracking-wider">{profile?.role} • Shop ID: {profile?.shopId}</div>
           </div>
         </header>
@@ -630,6 +859,9 @@ const Setup: React.FC = () => {
   const { user, refreshProfile } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
+    rank: '',
+    man_number: '',
+    shopId: '' as ShopType | '',
     phone: '',
     carrier: '' as any
   });
@@ -644,13 +876,15 @@ const Setup: React.FC = () => {
         uid: user.uid,
         email: user.email || '',
         name: formData.name,
+        rank: formData.rank,
+        man_number: formData.man_number,
+        shopId: formData.shopId || 'PENDING',
         phone: formData.phone,
         carrier: formData.carrier,
-        man_number: 'PENDING',
-        shopId: 'PENDING',
         role: 'pending',
         status: 'pending',
-        createdAt: serverTimestamp()
+        createdAt: serverTimestamp(),
+        hasSeenTour: false
       };
       await setDoc(doc(db, 'users', user.uid), profile);
       await refreshProfile();
@@ -671,16 +905,54 @@ const Setup: React.FC = () => {
 
         <form onSubmit={handleSubmit} className="sleek-card space-y-6">
           <div className="space-y-4">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Full Name (Surname, Initial)</label>
-              <input 
-                required
-                className="sleek-input"
-                placeholder="DOE, J"
-                value={formData.name}
-                onChange={e => setFormData({...formData, name: e.target.value})}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Rank</label>
+                <input 
+                  required
+                  className="sleek-input"
+                  placeholder="E.G. SrA"
+                  value={formData.rank}
+                  onChange={e => setFormData({...formData, rank: e.target.value})}
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Full Name (Surname, Initial)</label>
+                <input 
+                  required
+                  className="sleek-input"
+                  placeholder="DOE, J"
+                  value={formData.name}
+                  onChange={e => setFormData({...formData, name: e.target.value})}
+                />
+              </div>
             </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Man Number</label>
+                <input 
+                  required
+                  className="sleek-input"
+                  placeholder="99999"
+                  value={formData.man_number}
+                  onChange={e => setFormData({...formData, man_number: e.target.value})}
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Assigned Shop</label>
+                <select 
+                  required
+                  className="sleek-input"
+                  value={formData.shopId}
+                  onChange={e => setFormData({...formData, shopId: e.target.value as any})}
+                >
+                  <option value="">Select Shop...</option>
+                  {SHOPS.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Phone Number</label>
@@ -757,8 +1029,9 @@ const Onboarding: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [formData, setFormData] = useState({
     name: '',
+    rank: '',
     man_number: '',
-    shopId: '',
+    shopId: '' as ShopType | '',
     role: 'technician' as UserRole
   });
   const [loading, setLoading] = useState(false);
@@ -777,8 +1050,9 @@ const Onboarding: React.FC = () => {
     if (selectedUser) {
       setFormData({
         name: selectedUser.name,
-        man_number: '',
-        shopId: profile?.shopId || '',
+        rank: selectedUser.rank || '',
+        man_number: selectedUser.man_number !== 'PENDING' ? selectedUser.man_number : '',
+        shopId: selectedUser.shopId !== 'PENDING' ? (selectedUser.shopId as ShopType) : (profile?.shopId as ShopType) || '',
         role: 'technician'
       });
     }
@@ -828,9 +1102,11 @@ const Onboarding: React.FC = () => {
                 <Users className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="font-bold text-on-background">{u.name}</h3>
+                <h3 className="font-bold text-on-background">{u.rank} {u.name}</h3>
                 <p className="text-xs text-on-surface-variant">{u.email}</p>
-                <p className="text-[10px] text-on-surface-variant uppercase tracking-widest mt-1">Requested: {u.createdAt?.toDate() ? format(u.createdAt.toDate(), 'MMM dd, HH:mm') : 'N/A'}</p>
+                <p className="text-[10px] text-on-surface-variant uppercase tracking-widest mt-1">
+                  Requested Shop: {u.shopId} | Man #: {u.man_number}
+                </p>
               </div>
             </div>
             <div className="flex gap-2">
@@ -903,7 +1179,7 @@ const Onboarding: React.FC = () => {
                         required
                         className="sleek-input"
                         value={formData.shopId}
-                        onChange={e => setFormData({...formData, shopId: e.target.value})}
+                        onChange={e => setFormData({...formData, shopId: e.target.value as ShopType})}
                       >
                         <option value="">Select Shop</option>
                         {SHOPS.map(s => <option key={s} value={s}>{s}</option>)}
@@ -974,7 +1250,7 @@ const Dashboard: React.FC = () => {
     
     const unsubLogs = onSnapshot(qLogs, (snap) => {
       setLogs(snap.docs.map(d => ({ id: d.id, ...d.data() } as MaintenanceLog)));
-    });
+    }, (error) => handleFirestoreError(error, OperationType.LIST, 'logs'));
 
     const qPersonnel = isLeadership
       ? query(collection(db, 'users'))
@@ -982,7 +1258,7 @@ const Dashboard: React.FC = () => {
     
     const unsubPersonnel = onSnapshot(qPersonnel, (snap) => {
       setPersonnel(snap.docs.map(d => d.data() as UserProfile));
-    });
+    }, (error) => handleFirestoreError(error, OperationType.LIST, 'users'));
 
     const qTraining = isLeadership
       ? query(collection(db, 'training'))
@@ -990,7 +1266,7 @@ const Dashboard: React.FC = () => {
     
     const unsubTraining = onSnapshot(qTraining, (snap) => {
       setTraining(snap.docs.map(d => d.data() as TrainingRecord));
-    });
+    }, (error) => handleFirestoreError(error, OperationType.LIST, 'training'));
 
     return () => {
       unsubLogs();
@@ -1084,7 +1360,7 @@ const Dashboard: React.FC = () => {
 };
 
 const MaintenanceLogs: React.FC = () => {
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const [logs, setLogs] = useState<MaintenanceLog[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -1115,13 +1391,20 @@ const MaintenanceLogs: React.FC = () => {
     
     const unsub = onSnapshot(q, (snap) => {
       setLogs(snap.docs.map(d => ({ id: d.id, ...d.data() } as MaintenanceLog)));
-    });
+    }, (error) => handleFirestoreError(error, OperationType.LIST, 'logs'));
     return unsub;
   }, [profile]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
+    
+    if (user?.uid === 'mock-user-123') {
+      alert('Demo users cannot modify the live database. This entry will not be saved.');
+      setIsModalOpen(false);
+      return;
+    }
+
     setLoading(true);
     
     const personnelArray = formData.personnelInput.split(',').map(p => p.trim()).filter(p => p);
@@ -1167,6 +1450,8 @@ const MaintenanceLogs: React.FC = () => {
     
     return matchesSearch && matchesDate;
   });
+
+  const [selectedLog, setSelectedLog] = useState<MaintenanceLog | null>(null);
 
   return (
     <div className="space-y-8">
@@ -1265,7 +1550,11 @@ const MaintenanceLogs: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-outline">
                 {filteredLogs.map((log) => (
-                  <tr key={log.id} className="hover:bg-surface-container-high transition-colors text-xs">
+                  <tr 
+                    key={log.id} 
+                    className="hover:bg-surface-container-high transition-colors text-xs cursor-pointer"
+                    onClick={() => setSelectedLog(log)}
+                  >
                     <td className="px-4 py-2">
                       <div className="font-bold text-on-background">{log.tail_number}</div>
                       <div className="text-[10px] text-on-surface-variant">{log.jcn || `ID: #${log.id?.slice(0, 6)}`}</div>
@@ -1338,7 +1627,10 @@ const MaintenanceLogs: React.FC = () => {
                   </div>
                 </div>
                 
-                <button className="w-full bg-surface-container-high text-on-surface font-semibold py-2 rounded-lg text-xs hover:bg-surface-container-highest transition-all">
+                <button 
+                  onClick={() => setSelectedLog(log)}
+                  className="w-full bg-surface-container-high text-on-surface font-semibold py-2 rounded-lg text-xs hover:bg-surface-container-highest transition-all"
+                >
                   View Details
                 </button>
               </motion.div>
@@ -1346,6 +1638,89 @@ const MaintenanceLogs: React.FC = () => {
           </AnimatePresence>
         </div>
       )}
+
+      {/* Log Details Modal */}
+      <AnimatePresence>
+        {selectedLog && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-surface max-w-2xl w-full rounded-2xl shadow-2xl overflow-hidden border border-outline"
+            >
+              <div className="p-6 border-b border-outline flex justify-between items-center bg-surface-container-low">
+                <div>
+                  <h3 className="font-bold text-xl text-on-background tracking-tight">{selectedLog.tail_number}</h3>
+                  <p className="text-xs text-on-surface-variant uppercase tracking-widest mt-1">
+                    {selectedLog.jcn ? `JCN: ${selectedLog.jcn}` : `Log ID: #${selectedLog.id?.slice(0, 6)}`}
+                  </p>
+                </div>
+                <button onClick={() => setSelectedLog(null)} className="text-on-surface-variant hover:text-on-background p-2 hover:bg-surface-container-high rounded-full">
+                  <X />
+                </button>
+              </div>
+              
+              <div className="p-8 space-y-8 max-h-[70vh] overflow-y-auto">
+                <div className="grid grid-cols-2 gap-8">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Primary Technician</span>
+                    <p className="text-sm font-semibold text-on-background">{selectedLog.technician_name}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Date Logged</span>
+                    <p className="text-sm font-semibold text-on-background">
+                      {selectedLog.timestamp?.toDate ? format(selectedLog.timestamp.toDate(), 'MMMM dd, yyyy HH:mm') : 'Pending'}
+                    </p>
+                  </div>
+                </div>
+
+                {selectedLog.personnel && selectedLog.personnel.length > 0 && (
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Additional Personnel</span>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {selectedLog.personnel.map((p, i) => (
+                        <span key={i} className="px-2 py-1 bg-surface-container-high rounded text-xs text-on-surface">{p}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  <div className="p-4 bg-error/5 border border-error/10 rounded-xl">
+                    <span className="text-[10px] font-bold text-error uppercase tracking-widest flex items-center gap-2 mb-2">
+                      <ShieldAlert className="w-3 h-3" /> Discrepancy
+                    </span>
+                    <p className="text-sm text-on-surface italic leading-relaxed">{selectedLog.discrepancy}</p>
+                  </div>
+                  <div className="p-4 bg-primary/5 border border-primary/10 rounded-xl">
+                    <span className="text-[10px] font-bold text-primary uppercase tracking-widest flex items-center gap-2 mb-2">
+                      <Wrench className="w-3 h-3" /> Repair Action
+                    </span>
+                    <p className="text-sm text-on-surface leading-relaxed">{selectedLog.repair}</p>
+                  </div>
+                </div>
+
+                {selectedLog.doc_number && (
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Document Number</span>
+                    <p className="text-sm font-mono text-primary">{selectedLog.doc_number}</p>
+                  </div>
+                )}
+              </div>
+              
+              <div className="p-6 border-t border-outline bg-surface-container-low flex justify-end">
+                <button 
+                  onClick={() => setSelectedLog(null)}
+                  className="sleek-button px-8"
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Entry Modal */}
       <AnimatePresence>
@@ -1492,7 +1867,7 @@ const TrainingTracker: React.FC = () => {
     
     const unsubTraining = onSnapshot(qTraining, (snap) => {
       setTraining(snap.docs.map(d => ({ id: d.id, ...d.data() } as TrainingRecord)));
-    });
+    }, (error) => handleFirestoreError(error, OperationType.LIST, 'training'));
 
     let qPersonnel;
     if (isLeadership) {
@@ -1505,7 +1880,7 @@ const TrainingTracker: React.FC = () => {
     
     const unsubPersonnel = onSnapshot(qPersonnel, (snap) => {
       setPersonnel(snap.docs.map(d => d.data() as UserProfile));
-    });
+    }, (error) => handleFirestoreError(error, OperationType.LIST, 'users'));
 
     return () => {
       unsubTraining();
@@ -2059,7 +2434,7 @@ const TrainingTracker: React.FC = () => {
 };
 
 const Personnel: React.FC = () => {
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const [personnel, setPersonnel] = useState<UserProfile[]>([]);
   const [selectedPerson, setSelectedPerson] = useState<UserProfile | null>(null);
   const [personTraining, setPersonTraining] = useState<TrainingRecord[]>([]);
@@ -2079,7 +2454,7 @@ const Personnel: React.FC = () => {
     
     const unsub = onSnapshot(q, (snap) => {
       setPersonnel(snap.docs.map(d => d.data() as UserProfile));
-    });
+    }, (error) => handleFirestoreError(error, OperationType.LIST, 'users'));
     return unsub;
   }, [profile]);
 
@@ -2092,7 +2467,7 @@ const Personnel: React.FC = () => {
     );
     const unsubTraining = onSnapshot(qTraining, (snap) => {
       setPersonTraining(snap.docs.map(d => ({ id: d.id, ...d.data() } as TrainingRecord)));
-    });
+    }, (error) => handleFirestoreError(error, OperationType.LIST, 'training'));
 
     const qLogs = query(
       collection(db, 'logs'),
@@ -2100,7 +2475,7 @@ const Personnel: React.FC = () => {
     );
     const unsubLogs = onSnapshot(qLogs, (snap) => {
       setPersonLogs(snap.docs.map(d => ({ id: d.id, ...d.data() } as MaintenanceLog)));
-    });
+    }, (error) => handleFirestoreError(error, OperationType.LIST, 'logs'));
 
     return () => {
       unsubTraining();
@@ -2117,6 +2492,13 @@ const Personnel: React.FC = () => {
 
   const handleUpdatePerson = async () => {
     if (!selectedPerson) return;
+    
+    if (user?.uid === 'mock-user-123') {
+      alert('Demo users cannot modify the live database.');
+      setIsEditingPerson(false);
+      return;
+    }
+
     try {
       await updateDoc(doc(db, 'users', selectedPerson.uid), {
         ...editForm
@@ -2130,6 +2512,12 @@ const Personnel: React.FC = () => {
 
   const handleDeletePerson = async () => {
     if (!selectedPerson) return;
+    
+    if (user?.uid === 'mock-user-123') {
+      alert('Demo users cannot modify the live database.');
+      return;
+    }
+
     if (window.confirm(`Are you sure you want to remove ${selectedPerson.name}?`)) {
       try {
         await updateDoc(doc(db, 'users', selectedPerson.uid), {
@@ -2165,7 +2553,7 @@ const Personnel: React.FC = () => {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-surface-container-high text-[11px] font-bold text-on-surface-variant tracking-wider uppercase">
-                <th className="px-6 py-4">Name / Rank</th>
+                <th className="px-6 py-4">Rank / Name</th>
                 <th className="px-6 py-4">Man #</th>
                 {profile?.role === 'leadership' && <th className="px-6 py-4">Shop</th>}
                 <th className="px-6 py-4">Role</th>
@@ -2180,7 +2568,7 @@ const Personnel: React.FC = () => {
                   onClick={() => setSelectedPerson(p)}
                 >
                   <td className="px-6 py-4">
-                    <p className="font-semibold text-on-background">{p.name}</p>
+                    <p className="font-semibold text-on-background">{p.rank} {p.name}</p>
                     <p className="text-[11px] text-on-surface-variant">{p.email}</p>
                   </td>
                   <td className="px-6 py-4 text-sm text-on-surface-variant">{p.man_number}</td>
@@ -2429,6 +2817,126 @@ const Personnel: React.FC = () => {
   );
 };
 
+const Support: React.FC = () => {
+  const { profile } = useAuth();
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  const faqs = [
+    {
+      q: "How do I request access to a different shop?",
+      a: "Contact your NCOIC or a Leadership member. They can edit your profile from the Personnel tab and reassign your shop."
+    },
+    {
+      q: "My training records aren't showing up correctly.",
+      a: "Training records are updated via the 'Upload Training Report' feature in the Training Tracker. Ensure your NCOIC has uploaded the latest report from the training system."
+    },
+    {
+      q: "Can I edit a maintenance log after submitting it?",
+      a: "Currently, maintenance logs are permanent once submitted to ensure data integrity. If a mistake was made, please submit a new entry with the correct information and note the correction."
+    },
+    {
+      q: "How do I reset my guided walkthrough?",
+      a: "You can restart the tour by clicking the 'Restart Walkthrough' button at the top of this page. This will guide you through the features relevant to your current access level."
+    }
+  ];
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-12 py-8">
+      <div className="text-center space-y-4">
+        <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mx-auto text-primary">
+          <HelpCircle className="w-12 h-12" />
+        </div>
+        <h1 className="text-4xl font-bold text-on-background tracking-tight">Support & FAQ</h1>
+        <p className="text-on-surface-variant font-medium max-w-lg mx-auto">
+          Everything you need to know about the 92nd AMXS Training & Maintenance system.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="sleek-card bg-primary/5 border-primary/20">
+          <h3 className="text-lg font-bold text-on-background mb-4 flex items-center gap-2">
+            <Users className="w-5 h-5 text-primary" /> Developer Contact
+          </h3>
+          <div className="space-y-4">
+            <div>
+              <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Lead Developer</p>
+              <p className="text-lg font-bold text-on-background">TSgt Steven Koehl</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Email Address</p>
+              <a href="mailto:Steven.Koehl.1@us.af.mil" className="text-primary font-medium hover:underline">Steven.Koehl.1@us.af.mil</a>
+            </div>
+            <div className="pt-4">
+              <button 
+                onClick={() => {
+                  if (profile) {
+                    updateDoc(doc(db, 'users', profile.uid), { hasSeenTour: false });
+                    window.location.reload();
+                  }
+                }}
+                className="sleek-button w-full bg-primary text-white flex items-center justify-center gap-2"
+              >
+                <Clock className="w-4 h-4" /> Restart Guided Walkthrough
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="sleek-card">
+          <h3 className="text-lg font-bold text-on-background mb-4 flex items-center gap-2">
+            <Info className="w-5 h-5 text-primary" /> System Status
+          </h3>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-3 bg-surface-container-high rounded-xl">
+              <span className="text-sm font-medium">Database Connection</span>
+              <span className="badge badge-success">Operational</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-surface-container-high rounded-xl">
+              <span className="text-sm font-medium">Authentication Service</span>
+              <span className="badge badge-success">Operational</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-surface-container-high rounded-xl">
+              <span className="text-sm font-medium">SMS Gateway</span>
+              <span className="badge badge-success">Operational</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="text-2xl font-bold text-on-background px-2">Frequently Asked Questions</h3>
+        <div className="space-y-3">
+          {faqs.map((faq, i) => (
+            <div key={i} className="sleek-card !p-0 overflow-hidden border border-outline">
+              <button 
+                onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                className="w-full p-6 flex items-center justify-between text-left hover:bg-surface-container-low transition-colors"
+              >
+                <span className="font-bold text-on-background">{faq.q}</span>
+                <ChevronDown className={cn("w-5 h-5 text-on-surface-variant transition-transform", openFaq === i && "rotate-180")} />
+              </button>
+              <AnimatePresence>
+                {openFaq === i && (
+                  <motion.div 
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="p-6 pt-0 text-on-surface-variant text-sm leading-relaxed border-t border-outline/50">
+                      {faq.a}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // --- Main App ---
 
 const AppContent: React.FC = () => {
@@ -2456,6 +2964,7 @@ const AppContent: React.FC = () => {
         <Route path="/maintenance" element={<MaintenanceLogs />} />
         <Route path="/training" element={<TrainingTracker />} />
         <Route path="/personnel" element={<Personnel />} />
+        <Route path="/support" element={<Support />} />
         {(profile?.role === 'ncoic' || profile?.role === 'leadership') && <Route path="/onboarding" element={<Onboarding />} />}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
@@ -2465,10 +2974,12 @@ const AppContent: React.FC = () => {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <Router basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-        <AppContent />
-      </Router>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <Router basename={(import.meta as any).env?.BASE_URL?.replace(/\/$/, '') || ''}>
+          <AppContent />
+        </Router>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

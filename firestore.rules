@@ -111,8 +111,10 @@ service cloud.firestore {
 
     match /users/{uid} {
       allow read: if isAuthenticated() && (request.auth.uid == uid || isSameShop(resource.data.shopId) || isNCOIC() || isLeadership() || isAdmin());
-      allow create: if isAuthenticated() && isValidUser(request.resource.data) && request.auth.uid == uid && 
-                    request.resource.data.role == 'pending' && request.resource.data.status == 'pending';
+      allow create: if isAuthenticated() && (
+        isAdmin() || 
+        (isValidUser(request.resource.data) && request.auth.uid == uid && request.resource.data.role == 'pending' && request.resource.data.status == 'pending')
+      );
       allow update: if isAuthenticated() && (
         (request.auth.uid == uid && isValidUser(request.resource.data) && request.resource.data.role == resource.data.role && request.resource.data.status == resource.data.status) ||
         (isNCOIC() && isValidUser(request.resource.data)) ||
@@ -123,14 +125,14 @@ service cloud.firestore {
 
     match /logs/{logId} {
       allow read: if isAuthenticated() && (isSameShop(resource.data.shopId) || isLeadership() || isAdmin());
-      allow create: if isAuthenticated() && isValidLog(request.resource.data) && isSameShop(request.resource.data.shopId);
+      allow create: if isAuthenticated() && isValidLog(request.resource.data) && (isAdmin() || isSameShop(request.resource.data.shopId));
       allow update: if isAuthenticated() && isValidLog(request.resource.data) && (isSameShop(resource.data.shopId) && isNCOIC() || isLeadership() || isAdmin());
       allow delete: if isAuthenticated() && (isSameShop(resource.data.shopId) && isNCOIC() || isLeadership() || isAdmin());
     }
 
     match /training/{trainingId} {
       allow read: if isAuthenticated() && (isSameShop(resource.data.shopId) || isLeadership() || isAdmin());
-      allow write: if isAuthenticated() && (isNCOIC() && isSameShop(request.resource.data.shopId) || isLeadership() || isAdmin()) && isValidTraining(request.resource.data);
+      allow write: if isAuthenticated() && (isAdmin() || isLeadership() || (isNCOIC() && isSameShop(request.resource.data.shopId))) && isValidTraining(request.resource.data);
     }
   }
 }

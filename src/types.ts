@@ -3,6 +3,7 @@ export type UserRole = 'leadership' | 'ncoic' | 'technician' | 'pending';
 export interface UserProfile {
   uid: string;
   name: string;
+  rank: string;
   man_number: string;
   shopId: string;
   role: UserRole;
@@ -11,6 +12,7 @@ export interface UserProfile {
   carrier?: 'verizon' | 'tmobile' | 'att' | 'sprint' | 'googlefi' | '';
   status: 'active' | 'pending' | 'rejected';
   createdAt?: any;
+  hasSeenTour?: boolean;
 }
 
 export interface MaintenanceLog {
