@@ -148,7 +148,7 @@ import {
   exportTrainingToCSV, 
   exportTrainingToPDF 
 } from './lib/exportUtils';
-import { SHOPS, ShopType, AMUS, MOCK_LOGS, MOCK_PERSONNEL, MOCK_TRAINING } from './mockData';
+import { SHOPS, ShopType, AMUS, SHIFT_TIMES, MOCK_LOGS, MOCK_PERSONNEL, MOCK_TRAINING } from './mockData';
 
 // --- Contexts ---
 
@@ -1885,7 +1885,7 @@ const MaintenanceLogs: React.FC = () => {
                       <span className="tech-label !text-[9px]">Timestamp</span>
                       <span className="data-mono text-[10px]">
                         {log.timestamp?.toDate ? format(log.timestamp.toDate(), 'yyyy.MM.dd') : 'Pending'}
-                        {log.shift && <span className="ml-2 opacity-60">[{log.shift}]</span>}
+                        {log.shift && <span className="ml-2 opacity-60">[{log.shift} {SHIFT_TIMES[log.shift]}]</span>}
                       </span>
                     </div>
                     <div className="flex flex-col gap-2">
@@ -1936,7 +1936,7 @@ const MaintenanceLogs: React.FC = () => {
                     <span className="tech-label">Date Logged</span>
                     <p className="data-mono text-sm">
                       {selectedLog.timestamp?.toDate ? format(selectedLog.timestamp.toDate(), 'MMMM dd, yyyy HH:mm') : 'Pending'}
-                      {selectedLog.shift && <span className="ml-3 tech-label !text-[8px] bg-putty px-2 py-1">{selectedLog.shift}</span>}
+                      {selectedLog.shift && <span className="ml-3 tech-label !text-[8px] bg-putty px-2 py-1">{selectedLog.shift} ({SHIFT_TIMES[selectedLog.shift]})</span>}
                     </p>
                   </div>
                 </div>
@@ -2072,10 +2072,11 @@ const MaintenanceLogs: React.FC = () => {
                       value={formData.shift}
                       onChange={e => setFormData({...formData, shift: e.target.value as ShiftType})}
                     >
-                      <option value="Days">Days</option>
-                      <option value="Swings">Swings</option>
-                      <option value="Nights">Nights</option>
-                      <option value="Weekend Duty">Weekend Duty</option>
+                      {Object.entries(SHIFT_TIMES).map(([shift, time]) => (
+                        <option key={shift} value={shift}>
+                          {shift} ({time})
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -2518,6 +2519,7 @@ const TrainingTracker: React.FC = () => {
     const personName = getPersonName(record.man_number);
     const matchesSearch = 
       record.course_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (record.course_code && record.course_code.toLowerCase().includes(searchQuery.toLowerCase())) ||
       record.man_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
       personName.toLowerCase().includes(searchQuery.toLowerCase());
       
@@ -2709,6 +2711,7 @@ const TrainingTracker: React.FC = () => {
                       >
                         <td className="px-8 py-5">
                           <p className="font-black text-sm tracking-tight uppercase text-slate-900">{record.course_name}</p>
+                          {record.course_code && <p className="tech-label text-[10px] mt-1 text-slate-500">CODE: {record.course_code}</p>}
                         </td>
                         <td className="px-8 py-5">
                           <p className="font-black text-[12px] uppercase tracking-tight text-slate-900">{getPersonName(record.man_number)}</p>
@@ -2752,7 +2755,10 @@ const TrainingTracker: React.FC = () => {
                   >
                     <div>
                       <div className="flex justify-between items-start mb-6">
-                        <h3 className="text-xl font-black tracking-tighter uppercase group-hover:text-primary transition-colors leading-tight">{record.course_name}</h3>
+                        <div>
+                          <h3 className="text-xl font-black tracking-tighter uppercase group-hover:text-primary transition-colors leading-tight">{record.course_name}</h3>
+                          {record.course_code && <p className="tech-label text-[10px] mt-1 text-slate-500 uppercase">{record.course_code}</p>}
+                        </div>
                         <span className={cn(
                           "badge",
                           record.status === 'current' ? "badge-success" : 
@@ -2808,6 +2814,9 @@ const TrainingTracker: React.FC = () => {
                   <h3 className="text-3xl font-black tracking-tighter uppercase leading-tight">
                     {selectedRecord.course_name}
                   </h3>
+                  {selectedRecord.course_code && (
+                    <p className="tech-label text-slate-500 font-black tracking-widest">{selectedRecord.course_code}</p>
+                  )}
                 </div>
                 <button 
                   onClick={() => setSelectedRecord(null)}

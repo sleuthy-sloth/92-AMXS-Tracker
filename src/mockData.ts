@@ -9,12 +9,26 @@ const FIRST_NAMES = ['JAMES', 'JOHN', 'ROBERT', 'MICHAEL', 'WILLIAM', 'DAVID', '
 const LAST_NAMES = ['SMITH', 'JOHNSON', 'WILLIAMS', 'BROWN', 'JONES', 'GARCIA', 'MILLER', 'DAVIS', 'RODRIGUEZ', 'MARTINEZ', 'HERNANDEZ', 'LOPEZ', 'GONZALEZ', 'WILSON', 'ANDERSON', 'THOMAS', 'TAYLOR', 'MOORE', 'JACKSON', 'MARTIN'];
 const RANKS = ['A1C', 'SrA', 'SSgt', 'TSgt', 'MSgt'];
 const SHIFTS: ShiftType[] = ['Days', 'Swings', 'Nights', 'Weekend Duty'];
+export const SHIFT_TIMES: Record<ShiftType, string> = {
+  'Nights': '2300-0700',
+  'Days': '0700-1500',
+  'Swings': '1500-2300',
+  'Weekend Duty': 'Varies'
+};
 
 const COURSES = [
-  'Advanced Avionics Systems', 'Flight Safety Refresher', 'Classified Comms Handling',
-  'Tire & Wheel Maintenance', 'F108 Engine Overhaul', 'Electrical Systems Safety',
-  'Battery Maintenance', 'Hydraulics Troubleshooting', 'Egress Systems Familiarization',
-  'Cyber Awareness Challenge', 'Force Protection', 'LOAC'
+  { name: 'Advanced Avionics Systems', code: 'AV-ADV' },
+  { name: 'Flight Safety Refresher', code: 'SAFE-01' },
+  { name: 'Classified Comms Handling', code: 'COMM-SEC' },
+  { name: 'Tire & Wheel Maintenance', code: 'MAINT-TW' },
+  { name: 'F108 Engine Overhaul', code: 'ENG-F108' },
+  { name: 'Electrical Systems Safety', code: 'ELEC-SAF' },
+  { name: 'Battery Maintenance', code: 'BATT-M' },
+  { name: 'Hydraulics Troubleshooting', code: 'HYD-01' },
+  { name: 'Egress Systems Familiarization', code: 'EGR-FAM' },
+  { name: 'Cyber Awareness Challenge', code: 'CYBER-24' },
+  { name: 'Force Protection', code: 'FP-02' },
+  { name: 'LOAC', code: 'LAW-101' }
 ];
 
 const DISCREPANCIES = [
@@ -112,7 +126,8 @@ AMUS.forEach(amu => {
         MOCK_TRAINING.push({
           id: `t${trainingCounter++}`,
           man_number: manNumber,
-          course_name: course,
+          course_code: course.code,
+          course_name: course.name,
           due_date: format(dueDate, 'yyyy-MM-dd'),
           shopId: shop,
           amuId: amu,
