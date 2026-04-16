@@ -69,7 +69,7 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isAuthenticated() && request.auth.token.email == "spkoehl@gmail.com";
+      return isAuthenticated() && (request.auth.token.email == "spkoehl@gmail.com" || request.auth.token.email == "admin@us.af.mil");
     }
 
     function isSameShop(amuId, shopId) {
