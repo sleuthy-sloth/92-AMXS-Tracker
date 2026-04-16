@@ -2097,55 +2097,184 @@ const DIFMLogs: React.FC = () => {
     }
   };
 
+  const handleStatusUpdate = async (id: string, newStatus: string) => {
+    try {
+      const docRef = doc(db, 'difm', id);
+      await updateDoc(docRef, { status: newStatus });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `difm/${id}`);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Confirm removal of this DIFM track?')) return;
+    try {
+      await deleteDoc(doc(db, 'difm', id));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `difm/${id}`);
+    }
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-black uppercase tracking-tight">DIFM Log</h2>
-        <button onClick={() => setIsModalOpen(true)} className="sleek-button px-4 py-2 flex items-center gap-2">
-          <Plus className="w-4 h-4" /> Add Item
+    <div className="space-y-10">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+        <div>
+          <h2 className="text-4xl font-black tracking-tighter uppercase text-slate-900">DIFM Oversight</h2>
+          <p className="serif-header text-lg mt-1 text-slate-600">Due-In From Maintenance status and discrepancy tracking</p>
+        </div>
+        <button 
+          onClick={() => setIsModalOpen(true)} 
+          className="sleek-button flex items-center gap-2"
+        >
+          <Plus className="w-5 h-5" /> New Track
         </button>
       </div>
-      <div className="sleek-card overflow-hidden">
-        <table className="w-full text-left text-xs">
-          <thead className="bg-surface-variant/50 uppercase tracking-wider font-bold">
-            <tr>
-              <th className="p-4">Tail</th>
-              <th className="p-4">Discrepancy</th>
-              <th className="p-4">Status</th>
-              <th className="p-4">Technician</th>
-            </tr>
-          </thead>
-          <tbody>
-            {logs.map(log => (
-              <tr key={log.id} className="border-t border-outline">
-                <td className="p-4 font-bold">{log.tail_number}</td>
-                <td className="p-4">{log.discrepancy}</td>
-                <td className="p-4 capitalize">{log.status.replace('-', ' ')}</td>
-                <td className="p-4">{log.technician_name}</td>
+
+      <div className="visible-grid bg-surface overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50 text-[10px] font-black text-on-surface-variant tracking-[0.2em] uppercase font-mono">
+                <th className="px-8 py-5">Tail Number</th>
+                <th className="px-8 py-5">Discrepancy</th>
+                <th className="px-8 py-5">Status</th>
+                <th className="px-8 py-5 text-right">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <form onSubmit={handleSubmit} className="bg-surface p-8 rounded-xl w-full max-w-md space-y-4">
-            <h3 className="text-lg font-bold">Add DIFM Item</h3>
-            <input type="text" placeholder="Tail Number" value={formData.tail_number} onChange={e => setFormData({...formData, tail_number: e.target.value})} className="sleek-input w-full" required />
-            <input type="text" placeholder="Discrepancy" value={formData.discrepancy} onChange={e => setFormData({...formData, discrepancy: e.target.value})} className="sleek-input w-full" required />
-            <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as any})} className="sleek-input w-full">
-              <option value="due-in">Due-In</option>
-              <option value="awaiting-parts">Awaiting Parts</option>
-              <option value="in-repair">In Repair</option>
-              <option value="complete">Complete</option>
-            </select>
-            <div className="flex gap-2">
-              <button type="button" onClick={() => setIsModalOpen(false)} className="sleek-button bg-slate-200 text-slate-900 w-full">Cancel</button>
-              <button type="submit" className="sleek-button w-full" disabled={loading}>{loading ? 'Saving...' : 'Save'}</button>
-            </div>
-          </form>
+            </thead>
+            <tbody className="divide-y divide-outline">
+              {logs.map((log, idx) => (
+                <motion.tr 
+                  key={log.id} 
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: idx * 0.02 }}
+                  className="hover:bg-slate-50/50"
+                >
+                  <td className="px-8 py-5">
+                    <p className="font-black text-sm tracking-tight uppercase text-slate-900">{log.tail_number}</p>
+                    <p className="tech-label text-[10px] mt-1 text-slate-500 font-bold">{log.technician_name}</p>
+                  </td>
+                  <td className="px-8 py-5">
+                    <p className="serif-header text-xs text-slate-600 max-w-md line-clamp-2">{log.discrepancy}</p>
+                  </td>
+                  <td className="px-8 py-5">
+                    <select 
+                      value={log.status}
+                      onChange={(e) => handleStatusUpdate(log.id!, e.target.value)}
+                      className={cn(
+                        "badge cursor-pointer appearance-none text-center min-w-[120px]",
+                        log.status === 'complete' ? "badge-success" : 
+                        log.status === 'awaiting-parts' ? "badge-danger" : 
+                        log.status === 'in-repair' ? "badge-warning" : "bg-slate-100 text-slate-500"
+                      )}
+                    >
+                      <option value="due-in">DUE-IN</option>
+                      <option value="awaiting-parts">AWAITING PARTS</option>
+                      <option value="in-repair">IN REPAIR</option>
+                      <option value="complete">COMPLETE</option>
+                    </select>
+                  </td>
+                  <td className="px-8 py-5 text-right">
+                    <button 
+                      onClick={() => handleDelete(log.id!)}
+                      className="p-2 text-slate-300 hover:text-safety-orange transition-colors"
+                      title="Remove Track"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </td>
+                </motion.tr>
+              ))}
+              {logs.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-8 py-20 text-center">
+                    <p className="tech-label text-slate-400">No active DIFM tracks found for your shop.</p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
-      )}
+      </div>
+
+      <AnimatePresence>
+        {isModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-stealth/80 backdrop-blur-md">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white max-w-md w-full rounded-none shadow-2xl overflow-hidden border border-outline"
+            >
+              <div className="p-8 border-b border-outline bg-putty/30 flex justify-between items-center">
+                <h3 className="font-black text-2xl tracking-tighter uppercase">Initiate DIFM Track</h3>
+                <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-100 transition-colors text-slate-900">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              
+              <form onSubmit={handleSubmit} className="p-10 space-y-8">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="tech-label">Tail Number</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={formData.tail_number}
+                      onChange={(e) => setFormData({...formData, tail_number: e.target.value.toUpperCase()})}
+                      className="sleek-input w-full uppercase" 
+                      placeholder="e.g. 58-0092"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="tech-label">Maintenance Discrepancy</label>
+                    <textarea 
+                      required
+                      rows={4}
+                      value={formData.discrepancy}
+                      onChange={(e) => setFormData({...formData, discrepancy: e.target.value})}
+                      className="sleek-input w-full resize-none" 
+                      placeholder="Detailed description of the required repair..."
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="tech-label">Initial Track Status</label>
+                    <select 
+                      value={formData.status}
+                      onChange={(e) => setFormData({...formData, status: e.target.value as any})}
+                      className="sleek-input w-full"
+                    >
+                      <option value="due-in">Due-In</option>
+                      <option value="awaiting-parts">Awaiting Parts</option>
+                      <option value="in-repair">In Repair</option>
+                      <option value="complete">Complete</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 pt-4">
+                  <button 
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="flex-1 py-4 border-2 border-slate-200 font-black text-[10px] uppercase tracking-[0.2em] hover:bg-slate-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit"
+                    disabled={loading}
+                    className="flex-1 py-4 bg-primary text-white font-black text-[10px] uppercase tracking-[0.2em] hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
+                  >
+                    {loading ? 'Initializing...' : 'Commit Track'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
