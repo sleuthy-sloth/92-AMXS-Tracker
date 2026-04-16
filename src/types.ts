@@ -40,6 +40,7 @@ export interface MaintenanceLog {
 export interface TrainingRecord {
   id?: string;
   man_number: string;
+  course_code?: string;
   course_name: string;
   due_date: string; // ISO 8601
   shopId: string;

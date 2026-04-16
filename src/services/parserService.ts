@@ -22,7 +22,7 @@ export async function parseTrainingReport(base64Data: string, mimeType: string) 
       : mimeType;
 
     const response = await aiClient.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3-flash-preview",
       contents: [
         {
           parts: [
@@ -32,6 +32,7 @@ export async function parseTrainingReport(base64Data: string, mimeType: string) 
               - Name (Surname, Initial)
               - Man #
               - Due Date (YYYY-MM-DD)
+              - Course Code (The alphanumeric ID for the course, e.g. G081, ADLS)
               - Course Name
               
               Return the data as a JSON array of objects.`
@@ -55,9 +56,10 @@ export async function parseTrainingReport(base64Data: string, mimeType: string) 
               name: { type: Type.STRING },
               man_number: { type: Type.STRING },
               due_date: { type: Type.STRING },
+              course_code: { type: Type.STRING },
               course_name: { type: Type.STRING }
             },
-            required: ["name", "man_number", "due_date", "course_name"]
+            required: ["name", "man_number", "due_date", "course_code", "course_name"]
           }
         }
       }
