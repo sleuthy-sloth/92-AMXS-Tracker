@@ -153,7 +153,7 @@ import {
   exportTrainingToCSV, 
   exportTrainingToPDF 
 } from './lib/exportUtils';
-import { SHOPS, ShopType, AMUS, SHIFT_TIMES, MOCK_LOGS, MOCK_PERSONNEL, MOCK_TRAINING } from './mockData';
+import { SHOPS, ShopType, AMUS, SHIFT_TIMES, MOCK_LOGS, MOCK_PERSONNEL, MOCK_TRAINING, MOCK_DIFM } from './mockData';
 
 // --- Contexts ---
 
@@ -616,21 +616,6 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             </button>
           </div>
 
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-white/10 rounded-none flex items-center justify-center border border-white/10">
-              <Users className="text-white w-5 h-5" />
-            </div>
-            <div className="overflow-hidden">
-              <p className="font-bold text-white truncate">{profile?.name}</p>
-              <p className="text-[10px] uppercase tracking-wider text-white/60 font-bold">AMU: {profile?.amuId} • {profile?.shopId}</p>
-            </div>
-          </div>
-          <button 
-            onClick={logout}
-            className="flex items-center gap-2 hover:text-safety-orange transition-colors text-white/60 font-bold text-xs uppercase tracking-widest"
-          >
-            <LogOut className="w-4 h-4" /> Sign Out
-          </button>
         </div>
       </aside>
 
@@ -645,7 +630,13 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           </div>
           <div className="text-right hidden sm:block">
             <div className="font-semibold text-slate-900">{profile?.rank} {profile?.name}</div>
-            <div className="text-xs text-slate-600 uppercase tracking-wider">{profile?.role} • {profile?.amuId} • {profile?.shopId}</div>
+            <div className="text-xs text-slate-600 uppercase tracking-wider mb-2">{profile?.role} • {profile?.amuId} • {profile?.shopId}</div>
+            <button 
+              onClick={logout}
+              className="ml-auto flex items-center gap-2 hover:text-safety-orange transition-colors text-slate-400 font-bold text-[10px] uppercase tracking-widest"
+            >
+              <LogOut className="w-3.5 h-3.5" /> Sign Out
+            </button>
           </div>
         </header>
 
@@ -1271,20 +1262,23 @@ const Dashboard: React.FC = () => {
     
     if (isDemoMode) {
       const filteredMockLogs = MOCK_LOGS.filter(l => {
-        if (isGlobal || profile.role === 'leadership') return true;
-        return l.amuId === profile.amuId && l.shopId === profile.shopId;
+        if (profile.amuId !== 'ALL' && l.amuId !== profile.amuId) return false;
+        if (profile.shopId !== 'ALL' && l.shopId !== profile.shopId) return false;
+        return true;
       }).sort((a, b) => b.timestamp.toDate().getTime() - a.timestamp.toDate().getTime());
       setLogs(filteredMockLogs);
 
       const filteredMockPersonnel = MOCK_PERSONNEL.filter(p => {
-        if (isGlobal || profile.role === 'leadership') return true;
-        return p.amuId === profile.amuId && p.shopId === profile.shopId;
+        if (profile.amuId !== 'ALL' && p.amuId !== profile.amuId) return false;
+        if (profile.shopId !== 'ALL' && p.shopId !== profile.shopId) return false;
+        return true;
       });
       setPersonnel(filteredMockPersonnel);
 
       const filteredMockTraining = MOCK_TRAINING.filter(t => {
-        if (isGlobal || profile.role === 'leadership') return true;
-        return t.amuId === profile.amuId && t.shopId === profile.shopId;
+        if (profile.amuId !== 'ALL' && t.amuId !== profile.amuId) return false;
+        if (profile.shopId !== 'ALL' && t.shopId !== profile.shopId) return false;
+        return true;
       });
       setTraining(filteredMockTraining);
       return;
@@ -2165,7 +2159,7 @@ const MaintenanceLogs: React.FC = () => {
 };
 
 const DIFMLogs: React.FC = () => {
-  const { profile } = useAuth();
+  const { profile, isDemoMode } = useAuth();
   const [logs, setLogs] = useState<DIFMLog[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -2178,6 +2172,18 @@ const DIFMLogs: React.FC = () => {
   useEffect(() => {
     if (!profile) return;
     
+    if (isDemoMode) {
+      const isLeadership = profile.role === 'leadership';
+      const filteredMockDifm = MOCK_DIFM.filter(log => {
+        if (isLeadership && profile.amuId === 'ALL' && profile.shopId === 'ALL') return true;
+        if (profile.amuId !== 'ALL' && log.amuId !== profile.amuId) return false;
+        if (profile.shopId !== 'ALL' && log.shopId !== profile.shopId) return false;
+        return true;
+      });
+      setLogs(filteredMockDifm);
+      return;
+    }
+
     let q;
     if (profile.amuId === 'ALL' || profile.shopId === 'ALL' || profile.role === 'leadership') {
       let queryRef = collection(db, 'difm');
@@ -2434,11 +2440,9 @@ const TrainingTracker: React.FC = () => {
     if (!profile) return;
 
     if (isDemoMode) {
-      const isLeadership = profile.role === 'leadership';
       const isTechnician = profile.role === 'technician';
       
       const filteredMockTraining = MOCK_TRAINING.filter(t => {
-        if (isLeadership && profile.amuId === 'ALL') return true;
         if (isTechnician) return t.man_number === profile.man_number;
         if (profile.amuId !== 'ALL' && t.amuId !== profile.amuId) return false;
         if (profile.shopId !== 'ALL' && t.shopId !== profile.shopId) return false;
@@ -2447,7 +2451,6 @@ const TrainingTracker: React.FC = () => {
       setTraining(filteredMockTraining);
 
       const filteredMockPersonnel = MOCK_PERSONNEL.filter(p => {
-        if (isLeadership && profile.amuId === 'ALL') return true;
         if (isTechnician) return p.man_number === profile.man_number;
         if (profile.amuId !== 'ALL' && p.amuId !== profile.amuId) return false;
         if (profile.shopId !== 'ALL' && p.shopId !== profile.shopId) return false;
@@ -3074,9 +3077,7 @@ const Personnel: React.FC = () => {
     if (!profile) return;
 
     if (isDemoMode) {
-      const isLeadership = profile.role === 'leadership';
       const filteredMockPersonnel = MOCK_PERSONNEL.filter(p => {
-        if (isLeadership && profile.amuId === 'ALL') return true;
         if (profile.amuId !== 'ALL' && p.amuId !== profile.amuId) return false;
         if (profile.shopId !== 'ALL' && p.shopId !== profile.shopId) return false;
         return true;
@@ -3683,18 +3684,21 @@ const MaintenanceAssistant: React.FC = () => {
     const fetchSnapshot = async () => {
       try {
         if (isDemoMode) {
-          const isLeadership = profile.role === 'leadership';
           const filteredLogs = MOCK_LOGS.filter(l => {
-            if (isLeadership && profile.amuId === 'ALL') return true;
             if (profile.amuId !== 'ALL' && l.amuId !== profile.amuId) return false;
             if (profile.shopId !== 'ALL' && l.shopId !== profile.shopId) return false;
             return true;
           }).slice(0, 50);
           
           const filteredTraining = MOCK_TRAINING.filter(t => {
-            if (isLeadership && profile.amuId === 'ALL') return true;
             if (profile.amuId !== 'ALL' && t.amuId !== profile.amuId) return false;
             if (profile.shopId !== 'ALL' && t.shopId !== profile.shopId) return false;
+            return true;
+          }).slice(0, 50);
+
+          const filteredDifm = MOCK_DIFM.filter(d => {
+            if (profile.amuId !== 'ALL' && d.amuId !== profile.amuId) return false;
+            if (profile.shopId !== 'ALL' && d.shopId !== profile.shopId) return false;
             return true;
           }).slice(0, 50);
 
@@ -3710,6 +3714,11 @@ const MaintenanceAssistant: React.FC = () => {
               code: data.course_code,
               status: data.status,
               due: data.due_date
+            })),
+            difm: filteredDifm.map(data => ({
+              tail: data.tail_number,
+              disc: data.discrepancy,
+              status: data.status
             })),
             stats: {
               shop: profile.shopId,
