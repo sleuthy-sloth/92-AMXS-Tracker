@@ -14,7 +14,9 @@ import {
   onAuthStateChanged,
   User,
   createUserWithEmailAndPassword,
-  signInWithEmailAndPassword
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
+  updatePassword
 } from 'firebase/auth';
 import { 
   doc, 
@@ -157,6 +159,8 @@ interface AuthContextType {
   signIn: () => Promise<void>;
   signInEmail: (email: string, pass: string) => Promise<void>;
   signUpEmail: (email: string, pass: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  updateUserPassword: (newPass: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   bypassLogin: (role?: UserRole) => void;
@@ -276,6 +280,26 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     }
   };
 
+  const resetPassword = async (email: string) => {
+    try {
+      const resetEmail = email === 'admin' ? 'admin@us.af.mil' : email;
+      await sendPasswordResetEmail(auth, resetEmail);
+    } catch (error) {
+      console.error('Password reset error:', error);
+      throw error;
+    }
+  };
+
+  const updateUserPassword = async (newPass: string) => {
+    if (!auth.currentUser) throw new Error('No authenticated user');
+    try {
+      await updatePassword(auth.currentUser, newPass);
+    } catch (error) {
+      console.error('Password update error:', error);
+      throw error;
+    }
+  };
+
   const logout = async () => {
     try {
       await signOut(auth);
@@ -367,6 +391,8 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       signIn, 
       signInEmail,
       signUpEmail,
+      resetPassword,
+      updateUserPassword,
       logout, 
       refreshProfile, 
       bypassLogin, 
@@ -637,18 +663,25 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 // --- Pages ---
 
 const Login: React.FC = () => {
-  const { signIn, signInEmail, signUpEmail, bypassLogin } = useAuth();
+  const { signIn, signInEmail, signUpEmail, resetPassword, bypassLogin } = useAuth();
   const [isEmailMode, setIsEmailMode] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isResetMode, setIsResetMode] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setMessage('');
     try {
-      if (isSignUp) {
+      if (isResetMode) {
+        await resetPassword(email);
+        setMessage('Password reset email sent. Please check your inbox.');
+        setIsResetMode(false);
+      } else if (isSignUp) {
         await signUpEmail(email, password);
       } else {
         await signInEmail(email, password);
@@ -657,6 +690,7 @@ const Login: React.FC = () => {
       let msg = err.message || 'Authentication failed';
       if (err.code === 'auth/invalid-credential') msg = 'Invalid credentials provided.';
       if (err.code === 'auth/user-not-found') msg = 'User account not found.';
+// ...
       if (err.code === 'auth/wrong-password') msg = 'Incorrect password.';
       if (err.code === 'auth/email-already-in-use') msg = 'This email is already registered.';
       setError(msg);
@@ -718,10 +752,15 @@ const Login: React.FC = () => {
           ) : (
             <form onSubmit={handleEmailAuth} className="space-y-6 text-left">
               <div className="flex justify-between items-center mb-2">
-                <h3 className="tech-label text-primary">{isSignUp ? 'New Account Registration' : 'System Credential Login'}</h3>
+                <h3 className="tech-label text-primary">
+                  {isResetMode ? 'Password Recovery' : isSignUp ? 'New Account Registration' : 'System Credential Login'}
+                </h3>
                 <button 
                   type="button"
-                  onClick={() => setIsEmailMode(false)}
+                  onClick={() => {
+                    setIsEmailMode(false);
+                    setIsResetMode(false);
+                  }}
                   className="text-[10px] uppercase font-bold tracking-widest text-slate-400 hover:text-slate-600 flex items-center gap-1"
                 >
                   <ChevronLeft className="w-3 h-3" /> Back
@@ -737,24 +776,27 @@ const Login: React.FC = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="sleek-input pl-12 w-full" 
-                    placeholder="admin or name@us.af.mil" 
+                    placeholder="admin or user@email.com" 
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <label className="tech-label">Access Password</label>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
-                  <input 
-                    type="password" 
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="sleek-input pl-12 w-full" 
-                    placeholder="••••••••" 
-                  />
+
+              {!isResetMode && (
+                <div className="space-y-2">
+                  <label className="tech-label">Access Password</label>
+                  <div className="relative">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
+                    <input 
+                      type="password" 
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="sleek-input pl-12 w-full" 
+                      placeholder="••••••••" 
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               {error && (
                 <div className="p-4 bg-safety-orange/10 border border-safety-orange/20 flex items-center gap-3 text-safety-orange text-[10px] font-black uppercase tracking-tight">
@@ -763,17 +805,33 @@ const Login: React.FC = () => {
                 </div>
               )}
 
+              {message && (
+                <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-3 text-emerald-600 text-[10px] font-black uppercase tracking-tight">
+                  <Info className="w-4 h-4 flex-shrink-0" />
+                  {message}
+                </div>
+              )}
+
               <button type="submit" className="sleek-button w-full py-4 text-xs font-black">
-                {isSignUp ? 'Initialize Access' : 'Authenticate Credentials'}
+                {isResetMode ? 'Send Recovery Email' : isSignUp ? 'Initialize Access' : 'Authenticate Credentials'}
               </button>
 
               <div className="pt-4 border-t border-outline flex flex-col gap-4">
+                {!isResetMode && (
+                  <button 
+                    type="button"
+                    onClick={() => setIsSignUp(!isSignUp)}
+                    className="text-[11px] font-black uppercase tracking-widest text-primary hover:underline"
+                  >
+                    {isSignUp ? 'Already have an account? Sign In' : 'New Personnel? Register for Access'}
+                  </button>
+                )}
                 <button 
                   type="button"
-                  onClick={() => setIsSignUp(!isSignUp)}
-                  className="text-[11px] font-black uppercase tracking-widest text-primary hover:underline"
+                  onClick={() => setIsResetMode(!isResetMode)}
+                  className="text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600"
                 >
-                  {isSignUp ? 'Already have an account? Sign In' : 'New Personnel? Register for Access'}
+                  {isResetMode ? 'Back to Sign In' : 'Forgot Access Password?'}
                 </button>
               </div>
             </form>
@@ -3335,8 +3393,30 @@ const Personnel: React.FC = () => {
 };
 
 const Support: React.FC = () => {
-  const { profile } = useAuth();
+  const { profile, updateUserPassword } = useAuth();
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [passData, setPassData] = useState({ new: '', confirm: '' });
+  const [passStatus, setPassStatus] = useState<{ type: 'success' | 'error', msg: string } | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const handlePasswordUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passData.new !== passData.confirm) {
+      setPassStatus({ type: 'error', msg: 'Passwords do not match' });
+      return;
+    }
+    setIsUpdating(true);
+    setPassStatus(null);
+    try {
+      await updateUserPassword(passData.new);
+      setPassStatus({ type: 'success', msg: 'Password updated successfully' });
+      setPassData({ new: '', confirm: '' });
+    } catch (err: any) {
+      setPassStatus({ type: 'error', msg: err.message || 'Update failed' });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   const faqs = [
     {
@@ -3420,6 +3500,62 @@ const Support: React.FC = () => {
               </AnimatePresence>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Account Management Section */}
+      <div className="space-y-8">
+        <h2 className="text-3xl font-black tracking-tighter uppercase text-center">Account Security</h2>
+        <div className="visible-grid bg-surface p-10 space-y-8 max-w-2xl mx-auto shadow-lg">
+          <div className="space-y-4">
+            <h3 className="tech-label text-primary">System Access Credentials</h3>
+            <p className="serif-header text-sm text-slate-600">You can update your operational password below. Ensure it meets military strength requirements.</p>
+          </div>
+          
+          <form onSubmit={handlePasswordUpdate} className="space-y-6">
+            <div className="space-y-2">
+              <label className="tech-label">New Access Password</label>
+              <input 
+                type="password"
+                required
+                minLength={8}
+                className="sleek-input w-full"
+                placeholder="••••••••"
+                value={passData.new}
+                onChange={e => setPassData({ ...passData, new: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="tech-label">Confirm New Password</label>
+              <input 
+                type="password"
+                required
+                minLength={8}
+                className="sleek-input w-full"
+                placeholder="••••••••"
+                value={passData.confirm}
+                onChange={e => setPassData({ ...passData, confirm: e.target.value })}
+              />
+            </div>
+
+            {passStatus && (
+              <div className={cn(
+                "p-4 border flex items-center gap-3 text-[10px] font-black uppercase tracking-tight",
+                passStatus.type === 'success' ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600" : "bg-safety-orange/10 border-safety-orange/20 text-safety-orange"
+              )}>
+                {passStatus.type === 'success' ? <ShieldCheck className="w-4 h-4" /> : <ShieldAlert className="w-4 h-4" />}
+                {passStatus.msg}
+              </div>
+            )}
+
+            <button 
+              type="submit" 
+              disabled={isUpdating}
+              className="sleek-button w-full py-4 text-xs font-black"
+            >
+              {isUpdating ? 'Updating Credentials...' : 'Update Credentials'}
+            </button>
+          </form>
         </div>
       </div>
 
