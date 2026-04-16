@@ -1,4 +1,5 @@
-import React, { Component, createContext, useContext, useEffect, useState } from 'react';
+import { GoogleGenAI } from "@google/genai";
+import React, { Component, createContext, useContext, useEffect, useState, useRef } from 'react';
 import { 
   HashRouter as Router, 
   Routes, 
@@ -32,7 +33,8 @@ import {
   deleteDoc,
   writeBatch,
   serverTimestamp,
-  orderBy
+  orderBy,
+  limit
 } from 'firebase/firestore';
 import { 
   Terminal, 
@@ -63,7 +65,9 @@ import {
   Grid,
   MessageSquare,
   HelpCircle,
-  Info
+  Info,
+  Bot,
+  Sparkles
 } from 'lucide-react';
 import { format, addDays, isBefore, parseISO } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
@@ -1720,20 +1724,28 @@ const MaintenanceLogs: React.FC = () => {
 
       {/* Shift Timeline Visualization */}
       <div className="visible-grid bg-surface p-8">
-        <p className="tech-label mb-6">24-Hour Operations Timeline</p>
-        <div className="relative h-12 bg-background border border-outline flex items-center">
+        <p className="tech-label mb-6 uppercase tracking-widest">Aero-Maintenance Activity Heatmap (24H)</p>
+        <div className="relative h-12 bg-background border border-outline flex items-center overflow-hidden">
           <div className="absolute inset-0 flex">
-            {['Days', 'Swings', 'Nights'].map((shift, i) => (
-              <div key={shift} className={cn(
-                "flex-1 flex items-center justify-center border-r border-outline last:border-r-0",
-                i === 0 ? "bg-primary/10" : i === 1 ? "bg-caution-yellow/10" : "bg-slate-50"
-              )}>
-                <span className="tech-label text-[10px] opacity-50 font-bold">{shift}</span>
-              </div>
-            ))}
+            {/* Nights 1 (0000-0700) */}
+            <div className="h-full bg-slate-100 flex items-center justify-center border-r border-outline" style={{ width: '29.16%' }}>
+              <span className="tech-label text-[9px] opacity-40 font-bold uppercase">Nights</span>
+            </div>
+            {/* Days (0700-1500) */}
+            <div className="h-full bg-primary/10 flex items-center justify-center border-r border-outline" style={{ width: '33.33%' }}>
+              <span className="tech-label text-[9px] opacity-40 font-bold uppercase text-primary">Days</span>
+            </div>
+            {/* Swings (1500-2300) */}
+            <div className="h-full bg-caution-yellow/10 flex items-center justify-center border-r border-outline" style={{ width: '33.33%' }}>
+              <span className="tech-label text-[9px] opacity-40 font-bold uppercase text-caution-yellow">Swings</span>
+            </div>
+            {/* Nights 2 (2300-2400) */}
+            <div className="h-full bg-slate-100 flex items-center justify-center" style={{ width: '4.18%' }}>
+              <span className="tech-label text-[9px] opacity-40 font-bold uppercase">Nights</span>
+            </div>
           </div>
-          <div className="absolute inset-0 flex px-4">
-            {filteredLogs.slice(0, 20).map((log, i) => {
+          <div className="absolute inset-0 flex px-2 pointer-events-none">
+            {filteredLogs.slice(0, 50).map((log, i) => {
               const date = log.timestamp?.toDate ? log.timestamp.toDate() : new Date();
               const hours = date.getHours();
               const minutes = date.getMinutes();
@@ -1742,20 +1754,20 @@ const MaintenanceLogs: React.FC = () => {
                 <div 
                   key={log.id || i}
                   className={cn(
-                    "absolute w-1.5 h-6 -translate-x-1/2 transition-all hover:h-8 hover:z-10 cursor-pointer",
+                    "absolute w-1.5 h-6 -translate-x-1/2 transition-all hover:h-8 hover:z-10 cursor-pointer pointer-events-auto",
                     log.isRedBall ? "bg-safety-orange shadow-[0_0_8px_rgba(255,103,31,0.5)]" : "bg-primary"
                   )}
                   style={{ left: `${left}%` }}
-                  title={`${log.tail_number}: ${log.discrepancy}`}
+                  title={`${log.tail_number} [${log.shift}]: ${log.discrepancy}`}
                   onClick={() => setSelectedLog(log)}
                 />
               );
             })}
           </div>
         </div>
-        <div className="flex justify-between mt-2 px-1">
-          {['0000', '0400', '0800', '1200', '1600', '2000', '2359'].map(t => (
-            <span key={t} className="tech-label text-[10px] opacity-60 font-bold">{t}</span>
+        <div className="flex justify-between mt-3 px-1">
+          {['0000', '0300', '0700 (Days Begin)', '1100', '1500 (Swings)', '1900', '2300 (Nights)', '2359'].map(t => (
+            <span key={t} className="tech-label text-[8px] opacity-50 font-bold font-mono">{t}</span>
           ))}
         </div>
       </div>
@@ -3573,7 +3585,253 @@ const Support: React.FC = () => {
   );
 };
 
-// --- Main App ---
+// --- AI Assistant ---
+
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+const MaintenanceAssistant: React.FC = () => {
+  const { profile, isDemoMode } = useAuth();
+  const [isOpen, setIsOpen] = useState(false);
+  const [messages, setMessages] = useState<{ role: 'user' | 'assistant', content: string }[]>([]);
+  const [input, setInput] = useState('');
+  const [isThinking, setIsThinking] = useState(false);
+  const [dataSnapshot, setDataSnapshot] = useState<any>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages, isThinking]);
+
+  useEffect(() => {
+    if (!profile) return;
+    
+    // Fetch a snapshot of data to provide local context to the bot
+    const fetchSnapshot = async () => {
+      try {
+        const logsRef = collection(db, 'logs');
+        const trainingRef = collection(db, 'training');
+        
+        let qLogs, qTraining;
+        if (profile.role === 'leadership') {
+          qLogs = query(logsRef, where('isDemo', '==', isDemoMode), limit(50));
+          qTraining = query(trainingRef, where('isDemo', '==', isDemoMode), limit(50));
+        } else {
+          qLogs = query(logsRef, where('amuId', '==', profile.amuId), where('shopId', '==', profile.shopId), where('isDemo', '==', isDemoMode), limit(50));
+          qTraining = query(trainingRef, where('amuId', '==', profile.amuId), where('shopId', '==', profile.shopId), where('isDemo', '==', isDemoMode), limit(50));
+        }
+
+        const [logSnap, trainSnap] = await Promise.all([getDocs(qLogs), getDocs(qTraining)]);
+        
+        setDataSnapshot({
+          logs: logSnap.docs.map(d => {
+            const data = d.data() as MaintenanceLog;
+            return { 
+              tail: data.tail_number, 
+              disc: data.discrepancy, 
+              tech: data.technician_name,
+              shift: data.shift
+            };
+          }),
+          training: trainSnap.docs.map(d => {
+            const data = d.data() as TrainingRecord;
+            return {
+              course: data.course_name,
+              code: data.course_code,
+              status: data.status,
+              due: data.due_date
+            };
+          }),
+          stats: {
+            shop: profile.shopId,
+            amu: profile.amuId,
+            timestamp: new Date().toISOString()
+          }
+        });
+      } catch (e) {
+        console.error("AI Context error:", e);
+      }
+    };
+
+    fetchSnapshot();
+  }, [profile, isDemoMode, isOpen]);
+
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || isThinking) return;
+
+    const userMsg = input.trim();
+    setInput('');
+    setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
+    setIsThinking(true);
+
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-3.1-flash-preview",
+        contents: [
+          {
+            parts: [{
+              text: `SYSTEM INSTRUCTION: You are the 92nd AMXS Maintenance Assistant. Your mission is to assist 92nd Air Refueling Squadron maintainers with technical data analysis and readiness reporting.
+              CONSTRAINTS: 
+              1. ONLY answer questions related to the provided maintenance logs and training records.
+              2. Decline any off-topic requests (jokes, general trivia, unrelated news).
+              3. Use the provided DATA SNAPSHOT to identify trends, training gaps, or recurring tail number issues.
+              4. Maintain a professional, mission-focused military tone. 
+              5. Keep responses concise and scannable.
+              
+              DATA SNAPSHOT:
+              ${JSON.stringify(dataSnapshot)}
+              
+              USER QUESTION:
+              ${userMsg}`
+            }]
+          }
+        ],
+        config: {
+          temperature: 0.1, // Low temperature for high precision
+          topP: 0.95,
+          maxOutputTokens: 1024
+        }
+      });
+
+      setMessages(prev => [...prev, { role: 'assistant', content: response.text }]);
+    } catch (err) {
+      setMessages(prev => [...prev, { role: 'assistant', content: "SYSTEM ERROR: Operational data analysis interrupted. Please retry in clean environment." }]);
+    } finally {
+      setIsThinking(false);
+    }
+  };
+
+  return (
+    <div className="fixed bottom-8 right-8 z-[1000]">
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            className="absolute bottom-20 right-0 w-[400px] h-[600px] bg-white visible-grid shadow-2xl overflow-hidden flex flex-col border border-outline"
+          >
+            {/* Header */}
+            <div className="p-6 bg-sidebar border-b border-white/10 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/20 rounded-none border border-primary/30">
+                  <Bot className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-black text-xs uppercase tracking-[0.2em] text-white">Ops Intelligence</h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <span className="text-[8px] font-mono text-white/40 uppercase">System Online // 92 AMXS</span>
+                  </div>
+                </div>
+              </div>
+              <button onClick={() => setIsOpen(false)} className="text-white/40 hover:text-white transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Chat Body */}
+            <div 
+              ref={scrollRef}
+              className="flex-1 p-6 overflow-y-auto space-y-6 bg-slate-50/50"
+            >
+              {messages.length === 0 && (
+                <div className="flex flex-col items-center justify-center h-full text-center space-y-4 px-4">
+                  <Sparkles className="w-8 h-8 text-primary/30" />
+                  <div>
+                    <p className="tech-label text-slate-400">Analysis Engine Ready</p>
+                    <p className="serif-header text-sm text-slate-500 mt-2">
+                      Ask about maintenance trends, tail number history, or shop training readiness.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2 w-full mt-4">
+                    {["Identify recurring tail number issues", "Check training gaps for next 30 days"].map(q => (
+                      <button 
+                        key={q}
+                        onClick={() => { setInput(q); }}
+                        className="text-left p-3 text-[10px] font-black uppercase tracking-tight bg-white border border-outline hover:border-primary/40 transition-colors"
+                      >
+                        "{q}"
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {messages.map((m, i) => (
+                <div key={i} className={cn(
+                  "flex flex-col max-w-[85%]",
+                  m.role === 'user' ? "ml-auto items-end" : "items-start"
+                )}>
+                  <span className="tech-label !text-[8px] mb-1 opacity-40 uppercase">
+                    {m.role === 'user' ? 'Operator' : 'AMXS-AI'}
+                  </span>
+                  <div className={cn(
+                    "p-4 text-sm leading-relaxed",
+                    m.role === 'user' 
+                      ? "bg-primary text-white font-medium shadow-lg" 
+                      : "bg-white border border-outline text-slate-900 serif-header shadow-sm"
+                  )}>
+                    {m.content}
+                  </div>
+                </div>
+              ))}
+
+              {isThinking && (
+                <div className="flex flex-col items-start max-w-[85%]">
+                  <span className="tech-label !text-[8px] mb-1 opacity-40 uppercase">AMXS-AI</span>
+                  <div className="p-4 bg-white border border-outline text-slate-900 flex items-center gap-3 shadow-sm">
+                    <div className="flex gap-1">
+                      <div className="w-1.5 h-1.5 bg-primary animate-bounce"></div>
+                      <div className="w-1.5 h-1.5 bg-primary animate-bounce [animation-delay:0.2s]"></div>
+                      <div className="w-1.5 h-1.5 bg-primary animate-bounce [animation-delay:0.4s]"></div>
+                    </div>
+                    <span className="tech-label !text-[9px] text-slate-400 animate-pulse uppercase">Processing Intelligence...</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Input */}
+            <form onSubmit={handleSend} className="p-6 bg-white border-t border-outline">
+              <div className="flex gap-3">
+                <input 
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  placeholder="Analyze logs via natural language..."
+                  className="flex-1 sleek-input text-xs bg-slate-50"
+                  disabled={isThinking}
+                />
+                <button 
+                  disabled={isThinking || !input.trim()}
+                  className="p-3 bg-primary text-white hover:bg-primary-hover disabled:opacity-50 transition-all flex items-center justify-center shrink-0"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <motion.button
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={() => setIsOpen(!isOpen)}
+        className={cn(
+          "w-14 h-14 rounded-none flex items-center justify-center shadow-2xl transition-all border-2",
+          isOpen 
+            ? "bg-white border-primary text-primary" 
+            : "bg-primary border-primary text-white"
+        )}
+      >
+        {isOpen ? <X className="w-6 h-6" /> : <Bot className="w-7 h-7" />}
+      </motion.button>
+    </div>
+  );
+};
 
 const AppContent: React.FC = () => {
   const { user, profile, loading } = useAuth();
@@ -3605,6 +3863,7 @@ const AppContent: React.FC = () => {
         {(profile?.role === 'ncoic' || profile?.role === 'leadership') && <Route path="/onboarding" element={<Onboarding />} />}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
+      <MaintenanceAssistant />
     </Layout>
   );
 };
