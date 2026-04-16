@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import React, { Component, createContext, useContext, useEffect, useState, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { 
   HashRouter as Router, 
   Routes, 
@@ -3707,6 +3708,12 @@ const MaintenanceAssistant: React.FC = () => {
         contents: userMsg,
         config: {
           systemInstruction: `You are the 92nd AMXS Maintenance Assistant. Your mission is to assist 92nd Air Refueling Squadron maintainers with technical data analysis and readiness reporting.
+          FORMATTING INSTRUCTIONS:
+          - Use Markdown tables for data comparisons or lists of tail numbers.
+          - Use Bold caps for technical identifiers (e.g., **TAIL 5482**).
+          - Use bullet points for scannable summaries.
+          - Style headers with ###.
+          
           CONSTRAINTS: 
           1. ONLY answer questions related to the provided maintenance logs and training records.
           2. Decline any off-topic requests (jokes, general trivia, unrelated news).
@@ -3803,9 +3810,9 @@ const MaintenanceAssistant: React.FC = () => {
                     "p-4 text-sm leading-relaxed",
                     m.role === 'user' 
                       ? "bg-primary text-white font-medium shadow-lg" 
-                      : "bg-white border border-outline text-slate-900 serif-header shadow-sm"
+                      : "bg-white border border-outline text-slate-900 serif-header shadow-sm markdown-body"
                   )}>
-                    {m.content}
+                    {m.role === 'user' ? m.content : <ReactMarkdown>{m.content}</ReactMarkdown>}
                   </div>
                 </div>
               ))}
