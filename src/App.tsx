@@ -1765,10 +1765,13 @@ const MaintenanceLogs: React.FC = () => {
             })}
           </div>
         </div>
-        <div className="flex justify-between mt-3 px-1">
-          {['0000', '0300', '0700 (Days Begin)', '1100', '1500 (Swings)', '1900', '2300 (Nights)', '2359'].map(t => (
-            <span key={t} className="tech-label text-[8px] opacity-50 font-bold font-mono">{t}</span>
-          ))}
+        <div className="flex justify-between mt-3 px-1 border-t border-outline/30 pt-4">
+          <div className="flex items-center gap-4 text-[8px] font-black uppercase tracking-widest text-slate-400">
+            <div className="flex items-center gap-1.5"><div className="w-2 h-2 bg-slate-200"></div> Nights (23-07)</div>
+            <div className="flex items-center gap-1.5"><div className="w-2 h-2 bg-primary/20"></div> Days (07-15)</div>
+            <div className="flex items-center gap-1.5"><div className="w-2 h-2 bg-caution-yellow/20"></div> Swings (15-23)</div>
+          </div>
+          <p className="tech-label text-[8px] opacity-40 font-mono">24H OPERATIONAL CYCLE</p>
         </div>
       </div>
 
