@@ -130,3 +130,48 @@
   @apply text-primary;
 }
 
+.markdown-body {
+  @apply space-y-4;
+}
+
+.markdown-body h3 {
+  @apply font-black text-xs uppercase tracking-widest text-primary mt-6 mb-2 border-b border-outline pb-1;
+}
+
+.markdown-body ul {
+  @apply space-y-2 list-none pl-0;
+}
+
+.markdown-body li {
+  @apply relative pl-5 text-[11px] leading-relaxed text-slate-600;
+}
+
+.markdown-body li::before {
+  content: "//";
+  @apply absolute left-0 text-primary font-mono font-bold opacity-40;
+}
+
+.markdown-body table {
+  @apply w-full border-collapse border border-outline bg-slate-50/50 mt-4 overflow-hidden;
+}
+
+.markdown-body th {
+  @apply text-[9px] font-black uppercase tracking-tighter bg-sidebar text-white p-2 text-left;
+}
+
+.markdown-body td {
+  @apply text-[10px] p-2 border border-outline/50 font-mono text-slate-700;
+}
+
+.markdown-body tr:nth-child(even) {
+  @apply bg-white/50;
+}
+
+.markdown-body p {
+  @apply text-[11px] leading-relaxed text-slate-600;
+}
+
+.markdown-body strong {
+  @apply font-black text-slate-900;
+}
+
