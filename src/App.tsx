@@ -3613,6 +3613,38 @@ const MaintenanceAssistant: React.FC = () => {
     // Fetch a snapshot of data to provide local context to the bot
     const fetchSnapshot = async () => {
       try {
+        if (isDemoMode) {
+          const isLeadership = profile.role === 'leadership';
+          const filteredLogs = MOCK_LOGS.filter(l => 
+            isLeadership || (l.amuId === profile.amuId && l.shopId === profile.shopId)
+          ).slice(0, 50);
+          
+          const filteredTraining = MOCK_TRAINING.filter(t => 
+            isLeadership || (t.amuId === profile.amuId && t.shopId === profile.shopId)
+          ).slice(0, 50);
+
+          setDataSnapshot({
+            logs: filteredLogs.map(data => ({ 
+              tail: data.tail_number, 
+              disc: data.discrepancy, 
+              tech: data.technician_name,
+              shift: data.shift
+            })),
+            training: filteredTraining.map(data => ({
+              course: data.course_name,
+              code: data.course_code,
+              status: data.status,
+              due: data.due_date
+            })),
+            stats: {
+              shop: profile.shopId,
+              amu: profile.amuId,
+              timestamp: new Date().toISOString()
+            }
+          });
+          return;
+        }
+
         const logsRef = collection(db, 'logs');
         const trainingRef = collection(db, 'training');
         
