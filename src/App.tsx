@@ -3671,36 +3671,32 @@ const MaintenanceAssistant: React.FC = () => {
 
     try {
       const response = await ai.models.generateContent({
-        model: "gemini-3.1-flash-preview",
-        contents: [
-          {
-            parts: [{
-              text: `SYSTEM INSTRUCTION: You are the 92nd AMXS Maintenance Assistant. Your mission is to assist 92nd Air Refueling Squadron maintainers with technical data analysis and readiness reporting.
-              CONSTRAINTS: 
-              1. ONLY answer questions related to the provided maintenance logs and training records.
-              2. Decline any off-topic requests (jokes, general trivia, unrelated news).
-              3. Use the provided DATA SNAPSHOT to identify trends, training gaps, or recurring tail number issues.
-              4. Maintain a professional, mission-focused military tone. 
-              5. Keep responses concise and scannable.
-              
-              DATA SNAPSHOT:
-              ${JSON.stringify(dataSnapshot)}
-              
-              USER QUESTION:
-              ${userMsg}`
-            }]
-          }
-        ],
+        model: "gemini-3-flash-preview",
+        contents: userMsg,
         config: {
-          temperature: 0.1, // Low temperature for high precision
+          systemInstruction: `You are the 92nd AMXS Maintenance Assistant. Your mission is to assist 92nd Air Refueling Squadron maintainers with technical data analysis and readiness reporting.
+          CONSTRAINTS: 
+          1. ONLY answer questions related to the provided maintenance logs and training records.
+          2. Decline any off-topic requests (jokes, general trivia, unrelated news).
+          3. Use the provided DATA SNAPSHOT to identify trends, training gaps, or recurring tail number issues.
+          4. Maintain a professional, mission-focused military tone. 
+          5. Keep responses concise and scannable.
+          
+          DATA SNAPSHOT:
+          ${JSON.stringify(dataSnapshot)}`,
+          temperature: 0.1,
           topP: 0.95,
-          maxOutputTokens: 1024
         }
       });
 
-      setMessages(prev => [...prev, { role: 'assistant', content: response.text }]);
+      if (response.text) {
+        setMessages(prev => [...prev, { role: 'assistant', content: response.text }]);
+      } else {
+        throw new Error("Empty response from intelligence engine");
+      }
     } catch (err) {
-      setMessages(prev => [...prev, { role: 'assistant', content: "SYSTEM ERROR: Operational data analysis interrupted. Please retry in clean environment." }]);
+      console.error("AI Assistant Error:", err);
+      setMessages(prev => [...prev, { role: 'assistant', content: "SYSTEM ERROR: Operational data analysis interrupted. Communication link unstable." }]);
     } finally {
       setIsThinking(false);
     }
