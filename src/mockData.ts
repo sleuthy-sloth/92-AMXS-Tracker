@@ -1,4 +1,4 @@
-import { UserProfile, MaintenanceLog, TrainingRecord, AMUType, ShiftType } from './types';
+import { UserProfile, MaintenanceLog, TrainingRecord, AMUType, ShiftType, DIFMLog } from './types';
 import { addDays, subDays, format } from 'date-fns';
 
 export const SHOPS = ['AVIONICS', 'CREW_CHIEFS', 'JETS', 'E&E', 'LEADERSHIP'] as const;
@@ -60,10 +60,12 @@ const REPAIRS = [
 export const MOCK_PERSONNEL: UserProfile[] = [];
 export const MOCK_TRAINING: TrainingRecord[] = [];
 export const MOCK_LOGS: MaintenanceLog[] = [];
+export const MOCK_DIFM: DIFMLog[] = [];
 
 let userCounter = 1;
 let logCounter = 1;
 let trainingCounter = 1;
+let difmCounter = 1;
 
 // Add the preview user first
 MOCK_PERSONNEL.push({
@@ -157,6 +159,23 @@ AMUS.forEach(amu => {
             shift: SHIFTS[Math.floor(Math.random() * SHIFTS.length)],
             isDemo: true
           });
+
+          // Generate 0-2 DIFM entries per person
+          const numDifm = Math.floor(Math.random() * 2);
+          for (let d = 0; d < numDifm; d++) {
+            const statusOptions: DIFMLog['status'][] = ['due-in', 'awaiting-parts', 'in-repair', 'complete'];
+            MOCK_DIFM.push({
+              id: `mock-difm-${difmCounter++}`,
+              tail_number: `AF-92-0${Math.floor(Math.random() * 900) + 100}`,
+              discrepancy: DISCREPANCIES[Math.floor(Math.random() * DISCREPANCIES.length)],
+              status: statusOptions[Math.floor(Math.random() * statusOptions.length)],
+              shopId: shop,
+              amuId: amu,
+              technician_name: user.name,
+              timestamp: { toDate: () => subDays(new Date(), Math.floor(Math.random() * 7)) } as any,
+              isDemo: true
+            });
+          }
         }
       }
       
