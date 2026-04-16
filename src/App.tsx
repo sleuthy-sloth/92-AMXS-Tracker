@@ -452,48 +452,50 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           </div>
         </div>
 
-        {isDemoMode && (
+        {(isDemoMode || profile?.role === 'ncoic' || profile?.role === 'leadership') && (
           <div className="px-8 pb-8 space-y-6 border-b border-white/10">
-            <div className="relative">
-              <p className="tech-label text-white/60 mb-2">Simulated Role</p>
-              <button 
-                onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
-                className="w-full flex items-center justify-between bg-white/5 border border-white/10 px-4 py-3 text-white hover:bg-white/10 transition-colors"
-              >
-                <span className="font-black text-[11px] tracking-widest uppercase">{profile?.role}</span>
-                <ChevronDown className={cn("w-3 h-3 transition-transform", isRoleDropdownOpen && "rotate-180")} />
-              </button>
-              
-              <AnimatePresence>
-                {isRoleDropdownOpen && (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    className="absolute top-full left-0 w-full mt-2 bg-sidebar border border-white/10 shadow-2xl overflow-hidden z-50"
-                  >
-                    {['technician', 'ncoic', 'leadership'].map(role => (
-                      <button
-                        key={role}
-                        onClick={() => {
-                          setRole(role as UserRole);
-                          setIsRoleDropdownOpen(false);
-                        }}
-                        className={cn(
-                          "w-full text-left px-4 py-3 text-[11px] font-black tracking-widest hover:bg-white/10 transition-colors uppercase",
-                          profile?.role === role ? "text-white bg-white/20" : "text-white/60"
-                        )}
-                      >
-                        {role}
-                      </button>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+            {isDemoMode && (
+              <div className="relative">
+                <p className="tech-label text-white/60 mb-2">Simulated Role</p>
+                <button 
+                  onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
+                  className="w-full flex items-center justify-between bg-white/5 border border-white/10 px-4 py-3 text-white hover:bg-white/10 transition-colors"
+                >
+                  <span className="font-black text-[11px] tracking-widest uppercase">{profile?.role}</span>
+                  <ChevronDown className={cn("w-3 h-3 transition-transform", isRoleDropdownOpen && "rotate-180")} />
+                </button>
+                
+                <AnimatePresence>
+                  {isRoleDropdownOpen && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="absolute top-full left-0 w-full mt-2 bg-sidebar border border-white/10 shadow-2xl overflow-hidden z-50"
+                    >
+                      {['technician', 'ncoic', 'leadership'].map(role => (
+                        <button
+                          key={role}
+                          onClick={() => {
+                            setRole(role as UserRole);
+                            setIsRoleDropdownOpen(false);
+                          }}
+                          className={cn(
+                            "w-full text-left px-4 py-3 text-[11px] font-black tracking-widest hover:bg-white/10 transition-colors uppercase",
+                            profile?.role === role ? "text-white bg-white/20" : "text-white/60"
+                          )}
+                        >
+                          {role}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
 
             <div className="relative">
-              <p className="text-[11px] uppercase tracking-widest text-white/60 mb-2 font-bold">Preview AMU</p>
+              <p className="text-[11px] uppercase tracking-widest text-white/60 mb-2 font-bold">{profile?.role === 'leadership' ? 'Oversight AMU' : 'Assigned AMU'}</p>
               <button 
                 onClick={() => setIsAMUDropdownOpen(!isAMUDropdownOpen)}
                 className="w-full flex items-center justify-between bg-white/5 border border-white/10 px-3 py-2 text-white hover:bg-white/10 transition-colors"
@@ -510,16 +512,16 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                     exit={{ opacity: 0, y: 10 }}
                     className="absolute top-full left-0 w-full mt-2 bg-sidebar border border-white/10 shadow-xl overflow-hidden z-50"
                   >
-                    {AMUS.map(amu => (
+                    {['ALL', ...AMUS].map(amu => (
                       <button
                         key={amu}
                         onClick={() => {
-                          setAMU(amu);
+                          setAMU(amu as AMUType);
                           setIsAMUDropdownOpen(false);
                         }}
                         className={cn(
-                          "w-full text-left px-4 py-2 text-xs hover:bg-white/10 transition-colors",
-                          profile?.amuId === amu ? "text-primary font-bold" : "text-white/60"
+                          "w-full text-left px-4 py-2 text-xs hover:bg-white/10 transition-colors uppercase font-mono tracking-tighter",
+                          profile?.amuId === amu ? "text-primary font-bold bg-white/5" : "text-white/60"
                         )}
                       >
                         {amu}
@@ -531,7 +533,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             </div>
 
             <div className="relative">
-              <p className="text-[11px] uppercase tracking-widest text-white/60 mb-2 font-bold">Preview Shop</p>
+              <p className="text-[11px] uppercase tracking-widest text-white/60 mb-2 font-bold">{profile?.role === 'leadership' ? 'Oversight Shop' : 'Assigned Shop'}</p>
               <button 
                 onClick={() => setIsShopDropdownOpen(!isShopDropdownOpen)}
                 className="w-full flex items-center justify-between bg-white/5 border border-white/10 px-3 py-2 text-white hover:bg-white/10 transition-colors"
@@ -548,16 +550,16 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                     exit={{ opacity: 0, y: 10 }}
                     className="absolute top-full left-0 w-full mt-2 bg-sidebar border border-white/10 shadow-xl overflow-hidden z-50"
                   >
-                    {SHOPS.map(shop => (
+                    {['ALL', ...SHOPS].map(shop => (
                       <button
                         key={shop}
                         onClick={() => {
-                          setShop(shop);
+                          setShop(shop as ShopType);
                           setIsShopDropdownOpen(false);
                         }}
                         className={cn(
-                          "w-full text-left px-4 py-2 text-xs hover:bg-white/10 transition-colors",
-                          profile?.shopId === shop ? "text-primary font-bold" : "text-white/60"
+                          "w-full text-left px-4 py-2 text-xs hover:bg-white/10 transition-colors uppercase font-mono tracking-tighter",
+                          profile?.shopId === shop ? "text-primary font-bold bg-white/5" : "text-white/60"
                         )}
                       >
                         {shop}
@@ -1265,38 +1267,53 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     if (!profile) return;
 
+    const isGlobal = profile.role === 'leadership' && (profile.amuId === 'ALL' || profile.shopId === 'ALL');
+    
     if (isDemoMode) {
-      const isLeadership = profile.role === 'leadership';
-      
       const filteredMockLogs = MOCK_LOGS.filter(l => {
-        if (isLeadership) return true;
+        if (isGlobal || profile.role === 'leadership') return true;
         return l.amuId === profile.amuId && l.shopId === profile.shopId;
       }).sort((a, b) => b.timestamp.toDate().getTime() - a.timestamp.toDate().getTime());
       setLogs(filteredMockLogs);
 
       const filteredMockPersonnel = MOCK_PERSONNEL.filter(p => {
-        if (isLeadership) return true;
+        if (isGlobal || profile.role === 'leadership') return true;
         return p.amuId === profile.amuId && p.shopId === profile.shopId;
       });
       setPersonnel(filteredMockPersonnel);
 
       const filteredMockTraining = MOCK_TRAINING.filter(t => {
-        if (isLeadership) return true;
+        if (isGlobal || profile.role === 'leadership') return true;
         return t.amuId === profile.amuId && t.shopId === profile.shopId;
       });
       setTraining(filteredMockTraining);
       return;
     }
 
-    const isLeadership = profile.role === 'leadership';
-
     let qLogs;
-    if (isLeadership) {
-      qLogs = query(
-        collection(db, 'logs'), 
-        where('isDemo', '==', false),
-        orderBy('timestamp', 'desc')
-      );
+    if (profile.amuId === 'ALL' || profile.shopId === 'ALL' || profile.role === 'leadership') {
+      // Leadership or ALL view
+      let queryRef = collection(db, 'logs');
+      const constraints: any[] = [where('isDemo', '==', false), orderBy('timestamp', 'desc')];
+      
+      if (profile.amuId !== 'ALL' && profile.role !== 'leadership') {
+        constraints.unshift(where('amuId', '==', profile.amuId));
+      }
+      if (profile.shopId !== 'ALL' && profile.role !== 'leadership') {
+        constraints.unshift(where('shopId', '==', profile.shopId));
+      }
+
+      // If leadership but they chose a specific filter
+      if (profile.role === 'leadership') {
+        if (profile.amuId !== 'ALL' && profile.amuId !== 'NONE') {
+          constraints.unshift(where('amuId', '==', profile.amuId));
+        }
+        if (profile.shopId !== 'ALL' && profile.shopId !== 'LEADERSHIP') {
+          constraints.unshift(where('shopId', '==', profile.shopId));
+        }
+      }
+
+      qLogs = query(queryRef, ...constraints);
     } else {
       qLogs = query(
         collection(db, 'logs'), 
@@ -1312,7 +1329,7 @@ const Dashboard: React.FC = () => {
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'logs'));
 
     let qPersonnel;
-    if (isLeadership) {
+    if (profile.role === 'leadership') {
       qPersonnel = query(
         collection(db, 'users'),
         where('isDemo', '==', false)
@@ -1331,7 +1348,7 @@ const Dashboard: React.FC = () => {
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'users'));
 
     let qTraining;
-    if (isLeadership) {
+    if (profile.role === 'leadership') {
       qTraining = query(
         collection(db, 'training'),
         where('isDemo', '==', false)
@@ -1549,31 +1566,26 @@ const MaintenanceLogs: React.FC = () => {
     if (isDemoMode) {
       const isLeadership = profile.role === 'leadership';
       const filteredMockLogs = MOCK_LOGS.filter(log => {
-        if (isLeadership) return true;
-        return log.amuId === profile.amuId && log.shopId === profile.shopId;
+        if (isLeadership && profile.amuId === 'ALL' && profile.shopId === 'ALL') return true;
+        if (profile.amuId !== 'ALL' && log.amuId !== profile.amuId) return false;
+        if (profile.shopId !== 'ALL' && log.shopId !== profile.shopId) return false;
+        return true;
       });
       setLogs(filteredMockLogs);
       return;
     }
 
-    const isLeadership = profile.role === 'leadership';
-
     let q;
-    if (isLeadership) {
-      q = query(
-        collection(db, 'logs'), 
-        where('isDemo', '==', false),
-        orderBy('timestamp', 'desc')
-      );
-    } else {
-      q = query(
-        collection(db, 'logs'), 
-        where('amuId', '==', profile.amuId),
-        where('shopId', '==', profile.shopId), 
-        where('isDemo', '==', false),
-        orderBy('timestamp', 'desc')
-      );
+    const constraints: any[] = [where('isDemo', '==', false), orderBy('timestamp', 'desc')];
+    
+    if (profile.amuId !== 'ALL') {
+      constraints.unshift(where('amuId', '==', profile.amuId));
     }
+    if (profile.shopId !== 'ALL' && profile.shopId !== 'LEADERSHIP') {
+      constraints.unshift(where('shopId', '==', profile.shopId));
+    }
+
+    q = query(collection(db, 'logs'), ...constraints);
     
     const unsub = onSnapshot(q, (snap) => {
       setLogs(snap.docs.map(d => ({ id: d.id, ...d.data() } as MaintenanceLog)));
@@ -1585,6 +1597,10 @@ const MaintenanceLogs: React.FC = () => {
     e.preventDefault();
     if (!profile) return;
     
+    if (profile.amuId === 'ALL' || profile.shopId === 'ALL') {
+      alert('Operational entries must be assigned to a specific AMU and Shop. Please select a specific assignment in the sidebar before submitting.');
+      return;
+    }
     if (user?.uid === 'mock-user-preview') {
       alert('Demo users cannot modify the live database. This entry will not be saved.');
       setIsModalOpen(false);
@@ -2161,7 +2177,29 @@ const DIFMLogs: React.FC = () => {
 
   useEffect(() => {
     if (!profile) return;
-    const q = query(collection(db, 'difm'), where('shopId', '==', profile.shopId));
+    
+    let q;
+    if (profile.amuId === 'ALL' || profile.shopId === 'ALL' || profile.role === 'leadership') {
+      let queryRef = collection(db, 'difm');
+      const constraints: any[] = [];
+      
+      // If leadership/ncoic but they chose a specific filter
+      if (profile.amuId !== 'ALL' && profile.amuId !== 'NONE') {
+        constraints.push(where('amuId', '==', profile.amuId));
+      }
+      if (profile.shopId !== 'ALL' && profile.shopId !== 'LEADERSHIP') {
+        constraints.push(where('shopId', '==', profile.shopId));
+      }
+
+      q = query(queryRef, ...constraints);
+    } else {
+      q = query(
+        collection(db, 'difm'), 
+        where('amuId', '==', profile.amuId),
+        where('shopId', '==', profile.shopId)
+      );
+    }
+
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setLogs(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DIFMLog)));
     }, (error) => {
@@ -2173,6 +2211,12 @@ const DIFMLogs: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
+
+    if (profile.amuId === 'ALL' || profile.shopId === 'ALL') {
+      alert('DIFM tracks must be assigned to a specific AMU and Shop. Please select a specific assignment in the sidebar before initiating.');
+      return;
+    }
+
     setLoading(true);
     try {
       await addDoc(collection(db, 'difm'), {
@@ -2394,30 +2438,39 @@ const TrainingTracker: React.FC = () => {
       const isTechnician = profile.role === 'technician';
       
       const filteredMockTraining = MOCK_TRAINING.filter(t => {
-        if (isLeadership) return true;
+        if (isLeadership && profile.amuId === 'ALL') return true;
         if (isTechnician) return t.man_number === profile.man_number;
-        return t.amuId === profile.amuId && t.shopId === profile.shopId;
+        if (profile.amuId !== 'ALL' && t.amuId !== profile.amuId) return false;
+        if (profile.shopId !== 'ALL' && t.shopId !== profile.shopId) return false;
+        return true;
       });
       setTraining(filteredMockTraining);
 
       const filteredMockPersonnel = MOCK_PERSONNEL.filter(p => {
-        if (isLeadership) return true;
+        if (isLeadership && profile.amuId === 'ALL') return true;
         if (isTechnician) return p.man_number === profile.man_number;
-        return p.amuId === profile.amuId && p.shopId === profile.shopId;
+        if (profile.amuId !== 'ALL' && p.amuId !== profile.amuId) return false;
+        if (profile.shopId !== 'ALL' && p.shopId !== profile.shopId) return false;
+        return true;
       });
       setPersonnel(filteredMockPersonnel);
       return;
     }
 
-    const isLeadership = profile.role === 'leadership';
     const isTechnician = profile.role === 'technician';
 
     let qTraining;
-    if (isLeadership) {
-      qTraining = query(
-        collection(db, 'training'),
-        where('isDemo', '==', false)
-      );
+    if (profile.amuId === 'ALL' || profile.shopId === 'ALL' || profile.role === 'leadership') {
+      let queryRef = collection(db, 'training');
+      const constraints: any[] = [where('isDemo', '==', false)];
+      
+      if (profile.amuId !== 'ALL' && profile.amuId !== 'NONE') {
+        constraints.push(where('amuId', '==', profile.amuId));
+      }
+      if (profile.shopId !== 'ALL' && profile.shopId !== 'LEADERSHIP') {
+        constraints.push(where('shopId', '==', profile.shopId));
+      }
+      qTraining = query(queryRef, ...constraints);
     } else if (isTechnician) {
       qTraining = query(
         collection(db, 'training'), 
@@ -2438,11 +2491,17 @@ const TrainingTracker: React.FC = () => {
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'training'));
 
     let qPersonnel;
-    if (isLeadership) {
-      qPersonnel = query(
-        collection(db, 'users'),
-        where('isDemo', '==', false)
-      );
+    if (profile.amuId === 'ALL' || profile.shopId === 'ALL' || profile.role === 'leadership') {
+      let queryRef = collection(db, 'users');
+      const constraints: any[] = [where('isDemo', '==', false)];
+      
+      if (profile.amuId !== 'ALL' && profile.amuId !== 'NONE') {
+        constraints.push(where('amuId', '==', profile.amuId));
+      }
+      if (profile.shopId !== 'ALL' && profile.shopId !== 'LEADERSHIP') {
+        constraints.push(where('shopId', '==', profile.shopId));
+      }
+      qPersonnel = query(queryRef, ...constraints);
     } else if (isTechnician) {
       qPersonnel = query(
         collection(db, 'users'), 
@@ -2477,6 +2536,10 @@ const TrainingTracker: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file || !profile) return;
 
+    if (profile.amuId === 'ALL' || profile.shopId === 'ALL') {
+      alert('Training reports must be synchronized to a specific AMU and Shop context. Please select a specific assignment in the sidebar before uploading.');
+      return;
+    }
     setIsUploading(true);
     try {
       const reader = new FileReader();
@@ -3013,22 +3076,27 @@ const Personnel: React.FC = () => {
     if (isDemoMode) {
       const isLeadership = profile.role === 'leadership';
       const filteredMockPersonnel = MOCK_PERSONNEL.filter(p => {
-        if (isLeadership) return true;
-        return p.amuId === profile.amuId && p.shopId === profile.shopId;
+        if (isLeadership && profile.amuId === 'ALL') return true;
+        if (profile.amuId !== 'ALL' && p.amuId !== profile.amuId) return false;
+        if (profile.shopId !== 'ALL' && p.shopId !== profile.shopId) return false;
+        return true;
       });
       setPersonnel(filteredMockPersonnel);
       return;
     }
 
-    const isLeadership = profile.role === 'leadership';
-
     let q;
-    if (isLeadership) {
-      q = query(
-        collection(db, 'users'), 
-        where('status', '==', 'active'),
-        where('isDemo', '==', false)
-      );
+    if (profile.amuId === 'ALL' || profile.shopId === 'ALL' || profile.role === 'leadership') {
+      let queryRef = collection(db, 'users');
+      const constraints: any[] = [where('status', '==', 'active'), where('isDemo', '==', false)];
+      
+      if (profile.amuId !== 'ALL' && profile.amuId !== 'NONE') {
+        constraints.push(where('amuId', '==', profile.amuId));
+      }
+      if (profile.shopId !== 'ALL' && profile.shopId !== 'LEADERSHIP') {
+        constraints.push(where('shopId', '==', profile.shopId));
+      }
+      q = query(queryRef, ...constraints);
     } else {
       q = query(
         collection(db, 'users'), 
@@ -3616,13 +3684,19 @@ const MaintenanceAssistant: React.FC = () => {
       try {
         if (isDemoMode) {
           const isLeadership = profile.role === 'leadership';
-          const filteredLogs = MOCK_LOGS.filter(l => 
-            isLeadership || (l.amuId === profile.amuId && l.shopId === profile.shopId)
-          ).slice(0, 50);
+          const filteredLogs = MOCK_LOGS.filter(l => {
+            if (isLeadership && profile.amuId === 'ALL') return true;
+            if (profile.amuId !== 'ALL' && l.amuId !== profile.amuId) return false;
+            if (profile.shopId !== 'ALL' && l.shopId !== profile.shopId) return false;
+            return true;
+          }).slice(0, 50);
           
-          const filteredTraining = MOCK_TRAINING.filter(t => 
-            isLeadership || (t.amuId === profile.amuId && t.shopId === profile.shopId)
-          ).slice(0, 50);
+          const filteredTraining = MOCK_TRAINING.filter(t => {
+            if (isLeadership && profile.amuId === 'ALL') return true;
+            if (profile.amuId !== 'ALL' && t.amuId !== profile.amuId) return false;
+            if (profile.shopId !== 'ALL' && t.shopId !== profile.shopId) return false;
+            return true;
+          }).slice(0, 50);
 
           setDataSnapshot({
             logs: filteredLogs.map(data => ({ 

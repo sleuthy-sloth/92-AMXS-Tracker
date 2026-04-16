@@ -1,5 +1,5 @@
 export type UserRole = 'leadership' | 'ncoic' | 'technician' | 'pending';
-export type AMUType = 'BLACK' | 'GREEN' | 'SILVER' | 'BLUE' | 'NONE';
+export type AMUType = 'BLACK' | 'GREEN' | 'SILVER' | 'BLUE' | 'NONE' | 'ALL';
 export type ShiftType = 'Days' | 'Swings' | 'Nights' | 'Weekend Duty';
 
 export interface UserProfile {
