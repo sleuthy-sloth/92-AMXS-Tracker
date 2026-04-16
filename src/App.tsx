@@ -138,7 +138,7 @@ class ErrorBoundary extends Component<{ children: React.ReactNode }, { hasError:
   }
 }
 import { cn } from './lib/utils';
-import { UserProfile, MaintenanceLog, TrainingRecord, UserRole, AMUType, ShiftType } from './types';
+import { UserProfile, MaintenanceLog, TrainingRecord, UserRole, AMUType, ShiftType, DIFMLog } from './types';
 import { parseTrainingReport } from './services/parserService';
 import { 
   exportLogsToCSV, 
@@ -1501,235 +1501,6 @@ const MaintenanceLogs: React.FC = () => {
     }
 
     setLoading(true);
-    try {
-      const logData = {
-        ...formData,
-        shopId: profile.shopId,
-        amuId: profile.amuId,
-        technician_name: profile.name,
-        man_number: profile.man_number,
-        timestamp: serverTimestamp(),
-        isDemo: isDemoMode
-      };
-
-      if (editingLogId) {
-        await updateDoc(doc(db, 'logs', editingLogId), {
-          ...logData,
-          lastEditedBy: profile.name,
-          lastEditedAt: serverTimestamp()
-        });
-      } else {
-        await addDoc(collection(db, 'logs'), logData);
-      }
-      setIsModalOpen(false);
-      setFormData({
-        tail_number: '',
-        jcn: '',
-        discrepancy: '',
-        repair: '',
-        doc_number: '',
-        personnelInput: '',
-        isRedBall: false,
-        shift: 'Days'
-      });
-      setEditingLogId(null);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, 'logs');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-black uppercase tracking-tight">Maintenance Logs</h2>
-        <button onClick={() => { setEditingLogId(null); setIsModalOpen(true); }} className="sleek-button px-4 py-2 flex items-center gap-2">
-          <Plus className="w-4 h-4" /> New Entry
-        </button>
-      </div>
-      <div className="flex gap-4 mb-6">
-        <input 
-          type="text" 
-          placeholder="Search logs..." 
-          value={searchQuery} 
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="sleek-input flex-grow"
-        />
-        <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="sleek-input" />
-        <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="sleek-input" />
-        <button onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')} className="sleek-button bg-slate-200 text-slate-900">
-          {viewMode === 'grid' ? <List className="w-4 h-4" /> : <Grid className="w-4 h-4" />}
-        </button>
-      </div>
-      {viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {logs.filter(log => log.discrepancy.toLowerCase().includes(searchQuery.toLowerCase())).map(log => (
-            <div key={log.id} className="sleek-card p-6 space-y-4">
-              <div className="flex justify-between items-start">
-                <span className="font-black text-lg tracking-tighter">{log.tail_number}</span>
-                {log.isRedBall && <ShieldAlert className="w-5 h-5 text-safety-orange" />}
-              </div>
-              <p className="text-sm text-slate-600">{log.discrepancy}</p>
-              <div className="pt-4 border-t border-outline flex justify-between text-xs font-bold uppercase tracking-tight">
-                <span>{log.technician_name}</span>
-                <span>{format(log.timestamp?.toDate() || new Date(), 'dd MMM HHmm')}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="sleek-card overflow-hidden">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-surface-variant/50 uppercase tracking-wider font-bold">
-              <tr>
-                <th className="p-4">Tail</th>
-                <th className="p-4">Discrepancy</th>
-                <th className="p-4">Repair</th>
-                <th className="p-4">Tech</th>
-                <th className="p-4">Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {logs.filter(log => log.discrepancy.toLowerCase().includes(searchQuery.toLowerCase())).map(log => (
-                <tr key={log.id} className="border-t border-outline">
-                  <td className="p-4 font-bold">{log.tail_number}</td>
-                  <td className="p-4">{log.discrepancy}</td>
-                  <td className="p-4">{log.repair}</td>
-                  <td className="p-4">{log.technician_name}</td>
-                  <td className="p-4">{format(log.timestamp?.toDate() || new Date(), 'dd MMM HHmm')}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <form onSubmit={handleSubmit} className="bg-surface p-8 rounded-xl w-full max-w-md space-y-4">
-            <h3 className="text-lg font-bold">{editingLogId ? 'Edit Entry' : 'New Entry'}</h3>
-            <input type="text" placeholder="Tail Number" value={formData.tail_number} onChange={e => setFormData({...formData, tail_number: e.target.value})} className="sleek-input w-full" required />
-            <input type="text" placeholder="JCN" value={formData.jcn} onChange={e => setFormData({...formData, jcn: e.target.value})} className="sleek-input w-full" />
-            <input type="text" placeholder="Discrepancy" value={formData.discrepancy} onChange={e => setFormData({...formData, discrepancy: e.target.value})} className="sleek-input w-full" required />
-            <input type="text" placeholder="Repair" value={formData.repair} onChange={e => setFormData({...formData, repair: e.target.value})} className="sleek-input w-full" required />
-            <div className="flex gap-2">
-              <button type="button" onClick={() => setIsModalOpen(false)} className="sleek-button bg-slate-200 text-slate-900 w-full">Cancel</button>
-              <button type="submit" className="sleek-button w-full" disabled={loading}>{loading ? 'Saving...' : 'Save'}</button>
-            </div>
-          </form>
-        </div>
-      )}
-    </div>
-  );
-};
-
-const DIFMLogs: React.FC = () => {
-  const { profile } = useAuth();
-  const [logs, setLogs] = useState<DIFMLog[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    tail_number: '',
-    discrepancy: '',
-    status: 'due-in' as 'due-in' | 'awaiting-parts' | 'in-repair' | 'complete'
-  });
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!profile) return;
-    const q = query(collection(db, 'difm'), where('shopId', '==', profile.shopId));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setLogs(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DIFMLog)));
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'difm');
-    });
-    return unsubscribe;
-  }, [profile]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!profile) return;
-    setLoading(true);
-    try {
-      await addDoc(collection(db, 'difm'), {
-        ...formData,
-        shopId: profile.shopId,
-        amuId: profile.amuId,
-        technician_name: profile.name,
-        timestamp: serverTimestamp()
-      });
-      setIsModalOpen(false);
-      setFormData({ tail_number: '', discrepancy: '', status: 'due-in' });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'difm');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-black uppercase tracking-tight">DIFM Log</h2>
-        <button onClick={() => setIsModalOpen(true)} className="sleek-button px-4 py-2 flex items-center gap-2">
-          <Plus className="w-4 h-4" /> Add Item
-        </button>
-      </div>
-      <div className="sleek-card overflow-hidden">
-        <table className="w-full text-left text-xs">
-          <thead className="bg-surface-variant/50 uppercase tracking-wider font-bold">
-            <tr>
-              <th className="p-4">Tail</th>
-              <th className="p-4">Discrepancy</th>
-              <th className="p-4">Status</th>
-              <th className="p-4">Technician</th>
-            </tr>
-          </thead>
-          <tbody>
-            {logs.map(log => (
-              <tr key={log.id} className="border-t border-outline">
-                <td className="p-4 font-bold">{log.tail_number}</td>
-                <td className="p-4">{log.discrepancy}</td>
-                <td className="p-4 capitalize">{log.status.replace('-', ' ')}</td>
-                <td className="p-4">{log.technician_name}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <form onSubmit={handleSubmit} className="bg-surface p-8 rounded-xl w-full max-w-md space-y-4">
-            <h3 className="text-lg font-bold">Add DIFM Item</h3>
-            <input type="text" placeholder="Tail Number" value={formData.tail_number} onChange={e => setFormData({...formData, tail_number: e.target.value})} className="sleek-input w-full" required />
-            <input type="text" placeholder="Discrepancy" value={formData.discrepancy} onChange={e => setFormData({...formData, discrepancy: e.target.value})} className="sleek-input w-full" required />
-            <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as any})} className="sleek-input w-full">
-              <option value="due-in">Due-In</option>
-              <option value="awaiting-parts">Awaiting Parts</option>
-              <option value="in-repair">In Repair</option>
-              <option value="complete">Complete</option>
-            </select>
-            <div className="flex gap-2">
-              <button type="button" onClick={() => setIsModalOpen(false)} className="sleek-button bg-slate-200 text-slate-900 w-full">Cancel</button>
-              <button type="submit" className="sleek-button w-full" disabled={loading}>{loading ? 'Saving...' : 'Save'}</button>
-            </div>
-          </form>
-        </div>
-      )}
-    </div>
-  );
-};
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!profile) return;
-    
-    if (user?.uid === 'mock-user-preview') {
-      alert('Demo users cannot modify the live database. This entry will not be saved.');
-      setIsModalOpen(false);
-      return;
-    }
-
-    setLoading(true);
     
     const personnelArray = formData.personnelInput.split(',').map(p => p.trim()).filter(p => p);
     
@@ -2270,6 +2041,102 @@ const DIFMLogs: React.FC = () => {
           </div>
         )}
       </AnimatePresence>
+    </div>
+  );
+};
+
+const DIFMLogs: React.FC = () => {
+  const { profile } = useAuth();
+  const [logs, setLogs] = useState<DIFMLog[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    tail_number: '',
+    discrepancy: '',
+    status: 'due-in' as 'due-in' | 'awaiting-parts' | 'in-repair' | 'complete'
+  });
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!profile) return;
+    const q = query(collection(db, 'difm'), where('shopId', '==', profile.shopId));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setLogs(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DIFMLog)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'difm');
+    });
+    return unsubscribe;
+  }, [profile]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!profile) return;
+    setLoading(true);
+    try {
+      await addDoc(collection(db, 'difm'), {
+        ...formData,
+        shopId: profile.shopId,
+        amuId: profile.amuId,
+        technician_name: profile.name,
+        timestamp: serverTimestamp()
+      });
+      setIsModalOpen(false);
+      setFormData({ tail_number: '', discrepancy: '', status: 'due-in' });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, 'difm');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-black uppercase tracking-tight">DIFM Log</h2>
+        <button onClick={() => setIsModalOpen(true)} className="sleek-button px-4 py-2 flex items-center gap-2">
+          <Plus className="w-4 h-4" /> Add Item
+        </button>
+      </div>
+      <div className="sleek-card overflow-hidden">
+        <table className="w-full text-left text-xs">
+          <thead className="bg-surface-variant/50 uppercase tracking-wider font-bold">
+            <tr>
+              <th className="p-4">Tail</th>
+              <th className="p-4">Discrepancy</th>
+              <th className="p-4">Status</th>
+              <th className="p-4">Technician</th>
+            </tr>
+          </thead>
+          <tbody>
+            {logs.map(log => (
+              <tr key={log.id} className="border-t border-outline">
+                <td className="p-4 font-bold">{log.tail_number}</td>
+                <td className="p-4">{log.discrepancy}</td>
+                <td className="p-4 capitalize">{log.status.replace('-', ' ')}</td>
+                <td className="p-4">{log.technician_name}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <form onSubmit={handleSubmit} className="bg-surface p-8 rounded-xl w-full max-w-md space-y-4">
+            <h3 className="text-lg font-bold">Add DIFM Item</h3>
+            <input type="text" placeholder="Tail Number" value={formData.tail_number} onChange={e => setFormData({...formData, tail_number: e.target.value})} className="sleek-input w-full" required />
+            <input type="text" placeholder="Discrepancy" value={formData.discrepancy} onChange={e => setFormData({...formData, discrepancy: e.target.value})} className="sleek-input w-full" required />
+            <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as any})} className="sleek-input w-full">
+              <option value="due-in">Due-In</option>
+              <option value="awaiting-parts">Awaiting Parts</option>
+              <option value="in-repair">In Repair</option>
+              <option value="complete">Complete</option>
+            </select>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setIsModalOpen(false)} className="sleek-button bg-slate-200 text-slate-900 w-full">Cancel</button>
+              <button type="submit" className="sleek-button w-full" disabled={loading}>{loading ? 'Saving...' : 'Save'}</button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 };
