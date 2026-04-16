@@ -257,7 +257,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   const signInEmail = async (email: string, pass: string) => {
     try {
       // Normalize 'admin' input to the admin email for Firebase Auth
-      const loginEmail = email === 'admin' ? 'admin@92amxs.af.mil' : email;
+      const loginEmail = email === 'admin' ? 'admin@us.af.mil' : email;
       await signInWithEmailAndPassword(auth, loginEmail, pass);
     } catch (error: any) {
       console.error('Email sign in error:', error);
@@ -268,7 +268,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   const signUpEmail = async (email: string, pass: string) => {
     try {
       // Normalize 'admin' input for registration
-      const regEmail = email === 'admin' ? 'admin@92amxs.af.mil' : email;
+      const regEmail = email === 'admin' ? 'admin@us.af.mil' : email;
       await createUserWithEmailAndPassword(auth, regEmail, pass);
     } catch (error) {
       console.error('Email sign up error:', error);
@@ -293,7 +293,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   const bypassLogin = (role: UserRole = 'ncoic') => {
     const mockUser = {
       uid: 'mock-user-preview',
-      email: 'dev.preview@92amxs.af.mil',
+      email: 'dev.preview@us.af.mil',
       displayName: 'PREVIEW USER',
     } as User;
     
@@ -305,7 +305,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       shopId: 'AVIONICS',
       amuId: 'BLACK',
       role: role,
-      email: 'dev.preview@92amxs.af.mil',
+      email: 'dev.preview@us.af.mil',
       phone: '555-0123',
       status: 'active',
       isDemo: true
@@ -737,7 +737,7 @@ const Login: React.FC = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="sleek-input pl-12 w-full" 
-                    placeholder="admin or name@af.mil" 
+                    placeholder="admin or name@us.af.mil" 
                   />
                 </div>
               </div>
@@ -785,7 +785,7 @@ const Login: React.FC = () => {
 };
 
 const Setup: React.FC = () => {
-  const { user, refreshProfile } = useAuth();
+  const { user, refreshProfile, logout } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     rank: '',
@@ -795,13 +795,15 @@ const Setup: React.FC = () => {
     phone: ''
   });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
     setLoading(true);
+    setError('');
     try {
-      const isMasterAdmin = user.email === 'spkoehl@gmail.com' || user.email === 'admin@92amxs.af.mil' || user.email === 'admin';
+      const isMasterAdmin = user.email === 'spkoehl@gmail.com' || user.email === 'admin@us.af.mil' || user.email === 'admin';
       
       const profile: UserProfile = {
         uid: user.uid,
@@ -819,8 +821,9 @@ const Setup: React.FC = () => {
       };
       await setDoc(doc(db, 'users', user.uid), profile);
       await refreshProfile();
-    } catch (error) {
-      console.error('Setup error:', error);
+    } catch (err: any) {
+      console.error('Setup error:', err);
+      setError(err.message || 'Setup submission failed. Please check your inputs or connectivity.');
     } finally {
       setLoading(false);
     }
@@ -908,13 +911,29 @@ const Setup: React.FC = () => {
             </div>
           </div>
 
-          <button 
-            type="submit"
-            disabled={loading}
-            className="sleek-button w-full py-5 text-lg"
-          >
-            {loading ? 'Transmitting Request...' : 'Request System Access'}
-          </button>
+          {error && (
+            <div className="p-4 bg-safety-orange/10 border border-safety-orange/20 flex items-center gap-3 text-safety-orange text-[10px] font-black uppercase tracking-tight">
+              <ShieldAlert className="w-4 h-4 flex-shrink-0" />
+              {error}
+            </div>
+          )}
+
+          <div className="flex flex-col gap-4">
+            <button 
+              type="submit"
+              disabled={loading}
+              className="sleek-button w-full py-5 text-lg"
+            >
+              {loading ? 'Transmitting Request...' : 'Request System Access'}
+            </button>
+            <button 
+              type="button"
+              onClick={logout}
+              className="tech-label text-slate-400 hover:text-slate-600 transition-colors uppercase tracking-[0.1em] text-center"
+            >
+              Sign Out & Try Different Account
+            </button>
+          </div>
         </form>
       </div>
     </div>
