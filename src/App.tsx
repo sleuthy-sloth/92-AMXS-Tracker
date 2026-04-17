@@ -451,13 +451,23 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         "fixed inset-y-0 left-0 z-40 w-[260px] bg-sidebar text-white transform transition-transform duration-300 md:translate-x-0 md:static flex flex-col border-r border-white/10",
         isSidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
-        <div className="logo flex items-center gap-3 px-8 py-10">
-          <div className="logo-box w-10 h-10 bg-primary text-white rounded-none flex items-center justify-center font-black text-xl">
-            92
+        <div className="logo flex items-center gap-4 px-8 py-10">
+          <div className="relative w-14 h-14 flex-shrink-0">
+            <img 
+              src="https://media.defense.gov/2022/Sep/29/2003087437/-1/-1/0/220929-F-AFHRA-020.JPG" 
+              alt="92nd AMXS Logo"
+              className="w-full h-full object-contain filter drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]"
+              referrerPolicy="no-referrer"
+            />
+            <div className="absolute -bottom-1 -right-1 bg-primary text-white text-[10px] font-black px-1 leading-tight">
+              92
+            </div>
           </div>
-          <div>
-            <div className="font-black text-lg tracking-[0.2em] uppercase leading-none text-white">AMXS</div>
-            <div className="tech-label text-white/60 mt-1">Logistics Control</div>
+          <div className="flex flex-col">
+            <div className="font-black text-xl tracking-[0.1em] uppercase leading-tight text-white">
+              92<span className="text-primary truncate">ND</span> AMXS
+            </div>
+            <div className="tech-label text-white/50 text-[9px] mt-1 font-bold tracking-[0.2em] uppercase">Logistics Control</div>
           </div>
         </div>
 
@@ -1517,17 +1527,32 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-10">
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-        <div>
-          <h2 className="text-4xl font-black tracking-tighter uppercase">Command Dashboard</h2>
-          <p className="serif-header text-lg mt-1">Real-time operational readiness and maintenance oversight</p>
+      <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 text-on-background">
+        <div className="flex items-center gap-4 sm:gap-6">
+          <div className="w-14 h-14 sm:w-16 sm:h-16 bg-white border border-outline p-2 flex items-center justify-center shadow-sm shrink-0">
+            <img 
+              src="https://media.defense.gov/2022/Sep/29/2003087437/-1/-1/0/220929-F-AFHRA-020.JPG" 
+              alt="92nd AMXS" 
+              className="w-full h-full object-contain"
+              referrerPolicy="no-referrer"
+            />
+          </div>
+          <div>
+            <h2 className="text-3xl sm:text-4xl font-black tracking-tighter uppercase leading-none">Command Dashboard</h2>
+            <div className="flex items-center gap-2 sm:gap-3 mt-2">
+              <span className="tech-label text-primary font-bold tracking-widest text-[11px]">92ND AMXS</span>
+              <span className="w-1.5 h-1.5 bg-slate-200 rounded-full"></span>
+              <p className="serif-header text-sm text-slate-500 italic">Operational Readiness & Oversight</p>
+            </div>
+          </div>
         </div>
-        <div className="flex gap-4">
+        <div className="flex gap-4 w-full lg:w-auto">
           <button 
-            onClick={() => exportTurnoverToPDF(logs, difm, profile.shopId, profile.amuId, 'Days')}
-            className="sleek-button bg-sidebar \!text-white border border-white/10 hover:bg-slate-800 flex items-center gap-2"
+            onClick={() => exportTurnoverToPDF(logs, difm, (profile as any).shopId, (profile as any).amuId, 'Days')}
+            className="sleek-button flex-1 lg:flex-none bg-sidebar !text-white border border-white/10 hover:bg-slate-800 flex items-center justify-center gap-3 px-8 group"
           >
-            <HistoryIcon className="w-4 h-4 text-white" /> Turnover Report
+            <HistoryIcon className="w-4 h-4 text-white group-hover:scale-110 transition-transform" /> 
+            <span className="font-black text-[11px] uppercase tracking-widest">Turnover Report</span>
           </button>
         </div>
       </header>
@@ -1716,6 +1741,7 @@ const MaintenanceLogs: React.FC = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [isActionsOpen, setIsActionsOpen] = useState(false);
 
   useEffect(() => {
     if (!profile) return;
@@ -1967,77 +1993,142 @@ const MaintenanceLogs: React.FC = () => {
 
   return (
     <div className="space-y-10">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-        <div>
-          <h2 className="text-4xl font-black tracking-tighter uppercase text-slate-900">Maintenance Logs</h2>
-          <p className="serif-header text-lg mt-1 text-slate-600">Real-time turnover and discrepancy tracking</p>
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
+        <div className="flex items-center gap-6">
+          <div className="w-16 h-16 bg-white border border-outline p-2 flex items-center justify-center shadow-sm">
+            <img 
+              src="https://media.defense.gov/2022/Sep/29/2003087437/-1/-1/0/220929-F-AFHRA-020.JPG" 
+              alt="92nd AMXS" 
+              className="w-full h-full object-contain"
+              referrerPolicy="no-referrer"
+            />
+          </div>
+          <div>
+            <h2 className="text-4xl font-black tracking-tighter uppercase text-slate-900 leading-none">Maintenance Logs</h2>
+            <div className="flex items-center gap-3 mt-2">
+              <span className="tech-label text-primary font-bold">92ND AMXS</span>
+              <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
+              <p className="serif-header text-sm text-slate-500 italic">Operational Readiness & Discrepancy Tracking</p>
+            </div>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-4">
-          <div className="flex bg-surface border border-outline p-1">
+
+        <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+          {/* View Toggle */}
+          <div className="flex bg-white border border-outline p-1.5 shadow-sm">
             <button 
               onClick={() => setViewMode('grid')}
-              className={cn("p-2 transition-colors", viewMode === 'grid' ? "bg-primary text-white" : "text-on-surface-variant hover:text-on-surface")}
+              className={cn("p-2 transition-all", viewMode === 'grid' ? "bg-primary text-white" : "text-slate-400 hover:text-slate-900")}
+              title="Grid View"
             >
               <Grid className="w-4 h-4" />
             </button>
             <button 
               onClick={() => setViewMode('list')}
-              className={cn("p-2 transition-colors", viewMode === 'list' ? "bg-primary text-white" : "text-on-surface-variant hover:text-on-surface")}
+              className={cn("p-2 transition-all", viewMode === 'list' ? "bg-primary text-white" : "text-slate-400 hover:text-slate-900")}
+              title="List View"
             >
               <List className="w-4 h-4" />
             </button>
           </div>
-          {(profile?.role === 'ncoic' || profile?.role === 'leadership') && (
-            <div className="flex gap-2">
+
+          <div className="h-10 w-px bg-outline mx-2 hidden md:block"></div>
+
+          {/* Action Group */}
+          <div className="flex items-center gap-3 flex-1 md:flex-none">
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className="sleek-button flex-1 md:flex-none flex items-center justify-center gap-2 bg-primary text-white px-6 shadow-lg shadow-primary/20"
+            >
+              <Plus className="w-5 h-5" /> 
+              <span className="font-black tracking-widest text-[11px] uppercase">New Entry</span>
+            </button>
+
+            <div className="relative">
               <button 
-                onClick={() => exportTurnoverToPDF(logs, difm, profile.shopId, profile.amuId, 'Current')}
-                className="sleek-button bg-sidebar \!text-white border border-white/10 hover:bg-slate-800 flex items-center gap-2"
-                title="Generate Shift Turnover"
+                onClick={() => setIsActionsOpen(!isActionsOpen)}
+                className={cn(
+                  "h-[48px] px-4 flex items-center gap-2 border-2 transition-all bg-white font-black text-[10px] tracking-[0.2em] uppercase",
+                  isActionsOpen ? "border-primary text-primary" : "border-slate-200 text-slate-600 hover:border-slate-300"
+                )}
               >
-                <HistoryIcon className="w-4 h-4 text-white" /> <span className="hidden sm:inline">Turnover</span>
+                <MoreVertical className="w-4 h-4" />
+                <span className="hidden sm:inline">Management</span>
+                <ChevronDown className={cn("w-3 h-3 transition-transform", isActionsOpen && "rotate-180")} />
               </button>
-              <button 
-                onClick={() => exportLogsToCSV(filteredLogs, profile.shopId)}
-                className="sleek-button bg-surface \!text-slate-900 border border-outline hover:bg-slate-50 flex items-center gap-2"
-                title="Export CSV"
-              >
-                <FileSpreadsheet className="w-4 h-4" /> <span className="hidden sm:inline">CSV</span>
-              </button>
-              <button 
-                onClick={() => exportLogsToPDF(filteredLogs, profile.shopId)}
-                className="sleek-button bg-surface \!text-slate-900 border border-outline hover:bg-slate-50 flex items-center gap-2"
-                title="Export PDF"
-              >
-                <FileText className="w-4 h-4" /> <span className="hidden sm:inline">PDF</span>
-              </button>
+
+              <AnimatePresence>
+                {isActionsOpen && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setIsActionsOpen(false)} />
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute right-0 mt-3 w-64 bg-white border border-outline shadow-2xl z-20 flex flex-col divide-y divide-outline"
+                    >
+                      <div className="p-4 bg-putty/20">
+                        <span className="tech-label !text-[8px] text-primary">Shift Operations</span>
+                      </div>
+                      
+                      <button 
+                        onClick={() => {
+                          exportTurnoverToPDF(logs, difm, profile?.shopId || 'ALL', profile?.amuId || 'ALL', 'Current');
+                          setIsActionsOpen(false);
+                        }}
+                        className="w-full text-left p-4 hover:bg-slate-50 flex items-center gap-3 transition-colors group"
+                      >
+                        <div className="w-8 h-8 rounded-none bg-sidebar flex items-center justify-center">
+                          <HistoryIcon className="w-4 h-4 text-white" />
+                        </div>
+                        <div>
+                          <p className="font-black text-[10px] tracking-widest uppercase">Turnover Report</p>
+                          <p className="text-[9px] text-slate-400 mt-0.5 font-medium">Generate shift handover PDF</p>
+                        </div>
+                      </button>
+
+                      <div className="p-4 bg-putty/20">
+                        <span className="tech-label !text-[8px] text-primary">Data Import & Export</span>
+                      </div>
+
+                      <button 
+                        onClick={() => {
+                          bulkScanInputRef.current?.click();
+                          setIsActionsOpen(false);
+                        }}
+                        className="w-full text-left p-4 hover:bg-slate-50 flex items-center gap-3 transition-colors group"
+                      >
+                        <div className="w-8 h-8 rounded-none bg-putty flex items-center justify-center">
+                          <UploadCloud className="w-4 h-4 text-slate-700" />
+                        </div>
+                        <div>
+                          <p className="font-black text-[10px] tracking-widest uppercase truncate">Bulk Logbook Scan</p>
+                          <p className="text-[9px] text-slate-400 mt-0.5 font-medium">Batch OCR from photos</p>
+                        </div>
+                      </button>
+
+                      <div className="grid grid-cols-2">
+                        <button 
+                          onClick={() => exportLogsToCSV(filteredLogs, profile?.shopId || 'ALL')}
+                          className="p-4 hover:bg-slate-50 flex flex-col items-center gap-2 border-r border-outline"
+                        >
+                          <FileSpreadsheet className="w-5 h-5 text-slate-400" />
+                          <span className="font-black text-[9px] tracking-widest uppercase">CSV</span>
+                        </button>
+                        <button 
+                          onClick={() => exportLogsToPDF(filteredLogs, profile?.shopId || 'ALL')}
+                          className="p-4 hover:bg-slate-50 flex flex-col items-center gap-2"
+                        >
+                          <FileText className="w-5 h-5 text-slate-400" />
+                          <span className="font-black text-[9px] tracking-widest uppercase">PDF</span>
+                        </button>
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
             </div>
-          )}
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            className="sleek-button flex items-center gap-2"
-          >
-            <Plus className="w-5 h-5" /> New Entry
-          </button>
-          <input 
-            type="file" 
-            ref={bulkScanInputRef}
-            className="hidden" 
-            accept="image/*" 
-            capture="environment"
-            onChange={handleScanLogbook}
-          />
-          <button 
-            onClick={() => bulkScanInputRef.current?.click()}
-            className="sleek-button bg-surface border border-outline hover:bg-slate-50 flex items-center gap-2 text-slate-700"
-            disabled={isBulkScanning}
-          >
-            {isBulkScanning ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <UploadCloud className="w-4 h-4" />
-            )}
-            <span className="hidden sm:inline">Bulk Logbook Scan</span>
-          </button>
+          </div>
         </div>
       </div>
 
@@ -2343,9 +2434,9 @@ const MaintenanceLogs: React.FC = () => {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white max-w-2xl w-full rounded-none shadow-2xl overflow-hidden border border-outline"
+              className="bg-white max-w-2xl w-full max-h-[90vh] rounded-none shadow-2xl flex flex-col border border-outline"
             >
-              <div className="p-8 border-b border-outline flex justify-between items-center bg-putty/30">
+              <div className="p-8 border-b border-outline flex justify-between items-center bg-putty/30 shrink-0">
                 <h3 className="font-black text-2xl tracking-tighter uppercase">{editingLogId ? 'Edit Maintenance Entry' : 'New Maintenance Entry'}</h3>
                 <div className="flex items-center gap-3">
                   <input 
@@ -2375,8 +2466,9 @@ const MaintenanceLogs: React.FC = () => {
                 </div>
               </div>
               
-              <form onSubmit={handleSubmit} className="p-10 space-y-8">
-                <div className="grid grid-cols-2 gap-8">
+              <div className="overflow-y-auto flex-1 custom-scrollbar">
+                <form onSubmit={handleSubmit} className="p-10 space-y-8">
+                  <div className="grid grid-cols-2 gap-8">
                   <div className="space-y-2">
                     <label className="tech-label !text-[9px]">Tail Number</label>
                     <input 
@@ -2481,7 +2573,8 @@ const MaintenanceLogs: React.FC = () => {
                   {loading ? 'Transmitting Data...' : 'Submit Operational Entry'} <Send className="w-5 h-5" />
                 </button>
               </form>
-            </motion.div>
+            </div>
+          </motion.div>
           </div>
         )}
       </AnimatePresence>
@@ -2761,17 +2854,18 @@ const DIFMLogs: React.FC = () => {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white max-w-md w-full rounded-none shadow-2xl overflow-hidden border border-outline"
+              className="bg-white max-w-md w-full max-h-[90vh] rounded-none shadow-2xl flex flex-col border border-outline"
             >
-              <div className="p-8 border-b border-outline bg-putty/30 flex justify-between items-center">
+              <div className="p-8 border-b border-outline bg-putty/30 flex justify-between items-center shrink-0">
                 <h3 className="font-black text-2xl tracking-tighter uppercase">Initiate DIFM Track</h3>
                 <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-100 transition-colors text-slate-900">
                   <X className="w-6 h-6" />
                 </button>
               </div>
               
-              <form onSubmit={handleSubmit} className="p-10 space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="overflow-y-auto flex-1 custom-scrollbar">
+                <form onSubmit={handleSubmit} className="p-10 space-y-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="tech-label">Tail Number</label>
                     <input 
@@ -2850,7 +2944,8 @@ const DIFMLogs: React.FC = () => {
                   </button>
                 </div>
               </form>
-            </motion.div>
+            </div>
+          </motion.div>
           </div>
         )}
       </AnimatePresence>
