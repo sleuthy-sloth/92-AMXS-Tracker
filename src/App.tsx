@@ -44,6 +44,11 @@ import {
   Wrench, 
   BarChart3, 
   LogOut, 
+  Activity,
+  Package,
+  History as HistoryIcon,
+  AlertTriangle,
+  MoreVertical,
   Plus, 
   Search, 
   UploadCloud, 
@@ -650,7 +655,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       {/* Mobile Toggle */}
       <button 
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        className="md:hidden fixed bottom-6 right-6 z-50 w-12 h-12 bg-primary text-white rounded-full shadow-lg flex items-center justify-center"
+        className="md:hidden fixed bottom-6 left-6 z-50 w-12 h-12 bg-primary text-white rounded-full shadow-lg flex items-center justify-center"
       >
         {isSidebarOpen ? <X /> : <Menu />}
       </button>
@@ -1249,6 +1254,115 @@ const Onboarding: React.FC = () => {
   );
 };
 
+// --- Intelligence Feed ---
+
+const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[], training: TrainingRecord[] }> = ({ logs, training }) => {
+  const { profile } = useAuth();
+  const [alerts, setAlerts] = useState<{ id: string, type: 'critical' | 'warning' | 'info', title: string, description: string, time: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const generateIntelligence = async () => {
+      if (!profile) return;
+      setLoading(true);
+      try {
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        
+        // Prepare data for analysis
+        const recentLogs = logs.slice(0, 10).map(l => `${l.tail_number}: ${l.discrepancy}`);
+        const imminentTraining = training.filter(t => t.status !== 'current').slice(0, 5).map(t => `${t.course_name} due ${t.due_date}`);
+        
+        const response = await ai.models.generateContent({
+          model: "gemini-3-flash-preview",
+          contents: [{ 
+            role: "user", 
+            parts: [{ 
+              text: `Analyze this 92nd AMXS data for ${profile.shopId} shop in ${profile.amuId} AMU. Identify 3 critical readiness alerts or trends. 
+              Logs: ${recentLogs.join(', ')}
+              Training: ${imminentTraining.join(', ')}
+              
+              Format as JSON with keys: [{ "type": "critical" | "warning" | "info", "title": string, "description": string }]` 
+            }] 
+          }],
+          config: {
+            responseMimeType: "application/json"
+          }
+        });
+
+        const data = JSON.parse(response.text);
+        setAlerts(data.map((a: any, i: number) => ({
+          ...a,
+          id: `intel-${i}`,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        })));
+      } catch (err) {
+        console.error("Intelligence Feed Error:", err);
+        setAlerts([{
+          id: 'err',
+          type: 'info',
+          title: 'System Analysis Paused',
+          description: 'Connection to operational intelligence engine is throttled. Monitoring manually.',
+          time: '--:--'
+        }]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    generateIntelligence();
+    const interval = setInterval(generateIntelligence, 300000); // Refresh every 5 mins
+    return () => clearInterval(interval);
+  }, [profile, logs.length, training.length]);
+
+  return (
+    <div className="visible-grid bg-white border border-outline h-full">
+      <div className="p-6 border-b border-outline bg-slate-50 flex justify-between items-center">
+        <div>
+          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Mission Intelligence</h3>
+          <p className="tech-label mt-1 text-slate-400">Live Readiness Analysis // 92 AMXS</p>
+        </div>
+        <Activity className={cn("w-4 h-4 text-primary", loading && "animate-pulse")} />
+      </div>
+      <div className="p-4 space-y-4 max-h-[400px] overflow-y-auto">
+        {loading && alerts.length === 0 ? (
+          <div className="py-10 text-center space-y-3">
+            <div className="flex justify-center gap-1">
+              <div className="w-1.5 h-1.5 bg-primary animate-bounce"></div>
+              <div className="w-1.5 h-1.5 bg-primary animate-bounce [animation-delay:0.2s]"></div>
+              <div className="w-1.5 h-1.5 bg-primary animate-bounce [animation-delay:0.4s]"></div>
+            </div>
+            <p className="tech-label text-[8px] text-slate-400 uppercase">Processing Field Intelligence...</p>
+          </div>
+        ) : (
+          alerts.map(alert => (
+            <motion.div 
+              key={alert.id}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="p-4 bg-slate-50 border-l-4 border-l-primary flex gap-4 shadow-sm"
+              style={{ borderLeftColor: alert.type === 'critical' ? '#ef4444' : alert.type === 'warning' ? '#f59e0b' : '#3b82f6' }}
+            >
+              <div className={cn(
+                "w-8 h-8 flex items-center justify-center shrink-0 rounded-none",
+                alert.type === 'critical' ? "bg-red-100 text-red-600" : alert.type === 'warning' ? "bg-amber-100 text-amber-600" : "bg-blue-100 text-blue-600"
+              )}>
+                {alert.type === 'critical' ? <ShieldAlert className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+              </div>
+              <div className="flex-1 space-y-1">
+                <div className="flex justify-between items-start">
+                  <h4 className="text-[11px] font-black uppercase tracking-tight text-slate-900">{alert.title}</h4>
+                  <span className="tech-label text-[8px] opacity-40">{alert.time}</span>
+                </div>
+                <p className="text-xs text-slate-600 leading-relaxed serif-header">{alert.description}</p>
+              </div>
+            </motion.div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+};
+
 const Dashboard: React.FC = () => {
   const { profile, isDemoMode } = useAuth();
   const [logs, setLogs] = useState<MaintenanceLog[]>([]);
@@ -1319,7 +1433,7 @@ const Dashboard: React.FC = () => {
     }
     
     const unsubLogs = onSnapshot(qLogs, (snap) => {
-      setLogs(snap.docs.map(d => ({ id: d.id, ...d.data() } as MaintenanceLog)));
+      setLogs(snap.docs.map(d => ({ id: d.id, ...d.data() } as any)));
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'logs'));
 
     let qPersonnel;
@@ -1338,7 +1452,7 @@ const Dashboard: React.FC = () => {
     }
     
     const unsubPersonnel = onSnapshot(qPersonnel, (snap) => {
-      setPersonnel(snap.docs.map(d => d.data() as UserProfile));
+      setPersonnel(snap.docs.map(d => ({ id: d.id, ...d.data() } as any)));
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'users'));
 
     let qTraining;
@@ -1357,7 +1471,7 @@ const Dashboard: React.FC = () => {
     }
     
     const unsubTraining = onSnapshot(qTraining, (snap) => {
-      setTraining(snap.docs.map(d => d.data() as TrainingRecord));
+      setTraining(snap.docs.map(d => ({ id: d.id, ...d.data() } as any)));
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'training'));
 
     return () => {
@@ -1460,8 +1574,13 @@ const Dashboard: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* Intelligence Feed */}
+        <div className="lg:col-span-4">
+          <IntelligenceFeed logs={logs} training={training} />
+        </div>
+
         {/* Personnel Roster */}
-        <div className="lg:col-span-12">
+        <div className="lg:col-span-8">
           <div className="visible-grid bg-surface">
             <div className="p-8 flex justify-between items-center border-b border-outline">
               <div>
@@ -2165,7 +2284,10 @@ const DIFMLogs: React.FC = () => {
   const [formData, setFormData] = useState({
     tail_number: '',
     discrepancy: '',
-    status: 'due-in' as 'due-in' | 'awaiting-parts' | 'in-repair' | 'complete'
+    doc_number: '',
+    nsn: '',
+    status: 'due-in' as const,
+    pipeline_status: 'ordered' as const
   });
   const [loading, setLoading] = useState(false);
 
@@ -2207,7 +2329,7 @@ const DIFMLogs: React.FC = () => {
     }
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setLogs(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DIFMLog)));
+      setLogs(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'difm');
     });
@@ -2233,7 +2355,14 @@ const DIFMLogs: React.FC = () => {
         timestamp: serverTimestamp()
       });
       setIsModalOpen(false);
-      setFormData({ tail_number: '', discrepancy: '', status: 'due-in' });
+      setFormData({ 
+        tail_number: '', 
+        discrepancy: '', 
+        doc_number: '', 
+        nsn: '', 
+        status: 'due-in', 
+        pipeline_status: 'ordered' 
+      });
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'difm');
     } finally {
@@ -2241,10 +2370,10 @@ const DIFMLogs: React.FC = () => {
     }
   };
 
-  const handleStatusUpdate = async (id: string, newStatus: string) => {
+  const handleUpdate = async (id: string, updates: Partial<DIFMLog>) => {
     try {
       const docRef = doc(db, 'difm', id);
-      await updateDoc(docRef, { status: newStatus });
+      await updateDoc(docRef, updates);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `difm/${id}`);
     }
@@ -2279,9 +2408,9 @@ const DIFMLogs: React.FC = () => {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 text-[10px] font-black text-on-surface-variant tracking-[0.2em] uppercase font-mono">
-                <th className="px-8 py-5">Tail Number</th>
-                <th className="px-8 py-5">Discrepancy</th>
-                <th className="px-8 py-5">Status</th>
+                <th className="px-8 py-5">Track Details</th>
+                <th className="px-8 py-5 text-center">Logistics Status</th>
+                <th className="px-8 py-5">Pipeline Phase</th>
                 <th className="px-8 py-5 text-right">Actions</th>
               </tr>
             </thead>
@@ -2295,18 +2424,23 @@ const DIFMLogs: React.FC = () => {
                   className="hover:bg-slate-50/50"
                 >
                   <td className="px-8 py-5">
-                    <p className="font-black text-sm tracking-tight uppercase text-slate-900">{log.tail_number}</p>
-                    <p className="tech-label text-[10px] mt-1 text-slate-500 font-bold">{log.technician_name}</p>
-                  </td>
-                  <td className="px-8 py-5">
-                    <p className="serif-header text-xs text-slate-600 max-w-md line-clamp-2">{log.discrepancy}</p>
+                    <div className="flex items-start gap-4">
+                      <div className="p-3 bg-slate-100 rounded-none border border-outline">
+                        <Package className="w-5 h-5 text-slate-400" />
+                      </div>
+                      <div>
+                        <p className="font-black text-sm tracking-tight uppercase text-slate-900">{log.tail_number}</p>
+                        <p className="tech-label text-[10px] mt-1 text-slate-500 font-bold uppercase">{log.doc_number || "NO DOC #"}</p>
+                        <p className="serif-header text-[10px] text-slate-400 mt-2 max-w-xs">{log.discrepancy}</p>
+                      </div>
+                    </div>
                   </td>
                   <td className="px-8 py-5">
                     <select 
                       value={log.status}
-                      onChange={(e) => handleStatusUpdate(log.id!, e.target.value)}
+                      onChange={(e) => handleUpdate(log.id!, { status: e.target.value as any })}
                       className={cn(
-                        "badge cursor-pointer appearance-none text-center min-w-[120px]",
+                        "badge cursor-pointer appearance-none text-center min-w-[140px] mx-auto",
                         log.status === 'complete' ? "badge-success" : 
                         log.status === 'awaiting-parts' ? "badge-danger" : 
                         log.status === 'in-repair' ? "badge-warning" : "bg-slate-100 text-slate-500"
@@ -2317,6 +2451,33 @@ const DIFMLogs: React.FC = () => {
                       <option value="in-repair">IN REPAIR</option>
                       <option value="complete">COMPLETE</option>
                     </select>
+                  </td>
+                  <td className="px-8 py-5">
+                    <div className="flex flex-col gap-2">
+                      <select 
+                        value={log.pipeline_status || 'ordered'}
+                        onChange={(e) => handleUpdate(log.id!, { pipeline_status: e.target.value as any })}
+                        className="tech-label !text-[9px] bg-white border border-outline px-2 py-1 uppercase font-black"
+                      >
+                        <option value="ordered">ORDERED</option>
+                        <option value="en-route">EN-ROUTE</option>
+                        <option value="received">RECEIVED</option>
+                        <option value="bench-check">BENCH-CHECK</option>
+                        <option value="installed">INSTALLED</option>
+                      </select>
+                      <div className="h-1 bg-slate-100 w-full overflow-hidden">
+                        <motion.div 
+                          className="h-full bg-primary"
+                          initial={{ width: 0 }}
+                          animate={{ 
+                            width: (log.pipeline_status === 'ordered' || !log.pipeline_status) ? '20%' :
+                                   log.pipeline_status === 'en-route' ? '40%' :
+                                   log.pipeline_status === 'received' ? '60%' :
+                                   log.pipeline_status === 'bench-check' ? '80%' : '100%' 
+                          }}
+                        />
+                      </div>
+                    </div>
                   </td>
                   <td className="px-8 py-5 text-right">
                     <button 
@@ -2343,11 +2504,15 @@ const DIFMLogs: React.FC = () => {
 
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-stealth/80 backdrop-blur-md">
+          <div 
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-stealth/80 backdrop-blur-md"
+            onClick={() => setIsModalOpen(false)}
+          >
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
               className="bg-white max-w-md w-full rounded-none shadow-2xl overflow-hidden border border-outline"
             >
               <div className="p-8 border-b border-outline bg-putty/30 flex justify-between items-center">
@@ -2358,7 +2523,7 @@ const DIFMLogs: React.FC = () => {
               </div>
               
               <form onSubmit={handleSubmit} className="p-10 space-y-8">
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="tech-label">Tail Number</label>
                     <input 
@@ -2372,30 +2537,52 @@ const DIFMLogs: React.FC = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <label className="tech-label">Maintenance Discrepancy</label>
-                    <textarea 
-                      required
-                      rows={4}
-                      value={formData.discrepancy}
-                      onChange={(e) => setFormData({...formData, discrepancy: e.target.value})}
-                      className="sleek-input w-full resize-none" 
-                      placeholder="Detailed description of the required repair..."
+                    <label className="tech-label">Doc Number</label>
+                    <input 
+                      type="text"
+                      value={formData.doc_number}
+                      onChange={(e) => setFormData({...formData, doc_number: e.target.value.toUpperCase()})}
+                      className="sleek-input w-full uppercase" 
+                      placeholder="JCN / DOC #"
                     />
                   </div>
+                </div>
 
-                  <div className="space-y-2">
-                    <label className="tech-label">Initial Track Status</label>
-                    <select 
-                      value={formData.status}
-                      onChange={(e) => setFormData({...formData, status: e.target.value as any})}
-                      className="sleek-input w-full"
-                    >
-                      <option value="due-in">Due-In</option>
-                      <option value="awaiting-parts">Awaiting Parts</option>
-                      <option value="in-repair">In Repair</option>
-                      <option value="complete">Complete</option>
-                    </select>
-                  </div>
+                <div className="space-y-2">
+                  <label className="tech-label">NSN / Part Number</label>
+                  <input 
+                    type="text"
+                    value={formData.nsn}
+                    onChange={(e) => setFormData({...formData, nsn: e.target.value})}
+                    className="sleek-input w-full" 
+                    placeholder="National Stock Number or P/N"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="tech-label">Maintenance Discrepancy</label>
+                  <textarea 
+                    required
+                    rows={3}
+                    value={formData.discrepancy}
+                    onChange={(e) => setFormData({...formData, discrepancy: e.target.value})}
+                    className="sleek-input w-full resize-none" 
+                    placeholder="Describe the failed component..."
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="tech-label">Initial Track Status</label>
+                  <select 
+                    value={formData.status}
+                    onChange={(e) => setFormData({...formData, status: e.target.value as any})}
+                    className="sleek-input w-full"
+                  >
+                    <option value="due-in">Due-In</option>
+                    <option value="awaiting-parts">Awaiting Parts</option>
+                    <option value="in-repair">In Repair</option>
+                    <option value="complete">Complete</option>
+                  </select>
                 </div>
 
                 <div className="flex gap-4 pt-4">
@@ -2521,7 +2708,7 @@ const TrainingTracker: React.FC = () => {
     }
     
     const unsubPersonnel = onSnapshot(qPersonnel, (snap) => {
-      setPersonnel(snap.docs.map(d => d.data() as UserProfile));
+      setPersonnel(snap.docs.map(d => ({ id: d.id, ...d.data() } as any)));
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'users'));
 
     return () => {

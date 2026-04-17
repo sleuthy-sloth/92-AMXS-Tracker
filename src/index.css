@@ -20,7 +20,7 @@
   --color-surface-container-high: #e2e8f0;
   --color-surface-container-highest: #cbd5e1;
   
-  --color-primary: #005EB8;
+  --color-primary: var(--amu-primary);
   --color-on-primary: #ffffff;
   --color-primary-container: #DBEAFE;
   --color-on-primary-container: #1E3A8A;
@@ -49,6 +49,24 @@
   --color-outline: #CBD5E1;
   --color-outline-variant: #E2E8F0;
   --color-sidebar: #0B1D3A;
+  
+  --amu-primary: #005EB8;
+}
+
+[data-amu="BLACK"] {
+  --amu-primary: #1F2937;
+}
+
+[data-amu="GREEN"] {
+  --amu-primary: #059669;
+}
+
+[data-amu="SILVER"] {
+  --amu-primary: #64748B;
+}
+
+[data-amu="BLUE"] {
+  --amu-primary: #2563EB;
 }
 
 @layer base {
