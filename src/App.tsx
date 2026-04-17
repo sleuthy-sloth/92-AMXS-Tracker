@@ -4886,13 +4886,13 @@ const MaintenanceAssistant: React.FC = () => {
             <div className="p-6 bg-sidebar border-b border-white/10 flex justify-between items-center">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-primary/20 rounded-none border border-primary/30">
-                  <Bot className="w-5 h-5 text-primary" />
+                  <Sparkles className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <h3 className="font-black text-xs uppercase tracking-[0.2em] text-white">Ops Intelligence</h3>
+                  <h3 className="font-black text-xs uppercase tracking-[0.2em] text-white tracking-widest">Maintenance Terminal</h3>
                   <div className="flex items-center gap-2 mt-1">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                    <span className="text-[8px] font-mono text-white/40 uppercase">System Online // 92 AMXS</span>
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                    <span className="text-[8px] font-mono text-white/40 uppercase tracking-tighter">Secure Link Active // Intelligence Feed</span>
                   </div>
                 </div>
               </div>
@@ -4990,13 +4990,35 @@ const MaintenanceAssistant: React.FC = () => {
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "w-14 h-14 rounded-none flex items-center justify-center shadow-2xl transition-all border-2",
+          "w-14 h-14 rounded-none flex items-center justify-center shadow-[0_20px_50px_rgba(0,0,0,0.3)] transition-all border-2 backdrop-blur-md relative group",
           isOpen 
             ? "bg-white border-primary text-primary" 
-            : "bg-primary border-primary text-white"
+            : "bg-sidebar/95 border-white/20 text-white"
         )}
+        title="AI Maintenance Assistant"
       >
-        {isOpen ? <X className="w-6 h-6" /> : <Bot className="w-7 h-7" />}
+        <div className={cn(
+          "w-10 h-10 flex items-center justify-center transition-all",
+          isOpen ? "bg-primary text-white" : "bg-white/10 text-white group-hover:bg-primary/20"
+        )}>
+          {isOpen ? <X className="w-5 h-5" /> : <Sparkles className="w-5 h-5 animate-pulse" />}
+        </div>
+
+        {/* Technical Label (Hidden by default, shown on hover if needed or just omitted for pure button feel) */}
+        <div className="absolute right-full mr-4 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap hidden md:block">
+          <div className="bg-sidebar text-white px-3 py-1.5 border border-white/10 flex flex-col items-end">
+            <span className="tech-label !text-[6px] text-primary">AMXS-INTEL</span>
+            <span className="font-black text-[9px] uppercase tracking-widest leading-none mt-1">AI Assistant Terminal</span>
+          </div>
+        </div>
+
+        {/* Status Light */}
+        {!isOpen && (
+          <div className="absolute -top-1 -right-1 flex">
+            <span className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-primary opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+          </div>
+        )}
       </motion.button>
     </div>
   );
