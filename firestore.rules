@@ -92,7 +92,8 @@ service cloud.firestore {
              data.isRead is bool &&
              data.timestamp is timestamp &&
              (!('userId' in data) || data.userId is string) &&
-             (!('shopId' in data) || data.shopId is string);
+             (!('shopId' in data) || data.shopId is string) &&
+             (!('isDemo' in data) || data.isDemo is bool);
     }
 
     function isValidPresence(data) {
@@ -102,7 +103,8 @@ service cloud.firestore {
              data.location is string &&
              data.activeAt is timestamp &&
              data.shopId is string &&
-             data.amuId is string;
+             data.amuId is string &&
+             (!('isDemo' in data) || data.isDemo is bool);
     }
 
     function isAuthenticated() {
@@ -238,16 +240,16 @@ service cloud.firestore {
         resource.data.shopId == getUserData().shopId ||
         isLeadership() || isAdmin()
       ));
-      allow create: if isAuthenticated() && isValidNotification(request.resource.data);
-      allow update: if isAuthenticated() && (
+      allow create: if (isAuthenticated() && isValidNotification(request.resource.data)) || isDemo(request.resource.data);
+      allow update: if (isAuthenticated() && (
         (resource.data.userId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead'])) ||
         isAdmin() || isLeadership()
-      );
+      )) || isDemo(resource.data);
     }
 
     match /presence/{userId} {
-      allow read: if isAuthenticated() && (getUserData().amuId == resource.data.amuId && getUserData().shopId == resource.data.shopId || isLeadership() || isAdmin());
-      allow write: if isAuthenticated() && request.auth.uid == userId && isValidPresence(request.resource.data);
+      allow read: if isDemo(resource.data) || (isAuthenticated() && (getUserData().amuId == resource.data.amuId && getUserData().shopId == resource.data.shopId || isLeadership() || isAdmin()));
+      allow write: if isDemo(request.resource.data) || (isAuthenticated() && request.auth.uid == userId && isValidPresence(request.resource.data));
     }
   }
 }

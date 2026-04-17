@@ -2,7 +2,7 @@
 
 **Accelerating Flight Line Readiness through Real-Time Logistics and Collaborative Forensics.**
 
-The 92nd AMXS platform is a purpose-built aerospace maintenance ecosystem designed to eliminate documentation friction and ground-truth communication gaps across the flight line. Engineered for the high-tempo environment of the 92nd Air Refueling Squadron.
+The 92nd AMXS platform is a purpose-built aerospace maintenance ecosystem designed to eliminate documentation friction and ground-truth communication gaps across the flight line. Engineered for the high-tempo environment of the 92nd Aircraft Maintenance Squadron.
 
 ---
 
