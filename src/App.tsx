@@ -471,7 +471,7 @@ interface UserPresence {
 }
 
 const usePresence = (location: string) => {
-  const { user, profile } = useAuth();
+  const { user, profile, isDemoMode } = useAuth();
   const [activeUsers, setActiveUsers] = useState<UserPresence[]>([]);
 
   useEffect(() => {
@@ -486,7 +486,8 @@ const usePresence = (location: string) => {
           location,
           activeAt: serverTimestamp(),
           shopId: profile.shopId,
-          amuId: profile.amuId
+          amuId: profile.amuId,
+          isDemo: isDemoMode
         });
       } catch (e) {
         console.error("Presence update failed", e);
@@ -499,7 +500,8 @@ const usePresence = (location: string) => {
     const q = query(
       collection(db, 'presence'),
       where('amuId', '==', profile.amuId),
-      where('shopId', '==', profile.shopId)
+      where('shopId', '==', profile.shopId),
+      where('isDemo', '==', isDemoMode)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -552,7 +554,7 @@ const PresenceIndicator: React.FC<{ users: UserPresence[] }> = ({ users }) => {
 };
 
 const NotificationBell: React.FC = () => {
-  const { user, profile } = useAuth();
+  const { user, profile, isDemoMode } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -563,6 +565,7 @@ const NotificationBell: React.FC = () => {
     const q = query(
       collection(db, 'notifications'),
       where('shopId', '==', profile.shopId),
+      where('isDemo', '==', isDemoMode),
       orderBy('timestamp', 'desc'),
       limit(20)
     );
@@ -5142,7 +5145,9 @@ const useProactiveTrainingScan = () => {
         // Scan for training in our shop due within 30 days
         const q = query(
           collection(db, 'training'),
+          where('amuId', '==', profile.amuId),
           where('shopId', '==', profile.shopId),
+          where('isDemo', '==', isDemoMode),
           where('status', 'in', ['current', 'expiring'])
         );
 
