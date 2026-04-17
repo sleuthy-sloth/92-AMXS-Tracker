@@ -35,6 +35,10 @@ export interface MaintenanceLog {
   shift?: ShiftType;
   lastEditedBy?: string;
   lastEditedAt?: any;
+  g081_photo?: string;
+  g081_status?: 'pending' | 'verified';
+  g081_verified_by?: string;
+  g081_verified_at?: any;
 }
 
 export interface TrainingRecord {
