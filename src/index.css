@@ -193,3 +193,15 @@
   @apply font-black text-slate-900;
 }
 
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  @apply bg-putty/30;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-outline rounded-full hover:bg-outline-variant transition-colors;
+}
+
