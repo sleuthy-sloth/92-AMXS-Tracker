@@ -164,11 +164,15 @@ AMUS.forEach(amu => {
           const numDifm = Math.floor(Math.random() * 2);
           for (let d = 0; d < numDifm; d++) {
             const statusOptions: DIFMLog['status'][] = ['due-in', 'awaiting-parts', 'in-repair', 'complete'];
+            const pipelineOptions: DIFMLog['pipeline_status'][] = ['ordered', 'en-route', 'received', 'bench-check', 'installed'];
             MOCK_DIFM.push({
               id: `mock-difm-${difmCounter++}`,
               tail_number: `AF-92-0${Math.floor(Math.random() * 900) + 100}`,
               discrepancy: DISCREPANCIES[Math.floor(Math.random() * DISCREPANCIES.length)],
+              doc_number: `F${Math.floor(Math.random() * 89999) + 10000}`,
+              nsn: `5995-01-${Math.floor(Math.random() * 899) + 100}-${Math.floor(Math.random() * 8999) + 1000}`,
               status: statusOptions[Math.floor(Math.random() * statusOptions.length)],
+              pipeline_status: pipelineOptions[Math.floor(Math.random() * pipelineOptions.length)],
               shopId: shop,
               amuId: amu,
               technician_name: user.name,

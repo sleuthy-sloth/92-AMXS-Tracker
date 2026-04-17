@@ -53,7 +53,10 @@ export interface DIFMLog {
   id?: string;
   tail_number: string;
   discrepancy: string;
+  doc_number?: string;
+  nsn?: string;
   status: 'due-in' | 'awaiting-parts' | 'in-repair' | 'complete';
+  pipeline_status: 'ordered' | 'en-route' | 'received' | 'bench-check' | 'installed';
   shopId: string;
   amuId: AMUType;
   technician_name: string;
