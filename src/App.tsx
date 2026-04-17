@@ -156,7 +156,8 @@ import {
   exportLogsToCSV, 
   exportLogsToPDF, 
   exportTrainingToCSV, 
-  exportTrainingToPDF 
+  exportTrainingToPDF,
+  exportTurnoverToPDF
 } from './lib/exportUtils';
 import { SHOPS, ShopType, AMUS, SHIFT_TIMES, MOCK_LOGS, MOCK_PERSONNEL, MOCK_TRAINING, MOCK_DIFM } from './mockData';
 
@@ -1368,6 +1369,7 @@ const Dashboard: React.FC = () => {
   const [logs, setLogs] = useState<MaintenanceLog[]>([]);
   const [personnel, setPersonnel] = useState<UserProfile[]>([]);
   const [training, setTraining] = useState<TrainingRecord[]>([]);
+  const [difm, setDifm] = useState<DIFMLog[]>([]);
 
   useEffect(() => {
     if (!profile) return;
@@ -1395,6 +1397,13 @@ const Dashboard: React.FC = () => {
         return true;
       });
       setTraining(filteredMockTraining);
+
+      const filteredMockDifm = MOCK_DIFM.filter(d => {
+        if (profile.amuId !== 'ALL' && d.amuId !== profile.amuId) return false;
+        if (profile.shopId !== 'ALL' && d.shopId !== profile.shopId) return false;
+        return true;
+      });
+      setDifm(filteredMockDifm);
       return;
     }
 
@@ -1474,10 +1483,27 @@ const Dashboard: React.FC = () => {
       setTraining(snap.docs.map(d => ({ id: d.id, ...d.data() } as any)));
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'training'));
 
+    let qDifm;
+    if (profile.role === 'leadership') {
+      qDifm = query(collection(db, 'difm'), where('isDemo', '==', false));
+    } else {
+      qDifm = query(
+        collection(db, 'difm'), 
+        where('amuId', '==', profile.amuId),
+        where('shopId', '==', profile.shopId),
+        where('isDemo', '==', false)
+      );
+    }
+
+    const unsubDifm = onSnapshot(qDifm, (snap) => {
+      setDifm(snap.docs.map(d => ({ id: d.id, ...d.data() } as any)));
+    }, (error) => handleFirestoreError(error, OperationType.LIST, 'difm'));
+
     return () => {
       unsubLogs();
       unsubPersonnel();
       unsubTraining();
+      unsubDifm();
     };
   }, [profile, isDemoMode]);
 
@@ -1488,9 +1514,19 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-10">
-      <header>
-        <h2 className="text-4xl font-black tracking-tighter uppercase">Command Dashboard</h2>
-        <p className="serif-header text-lg mt-1">Real-time operational readiness and maintenance oversight</p>
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+        <div>
+          <h2 className="text-4xl font-black tracking-tighter uppercase">Command Dashboard</h2>
+          <p className="serif-header text-lg mt-1">Real-time operational readiness and maintenance oversight</p>
+        </div>
+        <div className="flex gap-4">
+          <button 
+            onClick={() => exportTurnoverToPDF(logs, difm, profile.shopId, profile.amuId, 'Days')}
+            className="sleek-button bg-sidebar \!text-white border border-white/10 hover:bg-slate-800 flex items-center gap-2"
+          >
+            <HistoryIcon className="w-4 h-4 text-primary" /> Turnover Report
+          </button>
+        </div>
       </header>
 
       {/* Bento Stats Grid */}
@@ -1653,6 +1689,7 @@ const Dashboard: React.FC = () => {
 const MaintenanceLogs: React.FC = () => {
   const { user, profile, isDemoMode } = useAuth();
   const [logs, setLogs] = useState<MaintenanceLog[]>([]);
+  const [difm, setDifm] = useState<DIFMLog[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     tail_number: '',
@@ -1685,25 +1722,41 @@ const MaintenanceLogs: React.FC = () => {
         return true;
       });
       setLogs(filteredMockLogs);
+
+      const filteredMockDifm = MOCK_DIFM.filter(d => {
+        if (isLeadership && profile.amuId === 'ALL' && profile.shopId === 'ALL') return true;
+        if (profile.amuId !== 'ALL' && d.amuId !== profile.amuId) return false;
+        if (profile.shopId !== 'ALL' && d.shopId !== profile.shopId) return false;
+        return true;
+      });
+      setDifm(filteredMockDifm);
       return;
     }
 
-    let q;
-    const constraints: any[] = [where('isDemo', '==', false), orderBy('timestamp', 'desc')];
+    let qLogs;
+    const logConstraints: any[] = [where('isDemo', '==', false), orderBy('timestamp', 'desc')];
+    if (profile.amuId !== 'ALL') logConstraints.unshift(where('amuId', '==', profile.amuId));
+    if (profile.shopId !== 'ALL' && profile.shopId !== 'LEADERSHIP') logConstraints.unshift(where('shopId', '==', profile.shopId));
+    qLogs = query(collection(db, 'logs'), ...logConstraints);
     
-    if (profile.amuId !== 'ALL') {
-      constraints.unshift(where('amuId', '==', profile.amuId));
-    }
-    if (profile.shopId !== 'ALL' && profile.shopId !== 'LEADERSHIP') {
-      constraints.unshift(where('shopId', '==', profile.shopId));
-    }
-
-    q = query(collection(db, 'logs'), ...constraints);
-    
-    const unsub = onSnapshot(q, (snap) => {
+    const unsubLogs = onSnapshot(qLogs, (snap) => {
       setLogs(snap.docs.map(d => ({ id: d.id, ...d.data() } as MaintenanceLog)));
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'logs'));
-    return unsub;
+
+    let qDifm;
+    const difmConstraints: any[] = [where('isDemo', '==', false)];
+    if (profile.amuId !== 'ALL') difmConstraints.unshift(where('amuId', '==', profile.amuId));
+    if (profile.shopId !== 'ALL' && profile.shopId !== 'LEADERSHIP') difmConstraints.unshift(where('shopId', '==', profile.shopId));
+    qDifm = query(collection(db, 'difm'), ...difmConstraints);
+
+    const unsubDifm = onSnapshot(qDifm, (snap) => {
+      setDifm(snap.docs.map(d => ({ id: d.id, ...d.data() } as DIFMLog)));
+    }, (error) => handleFirestoreError(error, OperationType.LIST, 'difm'));
+
+    return () => {
+      unsubLogs();
+      unsubDifm();
+    };
   }, [profile, isDemoMode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1827,6 +1880,13 @@ const MaintenanceLogs: React.FC = () => {
           </div>
           {(profile?.role === 'ncoic' || profile?.role === 'leadership') && (
             <div className="flex gap-2">
+              <button 
+                onClick={() => exportTurnoverToPDF(logs, difm, profile.shopId, profile.amuId, 'Current')}
+                className="sleek-button bg-sidebar \!text-white border border-white/10 hover:bg-slate-800 flex items-center gap-2"
+                title="Generate Shift Turnover"
+              >
+                <HistoryIcon className="w-4 h-4 text-primary" /> <span className="hidden sm:inline">Turnover</span>
+              </button>
               <button 
                 onClick={() => exportLogsToCSV(filteredLogs, profile.shopId)}
                 className="sleek-button bg-surface \!text-slate-900 border border-outline hover:bg-slate-50 flex items-center gap-2"
@@ -2388,6 +2448,26 @@ const DIFMLogs: React.FC = () => {
     }
   };
 
+  const seedMockData = () => {
+    const statusOptions: DIFMLog['status'][] = ['due-in', 'awaiting-parts', 'in-repair'];
+    const pOptions: DIFMLog['pipeline_status'][] = ['ordered', 'en-route', 'received'];
+    const newLogs: DIFMLog[] = Array.from({ length: 5 }).map((_, i) => ({
+      id: `new-mock-${Date.now()}-${i}`,
+      tail_number: `AF-92-0${500 + i}`,
+      discrepancy: `MOCK: Critical component required for JCN ${24000 + i}`,
+      doc_number: `F${12000 + i}A`,
+      nsn: `5995-01-999-${1000 + i}`,
+      status: statusOptions[Math.floor(Math.random() * statusOptions.length)],
+      pipeline_status: pOptions[Math.floor(Math.random() * pOptions.length)],
+      shopId: profile?.shopId || 'AVIONICS',
+      amuId: profile?.amuId || 'BLACK',
+      technician_name: profile?.name || 'DEMO ADMIN',
+      timestamp: { toDate: () => new Date() } as any,
+      isDemo: true
+    }));
+    setLogs(prev => [...newLogs, ...prev]);
+  };
+
   return (
     <div className="space-y-10">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
@@ -2395,12 +2475,28 @@ const DIFMLogs: React.FC = () => {
           <h2 className="text-4xl font-black tracking-tighter uppercase text-slate-900">DIFM Oversight</h2>
           <p className="serif-header text-lg mt-1 text-slate-600">Due-In From Maintenance status and discrepancy tracking</p>
         </div>
-        <button 
-          onClick={() => setIsModalOpen(true)} 
-          className="sleek-button flex items-center gap-2"
-        >
-          <Plus className="w-5 h-5" /> New Track
-        </button>
+        <div className="flex flex-wrap gap-4">
+          {isDemoMode && (
+            <button 
+              onClick={seedMockData}
+              className="sleek-button bg-surface border-primary text-primary hover:bg-primary/5 flex items-center gap-2"
+            >
+              <Sparkles className="w-4 h-4" /> Seed Mocks
+            </button>
+          )}
+          <button 
+            onClick={() => exportTurnoverToPDF([], logs, profile?.shopId || 'ALL', profile?.amuId || 'ALL', 'Current')}
+            className="sleek-button bg-surface text-slate-900 border border-outline hover:bg-slate-50 flex items-center gap-2"
+          >
+            <FileText className="w-4 h-4 text-primary" /> Turnover
+          </button>
+          <button 
+            onClick={() => setIsModalOpen(true)} 
+            className="sleek-button flex items-center gap-2"
+          >
+            <Plus className="w-5 h-5" /> New Track
+          </button>
+        </div>
       </div>
 
       <div className="visible-grid bg-surface overflow-hidden">
