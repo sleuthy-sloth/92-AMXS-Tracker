@@ -79,12 +79,45 @@ import {
   Trash2,
   CheckCircle2,
   Eye,
-  Check
+  Check,
+  Wifi,
+  WifiOff,
+  RefreshCw,
+  Bell,
+  BellDot
 } from 'lucide-react';
 import { format, addDays, isBefore, parseISO } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
 
 import { auth, db, handleFirestoreError, OperationType, FirestoreErrorInfo } from './firebase';
+
+type NotificationType = 'red-ball' | 'parts' | 'training' | 'system';
+
+interface Notification {
+  id?: string;
+  userId?: string;
+  shopId?: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  isRead: boolean;
+  timestamp: any;
+  metadata?: any;
+  isDemo?: boolean;
+}
+
+const createNotification = async (notif: Omit<Notification, 'timestamp' | 'isRead'>) => {
+  try {
+    const newNotif = {
+      ...notif,
+      isRead: false,
+      timestamp: serverTimestamp(),
+    };
+    await addDoc(collection(db, 'notifications'), newNotif);
+  } catch (error) {
+    console.error('Failed to create notification:', error);
+  }
+};
 
 // --- Error Boundary ---
 
@@ -427,13 +460,165 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
 // Tour component removed
 
+const NotificationBell: React.FC = () => {
+  const { user, profile } = useAuth();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!user || !profile || !profile.shopId) return;
+
+    const q = query(
+      collection(db, 'notifications'),
+      where('shopId', '==', profile.shopId),
+      orderBy('timestamp', 'desc'),
+      limit(20)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const notifs = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Notification[];
+      setNotifications(notifs);
+    });
+
+    return () => unsubscribe();
+  }, [user, profile]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const unreadCount = notifications.filter(n => !n.isRead).length;
+
+  const markAsRead = async (notifId: string) => {
+    try {
+      await updateDoc(doc(db, 'notifications', notifId), { isRead: true });
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+    }
+  };
+
+  const getIcon = (type: NotificationType) => {
+    switch (type) {
+      case 'red-ball': return <ShieldAlert className="w-4 h-4 text-safety-orange" />;
+      case 'parts': return <Package className="w-4 h-4 text-primary" />;
+      case 'training': return <Clock className="w-4 h-4 text-caution-yellow" />;
+      default: return <Bell className="w-4 h-4 text-slate-400" />;
+    }
+  };
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button 
+        onClick={() => setIsOpen(!isOpen)}
+        className="relative p-2.5 bg-sidebar-foreground/5 hover:bg-sidebar-foreground/10 transition-colors border border-white/10"
+      >
+        {unreadCount > 0 ? (
+          <>
+            <BellDot className="w-5 h-5 text-primary" />
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary text-white text-[9px] font-black flex items-center justify-center animate-pulse">
+              {unreadCount}
+            </span>
+          </>
+        ) : (
+          <Bell className="w-5 h-5 text-white/40" />
+        )}
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+            className="absolute right-0 mt-3 w-80 bg-white border border-outline shadow-2xl z-[150] overflow-hidden"
+          >
+            <div className="p-4 bg-slate-50 border-b border-outline flex justify-between items-center">
+              <span className="tech-label text-primary">Operational Alerts</span>
+              {unreadCount > 0 && <span className="text-[8px] font-black uppercase text-slate-400 px-2 py-0.5 bg-white border border-outline">{unreadCount} New</span>}
+            </div>
+
+            <div className="max-h-96 overflow-y-auto divide-y divide-outline custom-scrollbar">
+              {notifications.length === 0 ? (
+                <div className="p-10 text-center space-y-3">
+                  <Bell className="w-8 h-8 text-slate-200 mx-auto" />
+                  <p className="tech-label text-[9px] text-slate-400">All Systems Nominal // No Active Alerts</p>
+                </div>
+              ) : (
+                notifications.map((notif) => (
+                  <div 
+                    key={notif.id}
+                    className={cn(
+                      "p-4 hover:bg-slate-50 transition-colors cursor-pointer relative",
+                      !notif.isRead && "bg-primary/5"
+                    )}
+                    onClick={() => {
+                      if (!notif.isRead) markAsRead(notif.id!);
+                    }}
+                  >
+                    {!notif.isRead && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>}
+                    <div className="flex gap-3">
+                      <div className="mt-0.5">{getIcon(notif.type)}</div>
+                      <div className="flex-1 space-y-1">
+                        <div className="flex justify-between items-start gap-2">
+                          <p className="font-black text-[10px] uppercase tracking-tight text-slate-900 leading-tight">{notif.title}</p>
+                          <span className="text-[8px] font-mono text-slate-400 whitespace-nowrap">
+                            {notif.timestamp?.toDate ? format(notif.timestamp.toDate(), 'HH:mm') : '...'}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-500 leading-relaxed font-medium line-clamp-2">{notif.message}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            
+            <div className="p-3 bg-slate-50 border-t border-outline text-center">
+              <button 
+                onClick={() => setIsOpen(false)}
+                className="tech-label text-[8px] hover:text-primary transition-colors uppercase tracking-[0.2em]"
+              >
+                Close Comms
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, profile, logout, setShop, setAMU, setRole, isDemoMode, toggleDemoMode } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isShopDropdownOpen, setIsShopDropdownOpen] = useState(false);
   const [isAMUDropdownOpen, setIsAMUDropdownOpen] = useState(false);
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const location = useLocation();
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const navItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
@@ -651,15 +836,34 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             </h1>
             <p className="text-slate-600 text-sm">92nd Aircraft Maintenance Squadron • Fairchild AFB</p>
           </div>
-          <div className="text-right hidden sm:block">
-            <div className="font-semibold text-slate-900">{profile?.rank} {profile?.name}</div>
-            <div className="text-xs text-slate-600 uppercase tracking-wider mb-2">{profile?.role} • {profile?.amuId} • {profile?.shopId}</div>
-            <button 
-              onClick={logout}
-              className="ml-auto flex items-center gap-2 hover:text-safety-orange transition-colors text-slate-400 font-bold text-[10px] uppercase tracking-widest"
-            >
-              <LogOut className="w-3.5 h-3.5" /> Sign Out
-            </button>
+          <div className="text-right hidden sm:flex items-start gap-6">
+            <div className="flex items-center gap-3">
+              <NotificationBell />
+              <div className="flex flex-col items-end pt-1">
+                <div className={cn(
+                  "flex items-center gap-2 px-2 py-0.5 rounded-none text-[9px] font-black uppercase tracking-widest border transition-all",
+                  isOnline 
+                    ? "bg-emerald-500/5 text-emerald-500 border-emerald-500/20" 
+                    : "bg-red-500/5 text-red-500 border-red-500/20"
+                )}>
+                  {isOnline ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
+                  {isOnline ? 'System Online / Sync Active' : 'Offline Mode / Local Cache'}
+                </div>
+                {!isOnline && (
+                  <p className="text-[8px] text-red-400 mt-1 font-bold animate-pulse">CHANGES WILL SYNC ON RECONNECT</p>
+                )}
+              </div>
+            </div>
+            <div>
+              <div className="font-semibold text-slate-900">{profile?.rank} {profile?.name}</div>
+              <div className="text-xs text-slate-600 uppercase tracking-wider mb-2">{profile?.role} • {profile?.amuId} • {profile?.shopId}</div>
+              <button 
+                onClick={logout}
+                className="ml-auto flex items-center gap-2 hover:text-safety-orange transition-colors text-slate-400 font-bold text-[10px] uppercase tracking-widest"
+              >
+                <LogOut className="w-3.5 h-3.5" /> Sign Out
+              </button>
+            </div>
           </div>
         </header>
 
@@ -1966,7 +2170,17 @@ const MaintenanceLogs: React.FC = () => {
           g081_photo: formData.g081Photo || null,
           g081_status: formData.g081Photo ? 'pending' : undefined
         };
-        await addDoc(collection(db, 'logs'), newLog);
+        const docRef = await addDoc(collection(db, 'logs'), newLog);
+
+        if (formData.isRedBall && !isDemoMode) {
+          await createNotification({
+            shopId: profile.shopId,
+            type: 'red-ball',
+            title: 'RED BALL ALERT',
+            message: `${formData.tail_number}: ${formData.discrepancy.slice(0, 50)}...`,
+            metadata: { logId: docRef.id, tail_number: formData.tail_number }
+          });
+        }
       }
       setIsModalOpen(false);
       setEditingLogId(null);
@@ -2970,6 +3184,19 @@ const DIFMLogs: React.FC = () => {
     try {
       const docRef = doc(db, 'difm', id);
       await updateDoc(docRef, updates);
+
+      if (updates.pipeline_status === 'received' && !isDemoMode) {
+        const log = logs.find(l => l.id === id);
+        if (log) {
+          await createNotification({
+            shopId: profile?.shopId || 'ALL',
+            type: 'parts',
+            title: 'PART RECEIVED',
+            message: `${log.tail_number}: ${log.nsn || log.discrepancy.slice(0, 30)} is now RECEIVED.`,
+            metadata: { difmId: id, tail_number: log.tail_number }
+          });
+        }
+      }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `difm/${id}`);
     }

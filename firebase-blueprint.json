@@ -62,6 +62,22 @@
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["tail_number", "discrepancy", "status", "shopId", "technician_name", "timestamp"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "System alerts and user notifications",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Target user UID (optional for broadcast)" },
+        "shopId": { "type": "string", "description": "Target shop (optional)" },
+        "type": { "type": "string", "enum": ["red-ball", "parts", "training", "system"] },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "isRead": { "type": "boolean" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "metadata": { "type": "object", "description": "Link to related record (e.g., logId)" }
+      },
+      "required": ["type", "title", "message", "isRead", "timestamp"]
     }
   },
   "firestore": {
@@ -80,6 +96,10 @@
     "/difm/{difmId}": {
       "schema": "DIFM",
       "description": "DIFM logs"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "User notifications"
     }
   }
 }
