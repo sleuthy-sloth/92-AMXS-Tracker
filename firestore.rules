@@ -42,6 +42,19 @@ service cloud.firestore {
     //   - amuId: string (required)
     //   - status: string (required, 'current' | 'expiring' | 'expired')
     //   - isDemo: bool (optional)
+    //
+    // Collection: difm
+    // Document ID: {difmId}
+    // Fields:
+    //   - tail_number: string (required)
+    //   - discrepancy: string (required)
+    //   - status: string (required, 'due-in' | 'awaiting-parts' | 'in-repair' | 'complete')
+    //   - shopId: string (required)
+    //   - amuId: string (required)
+    //   - technician_name: string (required)
+    //   - timestamp: timestamp (required)
+    //   - pipeline_status: string (optional, 'ordered' | 'en-route' | 'received')
+    //   - isDemo: bool (optional)
     // ===============================================================
 
     // ===============================================================
@@ -117,6 +130,20 @@ service cloud.firestore {
              data.status in ['current', 'expiring', 'expired'];
     }
 
+    function isValidDIFM(data) {
+      return data.keys().hasAll(['tail_number', 'discrepancy', 'status', 'shopId', 'amuId', 'technician_name', 'timestamp']) &&
+             data.tail_number is string && data.tail_number.size() > 0 &&
+             data.discrepancy is string && data.discrepancy.size() > 0 && data.discrepancy.size() < 5000 &&
+             data.status in ['due-in', 'awaiting-parts', 'in-repair', 'complete'] &&
+             data.shopId is string &&
+             data.amuId is string &&
+             data.technician_name is string &&
+             data.timestamp is timestamp &&
+             (!('pipeline_status' in data) || data.pipeline_status in ['ordered', 'en-route', 'received']) &&
+             (!('doc_number' in data) || data.doc_number is string) &&
+             (!('nsn' in data) || data.nsn is string);
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -145,6 +172,13 @@ service cloud.firestore {
     match /training/{trainingId} {
       allow read: if isDemo(resource.data) || (isAuthenticated() && (resource.data.man_number == getUserData().man_number || isSameShop(resource.data.amuId, resource.data.shopId) || isLeadership() || isAdmin()));
       allow write: if isDemo(request.resource.data) || (isAuthenticated() && (isAdmin() || isLeadership() || (isNCOIC() && isSameShop(request.resource.data.amuId, request.resource.data.shopId))) && isValidTraining(request.resource.data));
+    }
+
+    match /difm/{difmId} {
+      allow read: if isDemo(resource.data) || (isAuthenticated() && (isSameShop(resource.data.amuId, resource.data.shopId) || isLeadership() || isAdmin()));
+      allow create: if isDemo(request.resource.data) || (isAuthenticated() && isValidDIFM(request.resource.data) && (isAdmin() || isSameShop(request.resource.data.amuId, request.resource.data.shopId)));
+      allow update: if isDemo(resource.data) || (isAuthenticated() && isValidDIFM(request.resource.data) && ((isSameShop(resource.data.amuId, resource.data.shopId) && isNCOIC()) || isLeadership() || isAdmin()));
+      allow delete: if isDemo(resource.data) || (isAuthenticated() && ((isSameShop(resource.data.amuId, resource.data.shopId) && isNCOIC()) || isLeadership() || isAdmin()));
     }
   }
 }

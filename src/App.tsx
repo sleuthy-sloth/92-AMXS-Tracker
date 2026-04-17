@@ -73,7 +73,9 @@ import {
   HelpCircle,
   Info,
   Bot,
-  Sparkles
+  Sparkles,
+  Camera,
+  Loader2
 } from 'lucide-react';
 import { format, addDays, isBefore, parseISO } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
@@ -159,6 +161,7 @@ import {
   exportTrainingToPDF,
   exportTurnoverToPDF
 } from './lib/exportUtils';
+import { scanMaintenanceForm, scanLogBook } from './services/ocrService';
 import { SHOPS, ShopType, AMUS, SHIFT_TIMES, MOCK_LOGS, MOCK_PERSONNEL, MOCK_TRAINING, MOCK_DIFM } from './mockData';
 
 // --- Contexts ---
@@ -1524,7 +1527,7 @@ const Dashboard: React.FC = () => {
             onClick={() => exportTurnoverToPDF(logs, difm, profile.shopId, profile.amuId, 'Days')}
             className="sleek-button bg-sidebar \!text-white border border-white/10 hover:bg-slate-800 flex items-center gap-2"
           >
-            <HistoryIcon className="w-4 h-4 text-primary" /> Turnover Report
+            <HistoryIcon className="w-4 h-4 text-white" /> Turnover Report
           </button>
         </div>
       </header>
@@ -1703,6 +1706,10 @@ const MaintenanceLogs: React.FC = () => {
   });
   const [loading, setLoading] = useState(false);
   const [editingLogId, setEditingLogId] = useState<string | null>(null);
+  const [isScanning, setIsScanning] = useState(false);
+  const scanInputRef = useRef<HTMLInputElement>(null);
+  const bulkScanInputRef = useRef<HTMLInputElement>(null);
+  const [isBulkScanning, setIsBulkScanning] = useState(false);
   
   // New features state
   const [searchQuery, setSearchQuery] = useState('');
@@ -1758,6 +1765,108 @@ const MaintenanceLogs: React.FC = () => {
       unsubDifm();
     };
   }, [profile, isDemoMode]);
+
+  const handleScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsScanning(true);
+    try {
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve) => {
+        reader.onload = () => {
+          const base64 = (reader.result as string).split(',')[1];
+          resolve(base64);
+        };
+      });
+      reader.readAsDataURL(file);
+      const base64 = await base64Promise;
+
+      const result = await scanMaintenanceForm(base64);
+      if (result) {
+        setFormData(prev => ({
+          ...prev,
+          tail_number: result.tail_number || prev.tail_number,
+          discrepancy: result.discrepancy || prev.discrepancy,
+          repair: result.repair || prev.repair,
+          jcn: result.jcn || prev.jcn,
+          doc_number: result.doc_number || prev.doc_number
+        }));
+      }
+    } catch (error) {
+      console.error("Scanning failed:", error);
+      alert("Failed to parse form. Please try a clearer picture.");
+    } finally {
+      setIsScanning(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  const handleScanLogbook = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !profile) return;
+
+    if (profile.amuId === 'ALL' || profile.shopId === 'ALL') {
+      alert("Please select a specific AMU and Shop before bulk scanning logbooks.");
+      return;
+    }
+
+    setIsBulkScanning(true);
+    try {
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve) => {
+        reader.onload = () => {
+          const base64 = (reader.result as string).split(',')[1];
+          resolve(base64);
+        };
+      });
+      reader.readAsDataURL(file);
+      const base64 = await base64Promise;
+
+      const results = await scanLogBook(base64);
+      if (results && results.length > 0) {
+        if (!window.confirm(`Found ${results.length} maintenance entries. Import them all into ${profile.amuId} AMU - ${profile.shopId} Shop?`)) {
+          return;
+        }
+
+        const batch = results.map(result => ({
+          tail_number: result.tail_number || 'UNKNOWN',
+          jcn: result.jcn || '',
+          discrepancy: result.discrepancy,
+          repair: result.repair,
+          shopId: profile.shopId,
+          amuId: profile.amuId,
+          technician_name: profile.name,
+          man_number: profile.man_number,
+          shift: 'Days' as ShiftType,
+          timestamp: serverTimestamp(),
+          isDemo: isDemoMode,
+          isRedBall: false
+        }));
+
+        if (isDemoMode) {
+          const mockEntries = batch.map((b, i) => ({
+            id: `bulk-mock-${Date.now()}-${i}`,
+            ...b
+          } as MaintenanceLog));
+          setLogs(prev => [...mockEntries, ...prev]);
+        } else {
+          for (const entry of batch) {
+            await addDoc(collection(db, 'logs'), entry);
+          }
+        }
+        alert(`Successfully imported ${results.length} entries.`);
+      } else {
+        alert("No clear maintenance entries found in the image. Please try a clearer picture of the logbook.");
+      }
+    } catch (error) {
+      console.error("Bulk scanning failed:", error);
+      handleFirestoreError(error, OperationType.CREATE, 'logs/bulk');
+    } finally {
+      setIsBulkScanning(false);
+      if (e.target) e.target.value = '';
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1885,7 +1994,7 @@ const MaintenanceLogs: React.FC = () => {
                 className="sleek-button bg-sidebar \!text-white border border-white/10 hover:bg-slate-800 flex items-center gap-2"
                 title="Generate Shift Turnover"
               >
-                <HistoryIcon className="w-4 h-4 text-primary" /> <span className="hidden sm:inline">Turnover</span>
+                <HistoryIcon className="w-4 h-4 text-white" /> <span className="hidden sm:inline">Turnover</span>
               </button>
               <button 
                 onClick={() => exportLogsToCSV(filteredLogs, profile.shopId)}
@@ -1908,6 +2017,26 @@ const MaintenanceLogs: React.FC = () => {
             className="sleek-button flex items-center gap-2"
           >
             <Plus className="w-5 h-5" /> New Entry
+          </button>
+          <input 
+            type="file" 
+            ref={bulkScanInputRef}
+            className="hidden" 
+            accept="image/*" 
+            capture="environment"
+            onChange={handleScanLogbook}
+          />
+          <button 
+            onClick={() => bulkScanInputRef.current?.click()}
+            className="sleek-button bg-surface border border-outline hover:bg-slate-50 flex items-center gap-2 text-slate-700"
+            disabled={isBulkScanning}
+          >
+            {isBulkScanning ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <UploadCloud className="w-4 h-4" />
+            )}
+            <span className="hidden sm:inline">Bulk Logbook Scan</span>
           </button>
         </div>
       </div>
@@ -2218,9 +2347,32 @@ const MaintenanceLogs: React.FC = () => {
             >
               <div className="p-8 border-b border-outline flex justify-between items-center bg-putty/30">
                 <h3 className="font-black text-2xl tracking-tighter uppercase">{editingLogId ? 'Edit Maintenance Entry' : 'New Maintenance Entry'}</h3>
-                <button onClick={() => { setIsModalOpen(false); setEditingLogId(null); }} className="p-2 hover:bg-putty transition-colors">
-                  <X className="w-6 h-6" />
-                </button>
+                <div className="flex items-center gap-3">
+                  <input 
+                    type="file" 
+                    ref={scanInputRef}
+                    className="hidden" 
+                    accept="image/*" 
+                    capture="environment"
+                    onChange={handleScan}
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => scanInputRef.current?.click()}
+                    className="sleek-button bg-primary !text-white flex items-center gap-2 py-2"
+                    disabled={isScanning}
+                  >
+                    {isScanning ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Camera className="w-4 h-4" />
+                    )}
+                    <span className="hidden sm:inline">Scan Form</span>
+                  </button>
+                  <button onClick={() => { setIsModalOpen(false); setEditingLogId(null); }} className="p-2 hover:bg-putty transition-colors">
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
               </div>
               
               <form onSubmit={handleSubmit} className="p-10 space-y-8">
@@ -2486,9 +2638,9 @@ const DIFMLogs: React.FC = () => {
           )}
           <button 
             onClick={() => exportTurnoverToPDF([], logs, profile?.shopId || 'ALL', profile?.amuId || 'ALL', 'Current')}
-            className="sleek-button bg-surface text-slate-900 border border-outline hover:bg-slate-50 flex items-center gap-2"
+            className="sleek-button bg-sidebar \!text-white border border-white/10 hover:bg-slate-800 flex items-center gap-2"
           >
-            <FileText className="w-4 h-4 text-primary" /> Turnover
+            <HistoryIcon className="w-4 h-4 text-white" /> Turnover
           </button>
           <button 
             onClick={() => setIsModalOpen(true)} 
