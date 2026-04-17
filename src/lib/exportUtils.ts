@@ -1,15 +1,8 @@
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
-import { MaintenanceLog, TrainingRecord } from '../types';
-
-// Extend jsPDF with autotable
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-  }
-}
+import { MaintenanceLog, TrainingRecord, DIFMLog } from '../types';
 
 export const exportLogsToCSV = (logs: MaintenanceLog[], shopId: string) => {
   const data = logs.map(log => ({
@@ -46,7 +39,7 @@ export const exportLogsToPDF = (logs: MaintenanceLog[], shopId: string) => {
     log.isRedBall ? 'RED BALL' : 'NORMAL'
   ]);
 
-  doc.autoTable({
+  autoTable(doc, {
     startY: 40,
     head: [['Tail #', 'Discrepancy', 'Technician', 'Date', 'Status']],
     body: tableData,
@@ -91,7 +84,7 @@ export const exportTrainingToPDF = (records: TrainingRecord[], shopId: string) =
     record.status.toUpperCase()
   ]);
 
-  doc.autoTable({
+  autoTable(doc, {
     startY: 40,
     head: [['Course Name', 'Man #', 'Due Date', 'Status']],
     body: tableData,
@@ -101,4 +94,78 @@ export const exportTrainingToPDF = (records: TrainingRecord[], shopId: string) =
   });
 
   doc.save(`Training_Readiness_${shopId}_${format(new Date(), 'yyyyMMdd')}.pdf`);
+};
+
+export const exportTurnoverToPDF = (
+  logs: MaintenanceLog[], 
+  difm: DIFMLog[], 
+  shopId: string, 
+  amuId: string,
+  shift: string
+) => {
+  const doc = new jsPDF();
+  
+  // Header
+  doc.setFillColor(30, 41, 59); // Slate 800
+  doc.rect(0, 0, 210, 40, 'F');
+  
+  doc.setTextColor(255);
+  doc.setFontSize(22);
+  doc.text('SHIFT TURNOVER REPORT', 14, 18);
+  doc.setFontSize(10);
+  doc.text(`92nd AMXS // ${amuId} AMU // ${shopId} SHOP`, 14, 28);
+  doc.text(`SHIFT: ${shift.toUpperCase()} // DATE: ${format(new Date(), 'yyyy-MM-dd HH:mm')}`, 14, 34);
+
+  // Section 1: Active Maintenance
+  doc.setTextColor(30, 41, 59);
+  doc.setFontSize(14);
+  doc.text('ACTIVE MAINTENANCE JOBS', 14, 52);
+  
+  const maintData = logs.map(l => [
+    l.tail_number,
+    l.discrepancy,
+    l.isRedBall ? 'RED BALL' : 'OPEN',
+    l.technician_name
+  ]);
+
+  autoTable(doc, {
+    startY: 56,
+    head: [['TAIL #', 'DISCREPANCY', 'STATUS', 'TECH']],
+    body: maintData,
+    theme: 'grid',
+    headStyles: { fillColor: [71, 85, 105] }, // Slate 600
+    styles: { fontSize: 8 }
+  });
+
+  // Section 2: DIFM / Parts Logistics
+  const finalY = (doc as any).lastAutoTable.finalY || 100;
+  doc.setFontSize(14);
+  doc.text('LOGISTICS / DIFM TRACKING', 14, finalY + 15);
+
+  const difmData = difm.map(d => [
+    d.tail_number,
+    d.doc_number || 'N/A',
+    d.status.toUpperCase(),
+    d.pipeline_status?.toUpperCase() || 'ORDERED'
+  ]);
+
+  autoTable(doc, {
+    startY: finalY + 20,
+    head: [['TAIL #', 'DOC #', 'LOG STATUS', 'PIPELINE']],
+    body: difmData,
+    theme: 'grid',
+    headStyles: { fillColor: [15, 118, 110] }, // Teal 700
+    styles: { fontSize: 8 }
+  });
+
+  // Section 3: Shift Notes Area
+  const nextY = (doc as any).lastAutoTable.finalY || 200;
+  doc.setFontSize(14);
+  doc.text('HAND-OFF NOTES', 14, nextY + 15);
+  doc.rect(14, nextY + 20, 182, 40);
+  doc.setFontSize(8);
+  doc.setTextColor(150);
+  doc.text('Capture any outstanding tasks, tool box status, or safety briefings here...', 18, nextY + 28);
+
+  doc.save(`Turnover_${amuId}_${shopId}_${format(new Date(), 'yyyyMMdd')}.pdf`);
 };
