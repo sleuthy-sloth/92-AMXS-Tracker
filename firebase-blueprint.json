@@ -78,6 +78,19 @@
         "metadata": { "type": "object", "description": "Link to related record (e.g., logId)" }
       },
       "required": ["type", "title", "message", "isRead", "timestamp"]
+    },
+    "Presence": {
+      "title": "User Presence",
+      "description": "Real-time user status and location within the app",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "location": { "type": "string", "description": "The current page or context (e.g., 'maintenance', 'difm')" },
+        "activeAt": { "type": "string", "format": "date-time" },
+        "shopId": { "type": "string" }
+      },
+      "required": ["userId", "userName", "location", "activeAt", "shopId"]
     }
   },
   "firestore": {
@@ -100,6 +113,10 @@
     "/notifications/{notificationId}": {
       "schema": "Notification",
       "description": "User notifications"
+    },
+    "/presence/{userId}": {
+      "schema": "Presence",
+      "description": "Real-time user presence"
     }
   }
 }

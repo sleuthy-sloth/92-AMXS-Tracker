@@ -1,5 +1,5 @@
-import { GoogleGenAI } from "@google/genai";
-import React, { Component, createContext, useContext, useEffect, useState, useRef } from 'react';
+import { GoogleGenAI, Type, FunctionDeclaration, GenerateContentResponse } from "@google/genai";
+import React, { Component, createContext, useContext, useEffect, useState, useRef, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { 
   HashRouter as Router, 
@@ -460,6 +460,97 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
 // Tour component removed
 
+// --- Real-time Presence ---
+interface UserPresence {
+  userId: string;
+  userName: string;
+  location: string;
+  activeAt: any;
+  shopId: string;
+  amuId: string;
+}
+
+const usePresence = (location: string) => {
+  const { user, profile } = useAuth();
+  const [activeUsers, setActiveUsers] = useState<UserPresence[]>([]);
+
+  useEffect(() => {
+    if (!user || !profile || !profile.shopId) return;
+
+    const presenceRef = doc(db, 'presence', user.uid);
+    const updatePresence = async () => {
+      try {
+        await setDoc(presenceRef, {
+          userId: user.uid,
+          userName: profile.name,
+          location,
+          activeAt: serverTimestamp(),
+          shopId: profile.shopId,
+          amuId: profile.amuId
+        });
+      } catch (e) {
+        console.error("Presence update failed", e);
+      }
+    };
+
+    updatePresence();
+    const interval = setInterval(updatePresence, 30000); // Heartbeat every 30s
+
+    const q = query(
+      collection(db, 'presence'),
+      where('amuId', '==', profile.amuId),
+      where('shopId', '==', profile.shopId)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const now = new Date();
+      const users = snapshot.docs
+        .map(d => d.data() as UserPresence)
+        .filter(u => {
+          if (u.userId === user.uid) return false;
+          // Only show users active in the last 2 minutes
+          const activeAt = u.activeAt?.toDate ? u.activeAt.toDate() : new Date(0);
+          return (now.getTime() - activeAt.getTime()) < 120000;
+        });
+      setActiveUsers(users);
+    });
+
+    return () => {
+      clearInterval(interval);
+      unsubscribe();
+    };
+  }, [user, profile, location]);
+
+  return activeUsers;
+};
+
+const PresenceIndicator: React.FC<{ users: UserPresence[] }> = ({ users }) => {
+  if (users.length === 0) return null;
+
+  return (
+    <div className="flex items-center -space-x-2">
+      {users.map(u => (
+        <div 
+          key={u.userId}
+          className="w-8 h-8 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center group relative cursor-help"
+          title={`${u.userName} is also on this page`}
+        >
+          <span className="text-[10px] font-black text-slate-600">
+            {u.userName.split(',')[0].slice(0, 2).toUpperCase()}
+          </span>
+          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-sidebar text-white text-[8px] font-black uppercase tracking-tighter rounded-none whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-[200]">
+            {u.userName} <span className="text-primary/60 ml-1">// {u.location}</span>
+          </div>
+          <div className="absolute top-0 right-0 w-2 h-2 bg-emerald-500 rounded-full border border-white"></div>
+        </div>
+      ))}
+      <span className="ml-4 text-[8px] font-black text-slate-400 uppercase tracking-widest pl-2">
+        {users.length} {users.length === 1 ? 'other tech' : 'other techs'} active
+      </span>
+    </div>
+  );
+};
+
 const NotificationBell: React.FC = () => {
   const { user, profile } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -606,6 +697,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const location = useLocation();
+
+  // Presence logic
+  const activeUsers = usePresence(location.pathname);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -836,8 +930,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             </h1>
             <p className="text-slate-600 text-sm">92nd Aircraft Maintenance Squadron • Fairchild AFB</p>
           </div>
-          <div className="text-right hidden sm:flex items-start gap-6">
-            <div className="flex items-center gap-3">
+          <div className="text-right hidden sm:flex items-start gap-10">
+            <div className="flex items-center gap-6">
+              <PresenceIndicator users={activeUsers} />
               <NotificationBell />
               <div className="flex flex-col items-end pt-1">
                 <div className={cn(
@@ -4716,7 +4811,6 @@ const MaintenanceAssistant: React.FC = () => {
   const [messages, setMessages] = useState<{ role: 'user' | 'assistant', content: string }[]>([]);
   const [input, setInput] = useState('');
   const [isThinking, setIsThinking] = useState(false);
-  const [dataSnapshot, setDataSnapshot] = useState<any>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -4725,104 +4819,42 @@ const MaintenanceAssistant: React.FC = () => {
     }
   }, [messages, isThinking]);
 
-  useEffect(() => {
-    if (!profile) return;
-    
-    // Fetch a snapshot of data to provide local context to the bot
-    const fetchSnapshot = async () => {
-      try {
-        if (isDemoMode) {
-          const filteredLogs = MOCK_LOGS.filter(l => {
-            if (profile.amuId !== 'ALL' && l.amuId !== profile.amuId) return false;
-            if (profile.shopId !== 'ALL' && l.shopId !== profile.shopId) return false;
-            return true;
-          }).slice(0, 50);
-          
-          const filteredTraining = MOCK_TRAINING.filter(t => {
-            if (profile.amuId !== 'ALL' && t.amuId !== profile.amuId) return false;
-            if (profile.shopId !== 'ALL' && t.shopId !== profile.shopId) return false;
-            return true;
-          }).slice(0, 50);
-
-          const filteredDifm = MOCK_DIFM.filter(d => {
-            if (profile.amuId !== 'ALL' && d.amuId !== profile.amuId) return false;
-            if (profile.shopId !== 'ALL' && d.shopId !== profile.shopId) return false;
-            return true;
-          }).slice(0, 50);
-
-          setDataSnapshot({
-            logs: filteredLogs.map(data => ({ 
-              tail: data.tail_number, 
-              disc: data.discrepancy, 
-              tech: data.technician_name,
-              shift: data.shift
-            })),
-            training: filteredTraining.map(data => ({
-              course: data.course_name,
-              code: data.course_code,
-              status: data.status,
-              due: data.due_date
-            })),
-            difm: filteredDifm.map(data => ({
-              tail: data.tail_number,
-              disc: data.discrepancy,
-              status: data.status
-            })),
-            stats: {
-              shop: profile.shopId,
-              amu: profile.amuId,
-              timestamp: new Date().toISOString()
-            }
-          });
-          return;
+  const maintenanceTools: FunctionDeclaration[] = [
+    {
+      name: "query_maintenance_logs",
+      description: "Query aircraft maintenance logs for discrepancies, repairs, and tail number history.",
+      parameters: {
+        type: Type.OBJECT,
+        properties: {
+          tail_number: { type: Type.STRING, description: "Filter by specific tail number (e.g. 58-0092)" },
+          shift: { type: Type.STRING, enum: ['Days', 'Swings', 'Nights'], description: "Filter by shift" },
+          isRedBall: { type: Type.BOOLEAN, description: "If true, only returns urgent red ball maintenance" }
         }
-
-        const logsRef = collection(db, 'logs');
-        const trainingRef = collection(db, 'training');
-        
-        let qLogs, qTraining;
-        if (profile.role === 'leadership') {
-          qLogs = query(logsRef, where('isDemo', '==', isDemoMode), limit(50));
-          qTraining = query(trainingRef, where('isDemo', '==', isDemoMode), limit(50));
-        } else {
-          qLogs = query(logsRef, where('amuId', '==', profile.amuId), where('shopId', '==', profile.shopId), where('isDemo', '==', isDemoMode), limit(50));
-          qTraining = query(trainingRef, where('amuId', '==', profile.amuId), where('shopId', '==', profile.shopId), where('isDemo', '==', isDemoMode), limit(50));
-        }
-
-        const [logSnap, trainSnap] = await Promise.all([getDocs(qLogs), getDocs(qTraining)]);
-        
-        setDataSnapshot({
-          logs: logSnap.docs.map(d => {
-            const data = d.data() as MaintenanceLog;
-            return { 
-              tail: data.tail_number, 
-              disc: data.discrepancy, 
-              tech: data.technician_name,
-              shift: data.shift
-            };
-          }),
-          training: trainSnap.docs.map(d => {
-            const data = d.data() as TrainingRecord;
-            return {
-              course: data.course_name,
-              code: data.course_code,
-              status: data.status,
-              due: data.due_date
-            };
-          }),
-          stats: {
-            shop: profile.shopId,
-            amu: profile.amuId,
-            timestamp: new Date().toISOString()
-          }
-        });
-      } catch (e) {
-        console.error("AI Context error:", e);
       }
-    };
-
-    fetchSnapshot();
-  }, [profile, isDemoMode, isOpen]);
+    },
+    {
+      name: "query_difm_inventory",
+      description: "Check status of parts due-in from maintenance (DIFM).",
+      parameters: {
+        type: Type.OBJECT,
+        properties: {
+          status: { type: Type.STRING, enum: ['due-in', 'awaiting-parts', 'in-repair', 'complete'] },
+          tail_number: { type: Type.STRING }
+        }
+      }
+    },
+    {
+      name: "query_training_compliance",
+      description: "Identify technicians with expiring or overdue training requirements.",
+      parameters: {
+        type: Type.OBJECT,
+        properties: {
+          status: { type: Type.STRING, enum: ['expiring', 'expired'], description: "Filter for specific compliance issues" },
+          course_code: { type: Type.STRING, description: "Filter for a specific training course" }
+        }
+      }
+    }
+  ];
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -4839,34 +4871,106 @@ const MaintenanceAssistant: React.FC = () => {
         contents: userMsg,
         config: {
           systemInstruction: `You are the 92nd AMXS Maintenance Assistant. Your mission is to assist 92nd Air Refueling Squadron maintainers with technical data analysis and readiness reporting.
-          FORMATTING INSTRUCTIONS:
-          - Use Markdown tables for data comparisons or lists of tail numbers.
-          - Use Bold caps for technical identifiers (e.g., **TAIL 5482**).
-          - Use bullet points for scannable summaries.
-          - Style headers with ###.
           
-          CONSTRAINTS: 
-          1. ONLY answer questions related to the provided maintenance logs and training records.
-          2. Decline any off-topic requests (jokes, general trivia, unrelated news).
-          3. Use the provided DATA SNAPSHOT to identify trends, training gaps, or recurring tail number issues.
-          4. Maintain a professional, mission-focused military tone. 
-          5. Keep responses concise and scannable.
+          CAPABILITIES:
+          - You can query maintenance logs, DIFM inventory, and training compliance data using real-time database functions.
+          - Use these tools to provide factual, data-driven answers about squadron readiness.
           
-          DATA SNAPSHOT:
-          ${JSON.stringify(dataSnapshot)}`,
-          temperature: 0.1,
-          topP: 0.95,
+          TONE:
+          - Professional, technical, and mission-focused military tone. 
+          - Keep responses concise and scannable using tables and bullet points.
+          
+          FORMATTING:
+          - Always use Markdown tables for data.
+          - Highlight critical issues (RED BALLS or EXPIRED training) in bold.`,
+          tools: [{ functionDeclarations: maintenanceTools }],
+          temperature: 0,
         }
       });
 
-      if (response.text) {
+      if (response.functionCalls) {
+        const toolOutputs: any[] = [];
+        
+        for (const call of response.functionCalls) {
+          let data: any = [];
+          
+          if (isDemoMode) {
+             if (call.name === "query_maintenance_logs") {
+               const args = call.args as any;
+               data = MOCK_LOGS.filter(l => {
+                 if (args.tail_number && l.tail_number !== args.tail_number) return false;
+                 if (args.shift && l.shift !== args.shift) return false;
+                 if (args.isRedBall && !l.isRedBall) return false;
+                 return true;
+               }).slice(0, 10);
+             } else if (call.name === "query_difm_inventory") {
+               const args = call.args as any;
+               data = MOCK_DIFM.filter(d => {
+                 if (args.status && d.status !== args.status) return false;
+                 if (args.tail_number && d.tail_number !== args.tail_number) return false;
+                 return true;
+               }).slice(0, 10);
+             } else if (call.name === "query_training_compliance") {
+               const args = call.args as any;
+               data = MOCK_TRAINING.filter(t => {
+                 if (args.status && t.status !== args.status) return false;
+                 if (args.course_code && t.course_code !== args.course_code) return false;
+                 return true;
+               }).slice(0, 10);
+             }
+          } else {
+             // Real Firestore logic
+             const collectionName = call.name === "query_maintenance_logs" ? "logs" : 
+                                  call.name === "query_difm_inventory" ? "difm" : "training";
+             
+             let q = query(collection(db, collectionName), where('shopId', '==', profile?.shopId), limit(20));
+             const args = call.args as any;
+             
+             if (args.tail_number) q = query(q, where('tail_number', '==', args.tail_number));
+             if (args.status) q = query(q, where('status', '==', args.status));
+             if (args.shift) q = query(q, where('shift', '==', args.shift));
+
+             const snap = await getDocs(q);
+             data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          }
+
+          toolOutputs.push({
+            callId: call.id,
+            output: data
+          });
+        }
+
+        // Send tool outputs back to model to get final response
+        const finalResponse = await ai.models.generateContent({
+          model: "gemini-3-flash-preview",
+          contents: [
+            { role: 'user', parts: [{ text: userMsg }] },
+            { role: 'model', parts: response.candidates[0].content.parts },
+            {
+              role: 'user',
+              parts: toolOutputs.map(o => ({
+                functionResponse: {
+                  name: response.functionCalls![0].name,
+                  response: { result: o.output },
+                }
+              }))
+            }
+          ],
+          config: {
+            systemInstruction: `Analyze the provided data result and summarize it for the maintainer.`,
+            temperature: 0,
+          }
+        });
+
+        if (finalResponse.text) {
+          setMessages(prev => [...prev, { role: 'assistant', content: finalResponse.text! }]);
+        }
+      } else if (response.text) {
         setMessages(prev => [...prev, { role: 'assistant', content: response.text }]);
-      } else {
-        throw new Error("Empty response from intelligence engine");
       }
     } catch (err) {
       console.error("AI Assistant Error:", err);
-      setMessages(prev => [...prev, { role: 'assistant', content: "SYSTEM ERROR: Operational data analysis interrupted. Communication link unstable." }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: "SYSTEM ERROR: Signal interference during operational analysis. Terminal link unstable." }]);
     } finally {
       setIsThinking(false);
     }
@@ -5024,8 +5128,61 @@ const MaintenanceAssistant: React.FC = () => {
   );
 };
 
+const useProactiveTrainingScan = () => {
+  const { profile, isDemoMode } = useAuth();
+
+  useEffect(() => {
+    if (!profile || isDemoMode || !(profile.role === 'ncoic' || profile.role === 'leadership')) return;
+
+    const scanTraining = async () => {
+      try {
+        const now = new Date();
+        const thirtyDaysFromNow = addDays(now, 30);
+        
+        // Scan for training in our shop due within 30 days
+        const q = query(
+          collection(db, 'training'),
+          where('shopId', '==', profile.shopId),
+          where('status', 'in', ['current', 'expiring'])
+        );
+
+        const snap = await getDocs(q);
+        for (const d of snap.docs) {
+          const data = d.data() as TrainingRecord;
+          const dueDate = parseISO(data.due_date);
+          
+          if (isBefore(dueDate, thirtyDaysFromNow)) {
+             // Create a notification for the NCOIC if one doesn't exist for this specific record today
+             // Optimized with local storage to avoid spamming
+             const storageKey = `training-notif-${d.id}-${format(now, 'yyyy-MM-dd')}`;
+             if (!localStorage.getItem(storageKey)) {
+                await createNotification({
+                  shopId: profile.shopId,
+                  type: 'training',
+                  title: 'TRAINING COMPLIANCE ALERT',
+                  message: `Task ${data.course_name} for Man# ${data.man_number} expires in <30 days (${data.due_date})`,
+                  metadata: { trainingId: d.id, man_number: data.man_number }
+                });
+                localStorage.setItem(storageKey, 'sent');
+             }
+          }
+        }
+      } catch (e) {
+        console.error("Training scan failed", e);
+      }
+    };
+
+    scanTraining();
+    const interval = setInterval(scanTraining, 3600000); // Scan every hour
+    return () => clearInterval(interval);
+  }, [profile, isDemoMode]);
+};
+
 const AppContent: React.FC = () => {
   const { user, profile, loading } = useAuth();
+  
+  // Proactive compliance monitoring
+  useProactiveTrainingScan();
 
   if (loading) {
     return (
