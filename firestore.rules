@@ -54,20 +54,36 @@ service cloud.firestore {
     // Collection: difm
     // Document ID: {difmId}
     // Fields:
-    //   - tail_number: string (required)
-    //   - discrepancy: string (required)
-    //   - status: string (required, 'due-in' | 'awaiting-parts' | 'in-repair' | 'complete')
-    //   - shopId: string (required)
-    //   - amuId: string (required)
-    //   - technician_name: string (required)
+    // ... (existing fields)
+    //   - isDemo: bool (optional)
+    //
+    // Collection: notifications
+    // Document ID: {notificationId}
+    // Fields:
+    //   - userId: string (optional)
+    //   - shopId: string (optional)
+    //   - type: string (required, 'red-ball' | 'parts' | 'training' | 'system')
+    //   - title: string (required)
+    //   - message: string (required)
+    //   - isRead: bool (required)
     //   - timestamp: timestamp (required)
-    //   - pipeline_status: string (optional, 'ordered' | 'en-route' | 'received')
+    //   - metadata: map (optional)
     //   - isDemo: bool (optional)
     // ===============================================================
 
-    // ===============================================================
     // Helper Functions
     // ===============================================================
+
+    function isValidNotification(data) {
+      return data.keys().hasAll(['type', 'title', 'message', 'isRead', 'timestamp']) &&
+             data.type in ['red-ball', 'parts', 'training', 'system'] &&
+             data.title is string && data.title.size() > 0 &&
+             data.message is string && data.message.size() > 0 &&
+             data.isRead is bool &&
+             data.timestamp is timestamp &&
+             (!('userId' in data) || data.userId is string) &&
+             (!('shopId' in data) || data.shopId is string);
+    }
 
     function isAuthenticated() {
       return request.auth != null;
@@ -194,6 +210,19 @@ service cloud.firestore {
       allow create: if isDemo(request.resource.data) || (isAuthenticated() && isValidDIFM(request.resource.data) && (isAdmin() || isSameShop(request.resource.data.amuId, request.resource.data.shopId)));
       allow update: if isDemo(resource.data) || (isAuthenticated() && isValidDIFM(request.resource.data) && (isSameShop(resource.data.amuId, resource.data.shopId) || isLeadership() || isAdmin()));
       allow delete: if isDemo(resource.data) || (isAuthenticated() && ((isSameShop(resource.data.amuId, resource.data.shopId) && isNCOIC()) || isLeadership() || isAdmin()));
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isDemo(resource.data) || (isAuthenticated() && (
+        resource.data.userId == request.auth.uid || 
+        resource.data.shopId == getUserData().shopId ||
+        isLeadership() || isAdmin()
+      ));
+      allow create: if isAuthenticated() && isValidNotification(request.resource.data);
+      allow update: if isAuthenticated() && (
+        (resource.data.userId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead'])) ||
+        isAdmin() || isLeadership()
+      );
     }
   }
 }
