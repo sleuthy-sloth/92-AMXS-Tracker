@@ -69,6 +69,16 @@ service cloud.firestore {
     //   - timestamp: timestamp (required)
     //   - metadata: map (optional)
     //   - isDemo: bool (optional)
+    //
+    // Collection: presence
+    // Document ID: {userId}
+    // Fields:
+    //   - userId: string (required)
+    //   - userName: string (required)
+    //   - location: string (required)
+    //   - activeAt: timestamp (required)
+    //   - shopId: string (required)
+    //   - amuId: string (required)
     // ===============================================================
 
     // Helper Functions
@@ -83,6 +93,16 @@ service cloud.firestore {
              data.timestamp is timestamp &&
              (!('userId' in data) || data.userId is string) &&
              (!('shopId' in data) || data.shopId is string);
+    }
+
+    function isValidPresence(data) {
+      return data.keys().hasAll(['userId', 'userName', 'location', 'activeAt', 'shopId', 'amuId']) &&
+             data.userId is string &&
+             data.userName is string &&
+             data.location is string &&
+             data.activeAt is timestamp &&
+             data.shopId is string &&
+             data.amuId is string;
     }
 
     function isAuthenticated() {
@@ -223,6 +243,11 @@ service cloud.firestore {
         (resource.data.userId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead'])) ||
         isAdmin() || isLeadership()
       );
+    }
+
+    match /presence/{userId} {
+      allow read: if isAuthenticated() && (getUserData().amuId == resource.data.amuId && getUserData().shopId == resource.data.shopId || isLeadership() || isAdmin());
+      allow write: if isAuthenticated() && request.auth.uid == userId && isValidPresence(request.resource.data);
     }
   }
 }
