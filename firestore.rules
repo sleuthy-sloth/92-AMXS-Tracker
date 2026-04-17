@@ -30,6 +30,14 @@ service cloud.firestore {
     //   - technician_name: string (required)
     //   - man_number: string (required)
     //   - timestamp: timestamp (required)
+    //   - jcn: string (optional)
+    //   - personnel: list (optional)
+    //   - isRedBall: bool (optional)
+    //   - shift: string (optional)
+    //   - g081_photo: string (optional)
+    //   - g081_status: string (optional)
+    //   - g081_verified_by: string (optional)
+    //   - g081_verified_at: timestamp (optional)
     //   - isDemo: bool (optional)
     //
     // Collection: training
@@ -115,7 +123,14 @@ service cloud.firestore {
              data.technician_name is string &&
              data.man_number is string &&
              data.timestamp is timestamp &&
+             (!('jcn' in data) || data.jcn is string || data.jcn == null) &&
+             (!('personnel' in data) || data.personnel is list) &&
+             (!('isRedBall' in data) || data.isRedBall is bool) &&
              (!('shift' in data) || data.shift in ['Days', 'Swings', 'Nights', 'Weekend Duty']) &&
+             (!('g081_photo' in data) || data.g081_photo is string || data.g081_photo == null) &&
+             (!('g081_status' in data) || data.g081_status in ['pending', 'verified'] || data.g081_status == null) &&
+             (!('g081_verified_by' in data) || data.g081_verified_by is string || data.g081_verified_by == null) &&
+             (!('g081_verified_at' in data) || data.g081_verified_at is timestamp || data.g081_verified_at == null) &&
              (!('lastEditedBy' in data) || data.lastEditedBy is string) &&
              (!('lastEditedAt' in data) || data.lastEditedAt is timestamp);
     }
@@ -165,7 +180,7 @@ service cloud.firestore {
     match /logs/{logId} {
       allow read: if isDemo(resource.data) || (isAuthenticated() && (isSameShop(resource.data.amuId, resource.data.shopId) || isLeadership() || isAdmin()));
       allow create: if isDemo(request.resource.data) || (isAuthenticated() && isValidLog(request.resource.data) && (isAdmin() || isSameShop(request.resource.data.amuId, request.resource.data.shopId)));
-      allow update: if isDemo(resource.data) || (isAuthenticated() && isValidLog(request.resource.data) && (getUserData().man_number == resource.data.man_number || (isSameShop(resource.data.amuId, resource.data.shopId) && isNCOIC()) || isLeadership() || isAdmin()));
+      allow update: if isDemo(resource.data) || (isAuthenticated() && isValidLog(request.resource.data) && (isSameShop(resource.data.amuId, resource.data.shopId) || isLeadership() || isAdmin()));
       allow delete: if isDemo(resource.data) || (isAuthenticated() && ((isSameShop(resource.data.amuId, resource.data.shopId) && isNCOIC()) || isLeadership() || isAdmin()));
     }
 
@@ -177,7 +192,7 @@ service cloud.firestore {
     match /difm/{difmId} {
       allow read: if isDemo(resource.data) || (isAuthenticated() && (isSameShop(resource.data.amuId, resource.data.shopId) || isLeadership() || isAdmin()));
       allow create: if isDemo(request.resource.data) || (isAuthenticated() && isValidDIFM(request.resource.data) && (isAdmin() || isSameShop(request.resource.data.amuId, request.resource.data.shopId)));
-      allow update: if isDemo(resource.data) || (isAuthenticated() && isValidDIFM(request.resource.data) && ((isSameShop(resource.data.amuId, resource.data.shopId) && isNCOIC()) || isLeadership() || isAdmin()));
+      allow update: if isDemo(resource.data) || (isAuthenticated() && isValidDIFM(request.resource.data) && (isSameShop(resource.data.amuId, resource.data.shopId) || isLeadership() || isAdmin()));
       allow delete: if isDemo(resource.data) || (isAuthenticated() && ((isSameShop(resource.data.amuId, resource.data.shopId) && isNCOIC()) || isLeadership() || isAdmin()));
     }
   }

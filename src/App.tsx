@@ -75,7 +75,11 @@ import {
   Bot,
   Sparkles,
   Camera,
-  Loader2
+  Loader2,
+  Trash2,
+  CheckCircle2,
+  Eye,
+  Check
 } from 'lucide-react';
 import { format, addDays, isBefore, parseISO } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
@@ -435,6 +439,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
     { name: 'Maintenance Log', path: '/maintenance', icon: Wrench },
     { name: 'DIFM Log', path: '/difm', icon: FileDown },
+    { name: 'G081 Gallery', path: '/g081', icon: Camera },
     { name: 'Training Tracker', path: '/training', icon: BarChart3 },
     { name: 'Personnel', path: '/personnel', icon: Users },
     { name: 'Support', path: '/support', icon: HelpCircle },
@@ -451,23 +456,22 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         "fixed inset-y-0 left-0 z-40 w-[260px] bg-sidebar text-white transform transition-transform duration-300 md:translate-x-0 md:static flex flex-col border-r border-white/10",
         isSidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
-        <div className="logo flex items-center gap-4 px-8 py-10">
-          <div className="relative w-14 h-14 flex-shrink-0">
-            <img 
-              src="https://media.defense.gov/2022/Sep/29/2003087437/-1/-1/0/220929-F-AFHRA-020.JPG" 
-              alt="92nd AMXS Logo"
-              className="w-full h-full object-contain filter drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]"
-              referrerPolicy="no-referrer"
-            />
-            <div className="absolute -bottom-1 -right-1 bg-primary text-white text-[10px] font-black px-1 leading-tight">
-              92
+        <div className="branding px-8 py-12">
+          <div className="flex items-start gap-4">
+            <div className="flex flex-col">
+              <div className="flex items-baseline gap-1">
+                <span className="font-black text-5xl tracking-tighter leading-none text-white">92</span>
+                <div className="flex flex-col">
+                  <span className="text-primary font-black text-xs uppercase tracking-widest leading-none">nd</span>
+                  <span className="text-white font-black text-lg tracking-tighter uppercase leading-none">AMXS</span>
+                </div>
+              </div>
+              <div className="mt-4 flex items-center gap-3">
+                <div className="h-px flex-1 bg-white/10"></div>
+                <span className="tech-label text-white/30 text-[8px] whitespace-nowrap tracking-[0.3em]">Maintenance Control</span>
+                <div className="h-px flex-1 bg-white/10"></div>
+              </div>
             </div>
-          </div>
-          <div className="flex flex-col">
-            <div className="font-black text-xl tracking-[0.1em] uppercase leading-tight text-white">
-              92<span className="text-primary truncate">ND</span> AMXS
-            </div>
-            <div className="tech-label text-white/50 text-[9px] mt-1 font-bold tracking-[0.2em] uppercase">Logistics Control</div>
           </div>
         </div>
 
@@ -1529,11 +1533,12 @@ const Dashboard: React.FC = () => {
     <div className="space-y-10">
       <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 text-on-background">
         <div className="flex items-center gap-4 sm:gap-6">
-          <div className="w-14 h-14 sm:w-16 sm:h-16 bg-white border border-outline p-2 flex items-center justify-center shadow-sm shrink-0">
+          <div className="w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center shrink-0">
             <img 
               src="https://media.defense.gov/2022/Sep/29/2003087437/-1/-1/0/220929-F-AFHRA-020.JPG" 
               alt="92nd AMXS" 
               className="w-full h-full object-contain"
+              style={{ mixBlendMode: 'multiply' }}
               referrerPolicy="no-referrer"
             />
           </div>
@@ -1727,12 +1732,15 @@ const MaintenanceLogs: React.FC = () => {
     doc_number: '',
     personnelInput: '',
     isRedBall: false,
-    shift: 'Days' as ShiftType
+    shift: 'Days' as ShiftType,
+    g081Photo: ''
   });
   const [loading, setLoading] = useState(false);
   const [editingLogId, setEditingLogId] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
+  const [isG081Uploading, setIsG081Uploading] = useState(false);
   const scanInputRef = useRef<HTMLInputElement>(null);
+  const g081InputRef = useRef<HTMLInputElement>(null);
   const bulkScanInputRef = useRef<HTMLInputElement>(null);
   const [isBulkScanning, setIsBulkScanning] = useState(false);
   
@@ -1894,6 +1902,18 @@ const MaintenanceLogs: React.FC = () => {
     }
   };
 
+  const handleG081Upload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsG081Uploading(true);
+    const reader = new FileReader();
+    reader.onload = () => {
+      setFormData(prev => ({ ...prev, g081Photo: reader.result as string }));
+      setIsG081Uploading(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
@@ -1923,6 +1943,7 @@ const MaintenanceLogs: React.FC = () => {
           isRedBall: formData.isRedBall,
           personnel: personnelArray,
           shift: formData.shift,
+          g081_photo: formData.g081Photo || null,
           lastEditedBy: profile.name,
           lastEditedAt: serverTimestamp()
         });
@@ -1941,13 +1962,15 @@ const MaintenanceLogs: React.FC = () => {
           personnel: personnelArray,
           shift: formData.shift,
           timestamp: serverTimestamp(),
-          isDemo: isDemoMode
+          isDemo: isDemoMode,
+          g081_photo: formData.g081Photo || null,
+          g081_status: formData.g081Photo ? 'pending' : undefined
         };
         await addDoc(collection(db, 'logs'), newLog);
       }
       setIsModalOpen(false);
       setEditingLogId(null);
-      setFormData({ tail_number: '', jcn: '', discrepancy: '', repair: '', doc_number: '', personnelInput: '', isRedBall: false, shift: 'Days' });
+      setFormData({ tail_number: '', jcn: '', discrepancy: '', repair: '', doc_number: '', personnelInput: '', isRedBall: false, shift: 'Days', g081Photo: '' });
     } catch (error) {
       handleFirestoreError(error, editingLogId ? OperationType.UPDATE : OperationType.CREATE, 'logs');
     } finally {
@@ -1964,7 +1987,8 @@ const MaintenanceLogs: React.FC = () => {
       doc_number: log.doc_number || '',
       personnelInput: log.personnel?.join(', ') || '',
       isRedBall: log.isRedBall || false,
-      shift: log.shift || 'Days'
+      shift: log.shift || 'Days',
+      g081Photo: log.g081_photo || ''
     });
     setEditingLogId(log.id!);
     setSelectedLog(null);
@@ -1995,11 +2019,12 @@ const MaintenanceLogs: React.FC = () => {
     <div className="space-y-10">
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
         <div className="flex items-center gap-6">
-          <div className="w-16 h-16 bg-white border border-outline p-2 flex items-center justify-center shadow-sm">
+          <div className="w-16 h-16 flex items-center justify-center">
             <img 
               src="https://media.defense.gov/2022/Sep/29/2003087437/-1/-1/0/220929-F-AFHRA-020.JPG" 
               alt="92nd AMXS" 
               className="w-full h-full object-contain"
+              style={{ mixBlendMode: 'multiply' }}
               referrerPolicy="no-referrer"
             />
           </div>
@@ -2228,6 +2253,7 @@ const MaintenanceLogs: React.FC = () => {
                   <th className="px-8 py-5">Date / Shift</th>
                   <th className="px-8 py-5">Personnel</th>
                   <th className="px-8 py-5">Discrepancy</th>
+                  <th className="px-8 py-5">G081</th>
                   <th className="px-8 py-5">Status</th>
                 </tr>
               </thead>
@@ -2259,6 +2285,21 @@ const MaintenanceLogs: React.FC = () => {
                     </td>
                     <td className="px-8 py-5 max-w-xs">
                       <p className="serif-header text-xs line-clamp-2 text-slate-600">{log.discrepancy}</p>
+                    </td>
+                    <td className="px-8 py-5">
+                      {log.g081_photo ? (
+                        <div className="flex gap-2 items-center">
+                          {log.g081_status === 'verified' ? (
+                            <div className="w-7 h-7 rounded-none bg-emerald-100 flex items-center justify-center" title="Verified in G081">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            </div>
+                          ) : (
+                            <div className="w-7 h-7 rounded-none bg-caution-yellow/10 flex items-center justify-center" title="G081 Proof Uploaded - Pending Review">
+                              <Camera className="w-3.5 h-3.5 text-caution-yellow" />
+                            </div>
+                          )}
+                        </div>
+                      ) : <span className="tech-label !text-[8px] opacity-20">No Proof</span>}
                     </td>
                     <td className="px-8 py-5">
                       {log.isRedBall ? (
@@ -2296,6 +2337,15 @@ const MaintenanceLogs: React.FC = () => {
                     </div>
                     {log.isRedBall && (
                       <span className="badge badge-danger">Red Ball</span>
+                    )}
+                    {log.g081_photo && (
+                      <div className={cn(
+                        "badge flex items-center gap-1.5 ml-2",
+                        log.g081_status === 'verified' ? "bg-emerald-50 text-emerald-600" : "bg-caution-yellow/10 text-caution-yellow"
+                      )}>
+                        {log.g081_status === 'verified' ? <ShieldCheck className="w-3 h-3" /> : <Camera className="w-3 h-3" />}
+                        <span className="uppercase tracking-widest text-[8px]">{log.g081_status === 'verified' ? 'G081' : 'Upload'}</span>
+                      </div>
                     )}
                   </div>
                   
@@ -2396,6 +2446,23 @@ const MaintenanceLogs: React.FC = () => {
                   <div className="space-y-2">
                     <span className="tech-label">Document Number</span>
                     <p className="data-mono text-base text-primary font-black">{selectedLog.doc_number}</p>
+                  </div>
+                )}
+
+                {selectedLog.g081_photo && (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="tech-label">G081 Screen Proof</span>
+                      {selectedLog.g081_status === 'verified' && (
+                        <div className="flex items-center gap-2 text-emerald-600">
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span className="tech-label !text-emerald-600">Verified by {selectedLog.g081_verified_by}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="border border-outline p-2 bg-putty/10">
+                      <img src={selectedLog.g081_photo} alt="G081 Proof" className="w-full h-auto max-h-96 object-contain" />
+                    </div>
                   </div>
                 )}
               </div>
@@ -2565,6 +2632,46 @@ const MaintenanceLogs: React.FC = () => {
                   />
                 </div>
 
+                <div className="space-y-4">
+                  <label className="tech-label !text-[9px]">G081 Screen Proof (Optional)</label>
+                  <input 
+                    type="file" 
+                    ref={g081InputRef}
+                    className="hidden" 
+                    accept="image/*" 
+                    capture="environment"
+                    onChange={handleG081Upload}
+                  />
+                  <div className="flex items-center gap-4">
+                    <button 
+                      type="button"
+                      onClick={() => g081InputRef.current?.click()}
+                      className="sleek-button bg-surface border border-outline hover:bg-slate-50 flex items-center justify-center gap-3 px-6 py-3 flex-1 text-slate-700"
+                      disabled={isG081Uploading}
+                    >
+                      {isG081Uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
+                      <span className="font-black text-[10px] tracking-widest uppercase">{editingLogId ? 'Update G081 Proof' : 'Upload G081 Proof'}</span>
+                    </button>
+                    {formData.g081Photo && (
+                      <button 
+                        type="button" 
+                        onClick={() => setFormData({...formData, g081Photo: ''})}
+                        className="p-3 text-safety-orange hover:bg-safety-orange/10 rounded-none border border-safety-orange/20"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                  {formData.g081Photo && (
+                    <div className="mt-2 relative group overflow-hidden border border-outline bg-putty/20 p-2">
+                       <img src={formData.g081Photo} alt="G081 Proof" className="max-h-40 w-full object-cover" />
+                       <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <span className="tech-label !text-white !opacity-100">Image Loaded</span>
+                       </div>
+                    </div>
+                  )}
+                </div>
+
                 <button 
                   type="submit" 
                   disabled={loading}
@@ -2575,6 +2682,190 @@ const MaintenanceLogs: React.FC = () => {
               </form>
             </div>
           </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+const G081Gallery: React.FC = () => {
+  const { profile, isDemoMode } = useAuth();
+  const [logs, setLogs] = useState<MaintenanceLog[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!profile) return;
+    
+    // In demo mode, we just show empty or mock data
+    if (isDemoMode) {
+      setLogs([]);
+      setLoading(false);
+      return;
+    }
+
+    // Query for all logs with photos
+    // Note: We might need an index for this. If it fails, we'll fall back to broader query.
+    const q = query(
+      collection(db, 'logs'),
+      orderBy('timestamp', 'desc'),
+      limit(50)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const allLogs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      // Filter in memory for photos to avoid immediate index requirement
+      setLogs(allLogs.filter(log => log.g081_photo));
+      setLoading(false);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'logs');
+    });
+    return unsubscribe;
+  }, [profile, isDemoMode]);
+
+  const handleVerify = async (logId: string) => {
+    if (isDemoMode) {
+      alert('Action not available in demo mode.');
+      return;
+    }
+    try {
+      await updateDoc(doc(db, 'logs', logId), {
+        g081_status: 'verified',
+        g081_verified_by: profile?.name,
+        g081_verified_at: serverTimestamp()
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, 'logs');
+    }
+  };
+
+  return (
+    <div className="space-y-10">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
+        <div className="flex items-center gap-6">
+          <div className="w-16 h-16 flex items-center justify-center">
+            <img 
+              src="https://media.defense.gov/2022/Sep/29/2003087437/-1/-1/0/220929-F-AFHRA-020.JPG" 
+              alt="92nd AMXS" 
+              className="w-full h-full object-contain"
+              style={{ mixBlendMode: 'multiply' }}
+              referrerPolicy="no-referrer"
+            />
+          </div>
+          <div>
+            <h2 className="text-4xl font-black tracking-tighter uppercase text-slate-900 leading-none">G081 Gallery</h2>
+            <div className="flex items-center gap-3 mt-2">
+              <span className="tech-label text-primary font-bold">92ND AMXS</span>
+              <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
+              <p className="serif-header text-sm text-slate-500 italic">Work Proof Verification & Reaction Board</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="h-64 flex flex-col items-center justify-center gap-4 bg-white border border-outline border-dashed">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <p className="tech-label">Scanning for Evidence...</p>
+        </div>
+      ) : logs.length === 0 ? (
+        <div className="h-64 flex flex-col items-center justify-center gap-4 bg-white border border-outline border-dashed">
+          <Camera className="w-12 h-12 text-slate-200" />
+          <p className="tech-label opacity-40">No G081 Proofs Found in Recent Logs</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <AnimatePresence mode="popLayout">
+            {logs.map((log) => (
+              <motion.div 
+                key={log.id}
+                layout
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="bg-white border border-outline overflow-hidden shadow-sm hover:shadow-xl transition-all group flex flex-col"
+              >
+                <div className="relative aspect-video bg-slate-100 overflow-hidden cursor-zoom-in" onClick={() => setSelectedPhoto(log.g081_photo || null)}>
+                  <img 
+                    src={log.g081_photo} 
+                    alt={`G081 Proof for ${log.tail_number}`} 
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <Eye className="w-10 h-10 text-white" />
+                  </div>
+                  {log.g081_status === 'verified' && (
+                    <div className="absolute top-4 right-4 bg-emerald-500 text-white px-3 py-1 flex items-center gap-2 shadow-lg">
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span className="font-black text-[10px] tracking-widest uppercase">Verified</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-6 flex-1 flex flex-col justify-between">
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-black text-xl tracking-tighter uppercase text-slate-900">{log.tail_number}</h3>
+                        <p className="tech-label text-slate-400 !text-[8px] mt-1">{log.technician_name} • {format(log.timestamp?.toDate ? log.timestamp.toDate() : new Date(), 'MMM dd, HH:mm')}</p>
+                      </div>
+                      <span className="px-2 py-1 bg-putty text-[9px] font-black uppercase tracking-widest">{log.shopId}</span>
+                    </div>
+
+                    <div className="p-3 bg-slate-50 border-l-2 border-slate-200">
+                      <p className="text-xs text-slate-600 line-clamp-2 italic">"{log.discrepancy}"</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 pt-6 border-t border-outline flex items-center justify-between">
+                    {log.g081_status === 'verified' ? (
+                      <div className="flex items-center gap-3 text-emerald-600">
+                        <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
+                          <ShieldCheck className="w-4 h-4" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="tech-label !text-emerald-600 uppercase">Verified G081 Good</span>
+                          <span className="text-[9px] text-emerald-600/60 font-medium">By {log.g081_verified_by}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <button 
+                        onClick={() => handleVerify(log.id!)}
+                        className="sleek-button w-full bg-sidebar !text-white flex items-center justify-center gap-3 py-3 group hover:scale-[1.02]"
+                      >
+                        <Check className="w-5 h-5 group-hover:animate-bounce" />
+                        <span className="font-black text-[11px] tracking-widest uppercase text-white">React: G081 Good</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      )}
+
+      {/* Fullscreen Photo Modal */}
+      <AnimatePresence>
+        {selectedPhoto && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-stealth/95 backdrop-blur-xl">
+             <motion.div 
+               initial={{ opacity: 0, scale: 0.9 }}
+               animate={{ opacity: 1, scale: 1 }}
+               exit={{ opacity: 0, scale: 0.9 }}
+               className="relative max-w-5xl w-full h-full flex flex-col"
+             >
+                <button 
+                  onClick={() => setSelectedPhoto(null)} 
+                  className="absolute top-0 right-0 p-4 text-white hover:text-primary z-[120]"
+                >
+                  <X className="w-10 h-10" />
+                </button>
+                <div className="flex-1 flex items-center justify-center overflow-hidden">
+                  <img src={selectedPhoto} alt="Fullscreen Evidence" className="max-w-full max-h-full object-contain shadow-2xl" />
+                </div>
+             </motion.div>
           </div>
         )}
       </AnimatePresence>
@@ -4508,6 +4799,7 @@ const AppContent: React.FC = () => {
         <Route path="/" element={<Dashboard />} />
         <Route path="/maintenance" element={<MaintenanceLogs />} />
         <Route path="/difm" element={<DIFMLogs />} />
+        <Route path="/g081" element={<G081Gallery />} />
         <Route path="/training" element={<TrainingTracker />} />
         <Route path="/personnel" element={<Personnel />} />
         <Route path="/support" element={<Support />} />

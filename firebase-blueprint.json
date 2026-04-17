@@ -28,7 +28,11 @@
         "technician_name": { "type": "string" },
         "man_number": { "type": "string", "description": "Technician man number" },
         "timestamp": { "type": "string", "format": "date-time" },
-        "isRedBall": { "type": "boolean", "description": "Urgent maintenance flag" }
+        "isRedBall": { "type": "boolean", "description": "Urgent maintenance flag" },
+        "g081_photo": { "type": "string", "description": "Base64 or URL of G081 screen/work proof" },
+        "g081_status": { "type": "string", "enum": ["pending", "verified"], "description": "G081 verification status" },
+        "g081_verified_by": { "type": "string", "description": "Name of person who verified in G081" },
+        "g081_verified_at": { "type": "string", "format": "date-time" }
       },
       "required": ["tail_number", "discrepancy", "repair", "shopId", "technician_name", "man_number", "timestamp"]
     },
