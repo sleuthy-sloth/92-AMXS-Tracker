@@ -248,6 +248,19 @@ service cloud.firestore {
       allow write: if isActiveUser() && request.auth.uid == userId && isValidPresence(request.resource.data);
     }
 
+    // Per-user training notification dedup keys. Doc ID is
+    // `{userId}_{trainingId}_{yyyy-MM-dd}` — no cross-user reads allowed.
+    match /training_notifications_dedup/{dedupId} {
+      allow read: if isActiveUser() && resource.data.userId == request.auth.uid;
+      allow create: if isActiveUser() &&
+        request.resource.data.keys().hasOnly(['userId', 'trainingId', 'sentAt']) &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.trainingId is string &&
+        request.resource.data.sentAt is timestamp;
+      // Intentionally no update/delete — records are write-once, short-lived
+      // markers. Stale ones can be TTL-swept server-side later.
+    }
+
     // Shift-handoff collection (see /handoff route). A tech creates one doc per
     // shift with open items; the incoming shift marks items acknowledged.
     match /handoffs/{handoffId} {
