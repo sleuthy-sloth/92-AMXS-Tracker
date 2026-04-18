@@ -308,7 +308,7 @@ export const MaintenanceLogs: React.FC = () => {
           isDemo: isDemoMode,
           isArchived: false,
           g081_photo: formData.g081Photo || null,
-          g081_status: formData.g081Photo ? 'pending' : undefined
+          ...(formData.g081Photo ? { g081_status: 'pending' as const } : {}),
         };
         const docRef = await addDoc(collection(db, 'logs'), newLog);
 
@@ -327,6 +327,8 @@ export const MaintenanceLogs: React.FC = () => {
       setOriginalLogState(null);
       setFormData({ tail_number: '', jcn: '', discrepancy: '', repair: '', doc_number: '', personnelInput: '', isRedBall: false, shift: 'Days', g081Photo: '' });
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      alert(`Failed to ${editingLogId ? 'update' : 'create'} log: ${message}`);
       handleFirestoreError(error, editingLogId ? OperationType.UPDATE : OperationType.CREATE, 'logs');
     } finally {
       setLoading(false);
