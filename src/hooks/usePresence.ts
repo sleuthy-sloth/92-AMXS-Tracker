@@ -3,6 +3,7 @@ import { doc, setDoc, serverTimestamp, query, collection, where, onSnapshot } fr
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { UserPresence } from '../types';
+import { tsToDate } from '../lib/utils';
 
 export const usePresence = (location: string) => {
   const { user, profile, isDemoMode } = useAuth();
@@ -45,7 +46,7 @@ export const usePresence = (location: string) => {
         .filter(u => {
           if (u.userId === user.uid) return false;
           // Only show users active in the last 2 minutes
-          const activeAt = u.activeAt?.toDate ? u.activeAt.toDate() : new Date(0);
+          const activeAt = tsToDate(u.activeAt);
           return (now.getTime() - activeAt.getTime()) < 120000;
         });
       setActiveUsers(users);
