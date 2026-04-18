@@ -1,11 +1,15 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import { MaintenanceLog, TrainingRecord, DIFMLog } from '../types';
 import { tsToDate } from './utils';
 
-export const exportLogsToCSV = (logs: MaintenanceLog[], shopId: string) => {
+// xlsx is ~900 KB; keep it out of the initial chunk by importing only when the
+// user actually exports.
+const loadXLSX = () => import('xlsx');
+
+export const exportLogsToCSV = async (logs: MaintenanceLog[], shopId: string) => {
+  const XLSX = await loadXLSX();
   const data = logs.map(log => ({
     'Tail Number': log.tail_number,
     'Discrepancy': log.discrepancy,
@@ -55,7 +59,8 @@ export const exportLogsToPDF = (logs: MaintenanceLog[], shopId: string) => {
   doc.save(`Maintenance_Report_${shopId}_${format(new Date(), 'yyyyMMdd')}.pdf`);
 };
 
-export const exportTrainingToCSV = (records: TrainingRecord[], shopId: string) => {
+export const exportTrainingToCSV = async (records: TrainingRecord[], shopId: string) => {
+  const XLSX = await loadXLSX();
   const data = records.map(record => ({
     'Course Name': record.course_name,
     'Man Number': record.man_number,
