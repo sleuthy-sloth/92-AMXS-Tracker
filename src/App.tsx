@@ -90,21 +90,11 @@ import { format, addDays, isBefore, parseISO } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
 
 import { auth, db, handleFirestoreError, OperationType, FirestoreErrorInfo } from './firebase';
+import { UserProfile, MaintenanceLog, TrainingRecord, UserRole, AMUType, ShiftType, DIFMLog, Notification, NotificationType, UserPresence } from './types';
 
-type NotificationType = 'red-ball' | 'parts' | 'training' | 'system';
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-interface Notification {
-  id?: string;
-  userId?: string;
-  shopId?: string;
-  type: NotificationType;
-  title: string;
-  message: string;
-  isRead: boolean;
-  timestamp: any;
-  metadata?: any;
-  isDemo?: boolean;
-}
+import { cn } from './lib/utils';
 
 const createNotification = async (notif: Omit<Notification, 'timestamp' | 'isRead'>) => {
   try {
@@ -188,8 +178,6 @@ class ErrorBoundary extends Component<{ children: React.ReactNode }, { hasError:
     return this.props.children;
   }
 }
-import { cn } from './lib/utils';
-import { UserProfile, MaintenanceLog, TrainingRecord, UserRole, AMUType, ShiftType, DIFMLog } from './types';
 import { parseTrainingReport } from './services/parserService';
 import { 
   exportLogsToCSV, 
@@ -461,14 +449,6 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 // Tour component removed
 
 // --- Real-time Presence ---
-interface UserPresence {
-  userId: string;
-  userName: string;
-  location: string;
-  activeAt: any;
-  shopId: string;
-  amuId: string;
-}
 
 const usePresence = (location: string) => {
   const { user, profile, isDemoMode } = useAuth();
@@ -1586,35 +1566,62 @@ const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[], training: TrainingRec
       if (!profile) return;
       setLoading(true);
       try {
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-        
         // Prepare data for analysis
-        const recentLogs = logs.slice(0, 10).map(l => `${l.tail_number}: ${l.discrepancy}`);
-        const imminentTraining = training.filter(t => t.status !== 'current').slice(0, 5).map(t => `${t.course_name} due ${t.due_date}`);
+        const recentLogs = logs.slice(0, 15).map(l => `${l.tail_number} (${l.isRedBall ? 'RED BALL' : 'Standard'}): ${l.discrepancy}`);
+        const imminentTraining = training.filter(t => t.status !== 'current').slice(0, 10).map(t => `${t.course_name} for Man ${t.man_number} due ${t.due_date}`);
         
+        if (recentLogs.length === 0 && imminentTraining.length === 0) {
+          setAlerts([{
+            id: 'no-data',
+            type: 'info',
+            title: 'Operation Static',
+            description: 'Insufficient shop data for trend analysis. Analysis engine monitoring for new inputs.',
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          }]);
+          setLoading(false);
+          return;
+        }
+
         const response = await ai.models.generateContent({
           model: "gemini-3-flash-preview",
           contents: [{ 
             role: "user", 
             parts: [{ 
-              text: `Analyze this 92nd AMXS data for ${profile.shopId} shop in ${profile.amuId} AMU. Identify 3 critical readiness alerts or trends. 
-              Logs: ${recentLogs.join(', ')}
-              Training: ${imminentTraining.join(', ')}
+              text: `SYSTEM ROLE: 92nd AMXS Operational Intelligence Engine.
+              MISSION: Provide forensic analysis of maintenance and training data.
               
-              Format as JSON with keys: [{ "type": "critical" | "warning" | "info", "title": string, "description": string }]` 
+              DATA SOURCE (Shop: ${profile.shopId}, AMU: ${profile.amuId}):
+              Logs: ${recentLogs.join(' | ')}
+              Training Due: ${imminentTraining.join(' | ')}
+              
+              TASK: Identify 1-3 significant trends or critical readiness alerts based ONLY on the provided data. 
+              STRICT NEGATIVE CONSTRAINT: Do NOT hallucinate or assume data. If data is sparse or shows no significant issues, return an empty array or only include factual observations (e.g. "Low volume of maintenance entries detected").
+              
+              OUTPUT: JSON array [ { "type": "critical" | "warning" | "info", "title": string, "description": string } ]` 
             }] 
           }],
           config: {
-            responseMimeType: "application/json"
+            responseMimeType: "application/json",
+            temperature: 0.1 // Lower temperature for more forensic accuracy
           }
         });
 
         const data = JSON.parse(response.text);
-        setAlerts(data.map((a: any, i: number) => ({
-          ...a,
-          id: `intel-${i}`,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        })));
+        if (data.length === 0) {
+          setAlerts([{
+            id: 'nominal',
+            type: 'info',
+            title: 'System Nominal',
+            description: 'No significant readiness trends or critical alerts identified from recent data blocks.',
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          }]);
+        } else {
+          setAlerts(data.map((a: any, i: number) => ({
+            ...a,
+            id: `intel-${i}`,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          })));
+        }
       } catch (err) {
         console.error("Intelligence Feed Error:", err);
         setAlerts([{
@@ -4805,8 +4812,6 @@ const Support: React.FC = () => {
 };
 
 // --- AI Assistant ---
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 const MaintenanceAssistant: React.FC = () => {
   const { profile, isDemoMode } = useAuth();

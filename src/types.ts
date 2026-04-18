@@ -67,3 +67,28 @@ export interface DIFMLog {
   timestamp: any; // Firestore Timestamp
   isDemo?: boolean;
 }
+
+export type NotificationType = 'red-ball' | 'parts' | 'training' | 'system';
+
+export interface Notification {
+  id?: string;
+  userId?: string;
+  shopId?: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  isRead: boolean;
+  timestamp: any;
+  metadata?: any;
+  isDemo?: boolean;
+}
+
+export interface UserPresence {
+  userId: string;
+  userName: string;
+  location: string;
+  activeAt: any;
+  shopId: string;
+  amuId: string;
+  isDemo?: boolean;
+}
