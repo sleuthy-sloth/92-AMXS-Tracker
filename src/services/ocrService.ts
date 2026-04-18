@@ -1,6 +1,5 @@
-import { GoogleGenAI, Type } from "@google/genai";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+import { Type } from "@google/genai";
+import { getAI } from "../lib/gemini";
 
 export interface ScannedLog {
   tail_number: string;
@@ -12,8 +11,8 @@ export interface ScannedLog {
 
 export const scanMaintenanceForm = async (base64Image: string): Promise<ScannedLog | null> => {
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-flash-latest",
+    const response = await getAI().models.generateContent({
+      model: "gemini-2.5-flash",
       contents: [{
         role: "user",
         parts: [
@@ -53,8 +52,8 @@ export const scanMaintenanceForm = async (base64Image: string): Promise<ScannedL
 
 export const scanLogBook = async (base64Image: string): Promise<ScannedLog[] | null> => {
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-flash-latest",
+    const response = await getAI().models.generateContent({
+      model: "gemini-2.5-flash",
       contents: [{
         role: "user",
         parts: [
@@ -96,8 +95,8 @@ export const scanLogBook = async (base64Image: string): Promise<ScannedLog[] | n
 
 export const parseTrainingReport = async (base64Data: string, mimeType: string = "application/pdf"): Promise<any[]> => {
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-flash-latest",
+    const response = await getAI().models.generateContent({
+      model: "gemini-2.5-flash",
       contents: [{
         role: "user",
         parts: [

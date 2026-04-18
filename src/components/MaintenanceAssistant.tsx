@@ -12,7 +12,7 @@ import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { MOCK_LOGS, MOCK_DIFM, MOCK_TRAINING } from '../mockData';
 import { cn } from '../lib/utils';
-import { ai } from '../lib/gemini';
+import { getAI } from '../lib/gemini';
 
 export const MaintenanceAssistant: React.FC = () => {
   const { profile, isDemoMode } = useAuth();
@@ -75,8 +75,9 @@ export const MaintenanceAssistant: React.FC = () => {
     setIsThinking(true);
 
     try {
+      const ai = getAI();
       const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-2.5-flash",
         contents: userMsg,
         config: {
           systemInstruction: `You are the 92nd AMXS Maintenance Assistant. Your mission is to assist 92nd Air Refueling Squadron maintainers with technical data analysis and readiness reporting.
@@ -156,7 +157,7 @@ export const MaintenanceAssistant: React.FC = () => {
 
         // Send tool outputs back to model to get final response
         const finalResponse = await ai.models.generateContent({
-          model: "gemini-1.5-flash",
+          model: "gemini-2.5-flash",
           contents: [
             { role: 'user', parts: [{ text: userMsg }] },
             { role: 'model', parts: response.candidates[0].content.parts },
