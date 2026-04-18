@@ -1,8 +1,8 @@
-import { UserProfile, MaintenanceLog, TrainingRecord, AMUType, ShiftType, DIFMLog } from './types';
+import { UserProfile, MaintenanceLog, TrainingRecord, AMUType, ShiftType, DIFMLog, SHOPS, ShopType } from './types';
 import { addDays, subDays, format } from 'date-fns';
 
-export const SHOPS = ['AVIONICS', 'CREW_CHIEFS', 'JETS', 'E&E', 'LEADERSHIP'] as const;
-export type ShopType = typeof SHOPS[number];
+export { SHOPS };
+export type { ShopType };
 export const AMUS: AMUType[] = ['BLACK', 'GREEN', 'SILVER', 'BLUE'];
 
 const FIRST_NAMES = ['JAMES', 'JOHN', 'ROBERT', 'MICHAEL', 'WILLIAM', 'DAVID', 'RICHARD', 'JOSEPH', 'THOMAS', 'CHARLES', 'MARY', 'PATRICIA', 'JENNIFER', 'LINDA', 'ELIZABETH', 'BARBARA', 'SUSAN', 'JESSICA', 'SARAH', 'KAREN'];

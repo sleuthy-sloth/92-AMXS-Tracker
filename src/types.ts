@@ -2,6 +2,9 @@ export type UserRole = 'leadership' | 'ncoic' | 'technician' | 'pending';
 export type AMUType = 'BLACK' | 'GREEN' | 'SILVER' | 'BLUE' | 'NONE' | 'ALL';
 export type ShiftType = 'Days' | 'Swings' | 'Nights' | 'Weekend Duty';
 
+export const SHOPS = ['AVIONICS', 'CREW_CHIEFS', 'JETS', 'E&E', 'LEADERSHIP'] as const;
+export type ShopType = typeof SHOPS[number];
+
 export interface UserProfile {
   uid: string;
   name: string;
@@ -74,6 +77,7 @@ export interface Notification {
   id?: string;
   userId?: string;
   shopId?: string;
+  amuId?: string;
   type: NotificationType;
   title: string;
   message: string;

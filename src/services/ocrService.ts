@@ -93,3 +93,46 @@ export const scanLogBook = async (base64Image: string): Promise<ScannedLog[] | n
     return null;
   }
 };
+
+export const parseTrainingReport = async (base64Data: string, mimeType: string = "application/pdf"): Promise<any[]> => {
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-flash-latest",
+      contents: [{
+        role: "user",
+        parts: [
+          {
+            inlineData: {
+              mimeType,
+              data: base64Data
+            }
+          },
+          {
+            text: "Analyze this training report (PDF or Image). Extract a list of training records. For each record, find the personnel's man number, the course code, the course name, and the due date. Return a JSON array of objects with keys: man_number, course_code, course_name, due_date. Due date should be in YYYY-MM-DD format."
+          }
+        ]
+      }],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              man_number: { type: Type.STRING },
+              course_code: { type: Type.STRING },
+              course_name: { type: Type.STRING },
+              due_date: { type: Type.STRING }
+            },
+            required: ["man_number", "course_name", "due_date"]
+          }
+        }
+      }
+    });
+
+    return JSON.parse(response.text);
+  } catch (error) {
+    console.error("Training Report Extraction Error:", error);
+    return [];
+  }
+};
