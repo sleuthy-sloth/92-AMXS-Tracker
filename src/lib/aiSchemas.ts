@@ -42,6 +42,26 @@ export const TrendAlertSchema = z.object({
 export const TrendAlertsSchema = z.array(TrendAlertSchema);
 export type TrendAlertParsed = z.infer<typeof TrendAlertSchema>;
 
+export const DiagnosticFindingSchema = z.object({
+  tail_number: z.string(),
+  component: z.string(),
+  risk: z.enum(['high', 'medium', 'low']),
+  pattern: z.string(),
+  recommendation: z.string(),
+});
+export const DiagnosticsSchema = z.array(DiagnosticFindingSchema);
+export type DiagnosticFindingParsed = z.infer<typeof DiagnosticFindingSchema>;
+
+export const SupplyRiskSchema = z.object({
+  logId: z.string(),
+  tail_number: z.string(),
+  risk: z.enum(['high', 'medium', 'low']),
+  likely_parts: z.array(z.string()).default([]),
+  rationale: z.string(),
+});
+export const SupplyRiskListSchema = z.array(SupplyRiskSchema);
+export type SupplyRiskParsed = z.infer<typeof SupplyRiskSchema>;
+
 /** Parse a raw Gemini text payload; returns `null` on invalid JSON/shape. */
 export function safeParse<T>(
   schema: z.ZodSchema<T>,

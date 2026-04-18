@@ -175,3 +175,89 @@ export const exportTurnoverToPDF = (
 
   doc.save(`Turnover_${amuId}_${shopId}_${format(new Date(), 'yyyyMMdd')}.pdf`);
 };
+
+export const exportRedBallWeeklyPDF = (
+  logs: MaintenanceLog[],
+  shopId: string,
+  amuId: string
+) => {
+  const now = new Date();
+  const weekAgo = now.getTime() - 7 * 24 * 3600 * 1000;
+  const recent = logs
+    .filter((l) => l.isRedBall)
+    .filter((l) => {
+      const d = tsToDate(l.timestamp);
+      return d.getTime() >= weekAgo;
+    })
+    .sort((a, b) => tsToDate(b.timestamp).getTime() - tsToDate(a.timestamp).getTime());
+
+  const byTail: Record<string, number> = {};
+  const byDay: Record<string, number> = {};
+  recent.forEach((l) => {
+    byTail[l.tail_number] = (byTail[l.tail_number] ?? 0) + 1;
+    const day = format(tsToDate(l.timestamp), 'EEE yyyy-MM-dd');
+    byDay[day] = (byDay[day] ?? 0) + 1;
+  });
+
+  const doc = new jsPDF();
+  doc.setFillColor(220, 38, 38);
+  doc.rect(0, 0, 210, 34, 'F');
+  doc.setTextColor(255);
+  doc.setFontSize(20);
+  doc.text('RED BALL WEEKLY TREND', 14, 16);
+  doc.setFontSize(10);
+  doc.text(`92nd AMXS // ${amuId} AMU // ${shopId} SHOP`, 14, 24);
+  doc.text(
+    `Window: ${format(new Date(weekAgo), 'yyyy-MM-dd')} — ${format(now, 'yyyy-MM-dd')} // Total: ${recent.length}`,
+    14,
+    30
+  );
+
+  doc.setTextColor(30, 41, 59);
+  doc.setFontSize(13);
+  doc.text('BY TAIL', 14, 46);
+  autoTable(doc, {
+    startY: 50,
+    head: [['Tail #', 'Red-Ball Count']],
+    body: Object.entries(byTail)
+      .sort((a, b) => b[1] - a[1])
+      .map(([t, n]) => [t, String(n)]),
+    theme: 'grid',
+    headStyles: { fillColor: [220, 38, 38] },
+    styles: { fontSize: 9 },
+  });
+
+  let y = ((doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY) ?? 80;
+  doc.setFontSize(13);
+  doc.text('BY DAY', 14, y + 12);
+  autoTable(doc, {
+    startY: y + 16,
+    head: [['Day', 'Count']],
+    body: Object.entries(byDay)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([d, n]) => [d, String(n)]),
+    theme: 'grid',
+    headStyles: { fillColor: [71, 85, 105] },
+    styles: { fontSize: 9 },
+  });
+
+  y = ((doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY) ?? 160;
+  doc.setFontSize(13);
+  doc.text('ENTRIES', 14, y + 12);
+  autoTable(doc, {
+    startY: y + 16,
+    head: [['Date', 'Tail', 'Discrepancy', 'Tech']],
+    body: recent.map((l) => [
+      format(tsToDate(l.timestamp), 'MM-dd HH:mm'),
+      l.tail_number,
+      l.discrepancy,
+      l.technician_name,
+    ]),
+    theme: 'striped',
+    headStyles: { fillColor: [30, 41, 59] },
+    styles: { fontSize: 8 },
+    columnStyles: { 2: { cellWidth: 90 } },
+  });
+
+  doc.save(`RedBall_Weekly_${amuId}_${shopId}_${format(now, 'yyyyMMdd')}.pdf`);
+};
