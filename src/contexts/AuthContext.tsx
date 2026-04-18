@@ -1,0 +1,275 @@
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { 
+  GoogleAuthProvider, 
+  signInWithPopup, 
+  signOut, 
+  onAuthStateChanged,
+  User,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
+  updatePassword
+} from 'firebase/auth';
+import { 
+  doc, 
+  getDoc, 
+  getDocs,
+  collection, 
+  updateDoc,
+  writeBatch,
+  serverTimestamp
+} from 'firebase/firestore';
+import { auth, db, handleFirestoreError, OperationType } from '../firebase';
+import { UserProfile, UserRole, AMUType } from '../types';
+import { ShopType, MOCK_LOGS, MOCK_PERSONNEL, MOCK_TRAINING } from '../mockData';
+
+interface AuthContextType {
+  user: User | null;
+  profile: UserProfile | null;
+  loading: boolean;
+  signIn: () => Promise<void>;
+  signInEmail: (email: string, pass: string) => Promise<void>;
+  signUpEmail: (email: string, pass: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  updateUserPassword: (newPass: string) => Promise<void>;
+  logout: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
+  bypassLogin: (role?: UserRole) => void;
+  setShop: (shop: ShopType) => void;
+  setAMU: (amu: AMUType) => void;
+  setRole: (role: UserRole) => void;
+  isDemoMode: boolean;
+  toggleDemoMode: () => void;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) throw new Error('useAuth must be used within AuthProvider');
+  return context;
+};
+
+const seedDatabase = async () => {
+  try {
+    const usersSnap = await getDocs(collection(db, 'users'));
+    if (usersSnap.empty) {
+      console.log('Seeding database...');
+      const batch = writeBatch(db);
+      
+      MOCK_PERSONNEL.forEach(p => {
+        batch.set(doc(db, 'users', p.uid), p);
+      });
+      
+      MOCK_TRAINING.forEach(t => {
+        batch.set(doc(db, 'training', t.id || `mock-${Math.random()}`), t);
+      });
+      
+      MOCK_LOGS.forEach(l => {
+        const logToSave = { ...l, timestamp: serverTimestamp() };
+        batch.set(doc(db, 'logs', l.id || `mock-${Math.random()}`), logToSave);
+      });
+      
+      await batch.commit();
+      console.log('Database seeded successfully.');
+    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, 'seeding');
+  }
+};
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isDemoMode, setIsDemoMode] = useState(false);
+
+  const toggleDemoMode = () => setIsDemoMode(prev => !prev);
+
+  const fetchProfile = async (uid: string) => {
+    try {
+      const docRef = doc(db, 'users', uid);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        setProfile(docSnap.data() as UserProfile);
+      } else {
+        setProfile(null);
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    }
+  };
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        await fetchProfile(currentUser.uid);
+        // Seed database if admin logs in and it's empty
+        if (currentUser.email === 'spkoehl@gmail.com') {
+          await seedDatabase();
+        }
+      } else {
+        setProfile(null);
+      }
+      setLoading(false);
+    });
+    return unsubscribe;
+  }, []);
+
+  const signIn = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      console.error('Sign in error:', error);
+      throw error;
+    }
+  };
+
+  const signInEmail = async (email: string, pass: string) => {
+    try {
+      const loginEmail = email === 'admin' ? 'admin@us.af.mil' : email;
+      await signInWithEmailAndPassword(auth, loginEmail, pass);
+    } catch (error: any) {
+      console.error('Email sign in error:', error);
+      throw error;
+    }
+  };
+
+  const signUpEmail = async (email: string, pass: string) => {
+    try {
+      const regEmail = email === 'admin' ? 'admin@us.af.mil' : email;
+      await createUserWithEmailAndPassword(auth, regEmail, pass);
+    } catch (error) {
+      console.error('Email sign up error:', error);
+      throw error;
+    }
+  };
+
+  const resetPassword = async (email: string) => {
+    try {
+      const resetEmail = email === 'admin' ? 'admin@us.af.mil' : email;
+      await sendPasswordResetEmail(auth, resetEmail);
+    } catch (error) {
+      console.error('Password reset error:', error);
+      throw error;
+    }
+  };
+
+  const updateUserPassword = async (newPass: string) => {
+    if (!auth.currentUser) throw new Error('No authenticated user');
+    try {
+      await updatePassword(auth.currentUser, newPass);
+    } catch (error) {
+      console.error('Password update error:', error);
+      throw error;
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await signOut(auth);
+      setUser(null);
+      setProfile(null);
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
+  const refreshProfile = async () => {
+    if (user) await fetchProfile(user.uid);
+  };
+
+  const bypassLogin = (role: UserRole = 'ncoic') => {
+    const mockUser = {
+      uid: 'mock-user-preview',
+      email: 'dev.preview@us.af.mil',
+      displayName: 'PREVIEW USER',
+    } as User;
+    
+    const mockProfile: UserProfile = {
+      uid: 'mock-user-preview',
+      name: 'PREVIEW USER',
+      rank: 'TSgt',
+      man_number: '99999',
+      shopId: 'AVIONICS',
+      amuId: 'BLACK',
+      role: role,
+      email: 'dev.preview@us.af.mil',
+      phone: '555-0123',
+      status: 'active',
+      isDemo: true
+    };
+    
+    setUser(mockUser);
+    setProfile(mockProfile);
+    setLoading(false);
+    setIsDemoMode(true);
+  };
+
+  const setShop = async (shop: ShopType) => {
+    if (profile) {
+      const updatedProfile = { ...profile, shopId: shop };
+      setProfile(updatedProfile);
+      if (user && user.uid !== 'mock-user-preview') {
+        try {
+          await updateDoc(doc(db, 'users', user.uid), { shopId: shop });
+        } catch (e) {
+          console.error('Error updating shop in Firestore', e);
+        }
+      }
+    }
+  };
+
+  const setAMU = async (amu: AMUType) => {
+    if (profile) {
+      const updatedProfile = { ...profile, amuId: amu };
+      setProfile(updatedProfile);
+      if (user && user.uid !== 'mock-user-preview') {
+        try {
+          await updateDoc(doc(db, 'users', user.uid), { amuId: amu });
+        } catch (e) {
+          console.error('Error updating AMU in Firestore', e);
+        }
+      }
+    }
+  };
+
+  const setRole = async (role: UserRole) => {
+    if (profile) {
+      const updatedProfile = { ...profile, role: role };
+      setProfile(updatedProfile);
+      if (user && user.uid !== 'mock-user-preview') {
+        try {
+          await updateDoc(doc(db, 'users', user.uid), { role: role });
+        } catch (e) {
+          console.error('Error updating role in Firestore', e);
+        }
+      }
+    }
+  };
+
+  return (
+    <AuthContext.Provider value={{ 
+      user, 
+      profile, 
+      loading, 
+      signIn, 
+      signInEmail,
+      signUpEmail,
+      resetPassword,
+      updateUserPassword,
+      logout, 
+      refreshProfile, 
+      bypassLogin, 
+      setShop,
+      setAMU,
+      setRole,
+      isDemoMode,
+      toggleDemoMode
+    }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
