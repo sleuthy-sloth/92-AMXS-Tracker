@@ -70,6 +70,7 @@ export const MaintenanceLogs: React.FC = () => {
   const [isActionsOpen, setIsActionsOpen] = useState(false);
   const [selectedLog, setSelectedLog] = useState<MaintenanceLog | null>(null);
   const [isArchiveView, setIsArchiveView] = useState(false);
+  const [originalLogState, setOriginalLogState] = useState<MaintenanceLog | null>(null);
 
   useEffect(() => {
     if (!profile) return;
@@ -251,6 +252,27 @@ export const MaintenanceLogs: React.FC = () => {
 
     setLoading(true);
     
+    // Conflict Detection Logic
+    if (editingLogId && originalLogState) {
+      const latestVersion = logs.find(l => l.id === editingLogId);
+      if (latestVersion && latestVersion.lastEditedAt && originalLogState.lastEditedAt) {
+        const latestTime = latestVersion.lastEditedAt.toMillis ? latestVersion.lastEditedAt.toMillis() : new Date(latestVersion.lastEditedAt).getTime();
+        const originalTime = originalLogState.lastEditedAt.toMillis ? originalLogState.lastEditedAt.toMillis() : new Date(originalLogState.lastEditedAt).getTime();
+        
+        if (latestTime > originalTime) {
+          const proceed = window.confirm(
+            `CONFLICT DETECTED: This log was edited by ${latestVersion.lastEditedBy} while you were working. \n\n` +
+            `Their changes: "${latestVersion.repair.slice(0, 100)}..."\n\n` +
+            `Click OK to overwrite their changes with yours, or Cancel to review the current log.`
+          );
+          if (!proceed) {
+            setLoading(false);
+            return;
+          }
+        }
+      }
+    }
+
     const personnelArray = formData.personnelInput.split(',').map(p => p.trim()).filter(p => p);
     
     try {
@@ -302,6 +324,7 @@ export const MaintenanceLogs: React.FC = () => {
       }
       setIsModalOpen(false);
       setEditingLogId(null);
+      setOriginalLogState(null);
       setFormData({ tail_number: '', jcn: '', discrepancy: '', repair: '', doc_number: '', personnelInput: '', isRedBall: false, shift: 'Days', g081Photo: '' });
     } catch (error) {
       handleFirestoreError(error, editingLogId ? OperationType.UPDATE : OperationType.CREATE, 'logs');
@@ -323,6 +346,7 @@ export const MaintenanceLogs: React.FC = () => {
       g081Photo: log.g081_photo || ''
     });
     setEditingLogId(log.id!);
+    setOriginalLogState(log);
     setSelectedLog(null);
     setIsModalOpen(true);
   };
