@@ -21,7 +21,7 @@ import {
   Send, 
   Trash2 
 } from 'lucide-react';
-import { serverTimestamp, collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, doc, getDocs, deleteDoc } from 'firebase/firestore';
+import { serverTimestamp, collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, doc, getDocs, deleteDoc, limit } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
@@ -99,7 +99,7 @@ export const MaintenanceLogs: React.FC = () => {
     if (profile.amuId !== 'ALL') logConstraints.push(where('amuId', '==', profile.amuId));
     if (profile.shopId !== 'ALL' && profile.shopId !== 'LEADERSHIP') logConstraints.push(where('shopId', '==', profile.shopId));
     
-    const logConstraintsWithArchive: any[] = [...logConstraints, where('isArchived', '==', isArchiveView)];
+    const logConstraintsWithArchive: any[] = [...logConstraints, where('isArchived', '==', isArchiveView), limit(500)];
     const qLogs = query(collection(db, 'logs'), ...logConstraintsWithArchive);
     
     const unsubLogs = onSnapshot(qLogs, (snap) => {
@@ -110,7 +110,7 @@ export const MaintenanceLogs: React.FC = () => {
     const difmConstraints: any[] = [where('isDemo', '==', false)];
     if (profile.amuId !== 'ALL') difmConstraints.unshift(where('amuId', '==', profile.amuId));
     if (profile.shopId !== 'ALL' && profile.shopId !== 'LEADERSHIP') difmConstraints.unshift(where('shopId', '==', profile.shopId));
-    qDifm = query(collection(db, 'difm'), ...difmConstraints);
+    qDifm = query(collection(db, 'difm'), ...difmConstraints, limit(500));
 
     const unsubDifm = onSnapshot(qDifm, (snap) => {
       setDifm(snap.docs.map(d => ({ id: d.id, ...d.data() } as DIFMLog)));
