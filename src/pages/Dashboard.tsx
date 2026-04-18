@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { History as HistoryIcon, Search } from 'lucide-react';
+import { History as HistoryIcon, Search, Flame } from 'lucide-react';
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { motion } from 'motion/react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { UserProfile, MaintenanceLog, TrainingRecord, DIFMLog } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { cn, tsToDate } from '../lib/utils';
-import { exportTurnoverToPDF } from '../lib/exportUtils';
+import { exportTurnoverToPDF, exportRedBallWeeklyPDF } from '../lib/exportUtils';
 import { MOCK_LOGS, MOCK_PERSONNEL, MOCK_TRAINING, MOCK_DIFM } from '../mockData';
 import { IntelligenceFeed } from '../components/dashboard/IntelligenceFeed';
 import { LoopClosure } from '../components/dashboard/LoopClosure';
@@ -184,12 +184,19 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
         <div className="flex gap-4 w-full lg:w-auto">
-          <button 
+          <button
             onClick={() => exportTurnoverToPDF(logs, difm, (profile as any).shopId, (profile as any).amuId, 'Days')}
             className="sleek-button flex-1 lg:flex-none bg-sidebar !text-white border border-white/10 hover:bg-slate-800 flex items-center justify-center gap-3 px-8 group"
           >
-            <HistoryIcon className="w-4 h-4 text-white group-hover:scale-110 transition-transform" /> 
+            <HistoryIcon className="w-4 h-4 text-white group-hover:scale-110 transition-transform" />
             <span className="font-black text-[11px] uppercase tracking-widest">Turnover Report</span>
+          </button>
+          <button
+            onClick={() => exportRedBallWeeklyPDF(logs, (profile as any).shopId, (profile as any).amuId)}
+            className="sleek-button flex-1 lg:flex-none bg-safety-orange text-white hover:bg-orange-600 flex items-center justify-center gap-3 px-8 group"
+          >
+            <Flame className="w-4 h-4 group-hover:scale-110 transition-transform" />
+            <span className="font-black text-[11px] uppercase tracking-widest">Red-Ball Weekly</span>
           </button>
         </div>
       </header>
