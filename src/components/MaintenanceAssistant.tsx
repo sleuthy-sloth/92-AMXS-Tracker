@@ -1,0 +1,343 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Type, FunctionDeclaration } from "@google/genai";
+import ReactMarkdown from 'react-markdown';
+import { 
+  Sparkles, 
+  X, 
+  Send 
+} from 'lucide-react';
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { motion, AnimatePresence } from 'motion/react';
+import { db } from '../firebase';
+import { useAuth } from '../contexts/AuthContext';
+import { MOCK_LOGS, MOCK_DIFM, MOCK_TRAINING } from '../mockData';
+import { cn } from '../lib/utils';
+import { ai } from '../lib/gemini';
+
+export const MaintenanceAssistant: React.FC = () => {
+  const { profile, isDemoMode } = useAuth();
+  const [isOpen, setIsOpen] = useState(false);
+  const [messages, setMessages] = useState<{ role: 'user' | 'assistant', content: string }[]>([]);
+  const [input, setInput] = useState('');
+  const [isThinking, setIsThinking] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages, isThinking]);
+
+  const maintenanceTools: FunctionDeclaration[] = [
+    {
+      name: "query_maintenance_logs",
+      description: "Query aircraft maintenance logs for discrepancies, repairs, and tail number history.",
+      parameters: {
+        type: Type.OBJECT,
+        properties: {
+          tail_number: { type: Type.STRING, description: "Filter by specific tail number (e.g. 58-0092)" },
+          shift: { type: Type.STRING, enum: ['Days', 'Swings', 'Nights'], description: "Filter by shift" },
+          isRedBall: { type: Type.BOOLEAN, description: "If true, only returns urgent red ball maintenance" }
+        }
+      }
+    },
+    {
+      name: "query_difm_inventory",
+      description: "Check status of parts due-in from maintenance (DIFM).",
+      parameters: {
+        type: Type.OBJECT,
+        properties: {
+          status: { type: Type.STRING, enum: ['due-in', 'awaiting-parts', 'in-repair', 'complete'] },
+          tail_number: { type: Type.STRING }
+        }
+      }
+    },
+    {
+      name: "query_training_compliance",
+      description: "Identify technicians with expiring or overdue training requirements.",
+      parameters: {
+        type: Type.OBJECT,
+        properties: {
+          status: { type: Type.STRING, enum: ['expiring', 'expired'], description: "Filter for specific compliance issues" },
+          course_code: { type: Type.STRING, description: "Filter for a specific training course" }
+        }
+      }
+    }
+  ];
+
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || isThinking) return;
+
+    const userMsg = input.trim();
+    setInput('');
+    setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
+    setIsThinking(true);
+
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-1.5-flash",
+        contents: userMsg,
+        config: {
+          systemInstruction: `You are the 92nd AMXS Maintenance Assistant. Your mission is to assist 92nd Air Refueling Squadron maintainers with technical data analysis and readiness reporting.
+          
+          CAPABILITIES:
+          - You can query maintenance logs, DIFM inventory, and training compliance data using real-time database functions.
+          - Use these tools to provide factual, data-driven answers about squadron readiness.
+          
+          TONE:
+          - Professional, technical, and mission-focused military tone. 
+          - Keep responses concise and scannable using tables and bullet points.
+          
+          FORMATTING:
+          - Always use Markdown tables for data.
+          - Highlight critical issues (RED BALLS or EXPIRED training) in bold.`,
+          tools: [{ functionDeclarations: maintenanceTools }],
+          temperature: 0,
+        }
+      });
+
+      if (response.functionCalls) {
+        const toolOutputs: any[] = [];
+        
+        for (const call of response.functionCalls) {
+          let data: any = [];
+          
+          if (isDemoMode) {
+             if (call.name === "query_maintenance_logs") {
+               const args = call.args as any;
+               data = MOCK_LOGS.filter(l => {
+                 if (args.tail_number && l.tail_number !== args.tail_number) return false;
+                 if (args.shift && l.shift !== args.shift) return false;
+                 if (args.isRedBall && !l.isRedBall) return false;
+                 return true;
+               }).slice(0, 10);
+             } else if (call.name === "query_difm_inventory") {
+               const args = call.args as any;
+               data = MOCK_DIFM.filter(d => {
+                 if (args.status && d.status !== args.status) return false;
+                 if (args.tail_number && d.tail_number !== args.tail_number) return false;
+                 return true;
+               }).slice(0, 10);
+             } else if (call.name === "query_training_compliance") {
+               const args = call.args as any;
+               data = MOCK_TRAINING.filter(t => {
+                 if (args.status && t.status !== args.status) return false;
+                 if (args.course_code && t.course_code !== args.course_code) return false;
+                 return true;
+               }).slice(0, 10);
+             }
+          } else {
+             // Real Firestore logic
+             const collectionName = call.name === "query_maintenance_logs" ? "logs" : 
+                                   call.name === "query_difm_inventory" ? "difm" : "training";
+             
+             let q = query(collection(db, collectionName), limit(20));
+             
+             // Apply shop filter if applicable
+             if (profile?.shopId !== 'ALL' && profile?.shopId !== 'LEADERSHIP') {
+               q = query(q, where('shopId', '==', profile?.shopId));
+             }
+
+             const args = call.args as any;
+             if (args.tail_number) q = query(q, where('tail_number', '==', args.tail_number));
+             if (args.status) q = query(q, where('status', '==', args.status));
+             if (args.shift) q = query(q, where('shift', '==', args.shift));
+
+             const snap = await getDocs(q);
+             data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          }
+
+          toolOutputs.push({
+            callId: call.id,
+            output: data
+          });
+        }
+
+        // Send tool outputs back to model to get final response
+        const finalResponse = await ai.models.generateContent({
+          model: "gemini-1.5-flash",
+          contents: [
+            { role: 'user', parts: [{ text: userMsg }] },
+            { role: 'model', parts: response.candidates[0].content.parts },
+            {
+              role: 'user',
+              parts: toolOutputs.map(o => ({
+                functionResponse: {
+                  name: response.functionCalls![0].name,
+                  response: { result: o.output },
+                }
+              }))
+            }
+          ],
+          config: {
+            systemInstruction: `Analyze the provided data result and summarize it for the maintainer.`,
+            temperature: 0,
+          }
+        });
+
+        if (finalResponse.text) {
+          setMessages(prev => [...prev, { role: 'assistant', content: finalResponse.text! }]);
+        }
+      } else if (response.text) {
+        setMessages(prev => [...prev, { role: 'assistant', content: response.text }]);
+      }
+    } catch (err) {
+      console.error("AI Assistant Error:", err);
+      setMessages(prev => [...prev, { role: 'assistant', content: "SYSTEM ERROR: Signal interference during operational analysis. Terminal link unstable." }]);
+    } finally {
+      setIsThinking(false);
+    }
+  };
+
+  return (
+    <div className="fixed bottom-8 right-8 z-[1000]">
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            className="absolute bottom-20 right-0 w-[400px] h-[600px] bg-white visible-grid shadow-2xl overflow-hidden flex flex-col border border-outline"
+          >
+            {/* Header */}
+            <div className="p-6 bg-sidebar border-b border-white/10 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/20 rounded-none border border-primary/30">
+                  <Sparkles className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-black text-xs uppercase tracking-[0.2em] text-white tracking-widest">Maintenance Terminal</h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                    <span className="text-[8px] font-mono text-white/40 uppercase tracking-tighter">Secure Link Active // Intelligence Feed</span>
+                  </div>
+                </div>
+              </div>
+              <button onClick={() => setIsOpen(false)} className="text-white/40 hover:text-white transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Chat Body */}
+            <div 
+              ref={scrollRef}
+              className="flex-1 p-6 overflow-y-auto space-y-6 bg-slate-50/50"
+            >
+              {messages.length === 0 && (
+                <div className="flex flex-col items-center justify-center h-full text-center space-y-4 px-4">
+                  <Sparkles className="w-8 h-8 text-primary/30" />
+                  <div>
+                    <p className="tech-label text-slate-400">Analysis Engine Ready</p>
+                    <p className="serif-header text-sm text-slate-500 mt-2">
+                      Ask about maintenance trends, tail number history, or shop training readiness.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2 w-full mt-4">
+                    {["Identify recurring tail number issues", "Check training gaps for next 30 days"].map(q => (
+                      <button 
+                        key={q}
+                        onClick={() => { setInput(q); }}
+                        className="text-left p-3 text-[10px] font-black uppercase tracking-tight bg-white border border-outline hover:border-primary/40 transition-colors"
+                      >
+                        "{q}"
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {messages.map((m, i) => (
+                <div key={i} className={cn(
+                  "flex flex-col max-w-[85%]",
+                  m.role === 'user' ? "ml-auto items-end" : "items-start"
+                )}>
+                  <span className="tech-label !text-[8px] mb-1 opacity-40 uppercase">
+                    {m.role === 'user' ? 'Operator' : 'AMXS-AI'}
+                  </span>
+                  <div className={cn(
+                    "p-4 text-sm leading-relaxed",
+                    m.role === 'user' 
+                      ? "bg-primary text-white font-medium shadow-lg" 
+                      : "bg-white border border-outline text-slate-900 serif-header shadow-sm markdown-body"
+                  )}>
+                    {m.role === 'user' ? m.content : <ReactMarkdown>{m.content}</ReactMarkdown>}
+                  </div>
+                </div>
+              ))}
+
+              {isThinking && (
+                <div className="flex flex-col items-start max-w-[85%]">
+                  <span className="tech-label !text-[8px] mb-1 opacity-40 uppercase">AMXS-AI</span>
+                  <div className="p-4 bg-white border border-outline text-slate-900 flex items-center gap-3 shadow-sm">
+                    <div className="flex gap-1">
+                      <div className="w-1.5 h-1.5 bg-primary animate-bounce"></div>
+                      <div className="w-1.5 h-1.5 bg-primary animate-bounce [animation-delay:0.2s]"></div>
+                      <div className="w-1.5 h-1.5 bg-primary animate-bounce [animation-delay:0.4s]"></div>
+                    </div>
+                    <span className="tech-label !text-[9px] text-slate-400 animate-pulse uppercase">Processing Intelligence...</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Input */}
+            <form onSubmit={handleSend} className="p-6 bg-white border-t border-outline">
+              <div className="flex gap-3">
+                <input 
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  placeholder="Analyze logs via natural language..."
+                  className="flex-1 sleek-input text-xs bg-slate-50"
+                  disabled={isThinking}
+                />
+                <button 
+                  disabled={isThinking || !input.trim()}
+                  className="p-3 bg-primary text-white hover:bg-primary-hover disabled:opacity-50 transition-all flex items-center justify-center shrink-0"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <motion.button
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={() => setIsOpen(!isOpen)}
+        className={cn(
+          "w-14 h-14 rounded-none flex items-center justify-center shadow-[0_20px_50px_rgba(0,0,0,0.3)] transition-all border-2 backdrop-blur-md relative group",
+          isOpen 
+            ? "bg-white border-primary text-primary" 
+            : "bg-sidebar/95 border-white/20 text-white"
+        )}
+        title="AI Maintenance Assistant"
+      >
+        <div className={cn(
+          "w-10 h-10 flex items-center justify-center transition-all",
+          isOpen ? "bg-primary text-white" : "bg-white/10 text-white group-hover:bg-primary/20"
+        )}>
+          {isOpen ? <X className="w-5 h-5" /> : <Sparkles className="w-5 h-5 animate-pulse" />}
+        </div>
+
+        {/* Technical Label */}
+        <div className="absolute right-full mr-4 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap hidden md:block">
+          <div className="bg-sidebar text-white px-3 py-1.5 border border-white/10 flex flex-col items-end">
+            <span className="tech-label !text-[6px] text-primary">AMXS-INTEL</span>
+            <span className="font-black text-[9px] uppercase tracking-widest leading-none mt-1">AI Assistant Terminal</span>
+          </div>
+        </div>
+
+        {/* Status Light */}
+        {!isOpen && (
+          <div className="absolute -top-1 -right-1 flex">
+            <span className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-primary opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+          </div>
+        )}
+      </motion.button>
+    </div>
+  );
+};
