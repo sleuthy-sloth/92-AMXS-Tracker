@@ -4,6 +4,7 @@ import { LogOut, LayoutDashboard, Wrench, FileDown, Camera, BarChart3, Users, He
 import { useAuth } from '../../contexts/AuthContext';
 import { NotificationBell } from '../common/NotificationBell';
 import { PresenceIndicator } from '../common/PresenceIndicator';
+import { SyncStatus } from '../common/SyncStatus';
 import { UserPresence } from '../../types';
 
 interface TopBarProps {
@@ -45,6 +46,7 @@ export const TopBar: React.FC<TopBarProps> = ({ activeUsers, setIsSidebarOpen })
       
       <div className="text-right hidden sm:flex items-start gap-10">
         <div className="flex items-center gap-6">
+          <SyncStatus />
           <PresenceIndicator users={activeUsers} />
           <NotificationBell />
         </div>
