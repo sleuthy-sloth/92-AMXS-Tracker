@@ -73,26 +73,29 @@ export const TrainingTracker: React.FC = () => {
     if (profile.amuId === 'ALL' || profile.shopId === 'ALL' || profile.role === 'leadership') {
       let queryRef = collection(db, 'training');
       const constraints: any[] = [where('isDemo', '==', false)];
-      
+
       if (profile.amuId !== 'ALL' && profile.amuId !== 'NONE') {
         constraints.push(where('amuId', '==', profile.amuId));
       }
       if (profile.shopId !== 'ALL' && profile.shopId !== 'LEADERSHIP') {
         constraints.push(where('shopId', '==', profile.shopId));
       }
+      constraints.push(limit(1000));
       qTraining = query(queryRef, ...constraints);
     } else if (isTechnician) {
       qTraining = query(
-        collection(db, 'training'), 
+        collection(db, 'training'),
         where('man_number', '==', profile.man_number),
-        where('isDemo', '==', false)
+        where('isDemo', '==', false),
+        limit(1000)
       );
     } else {
       qTraining = query(
-        collection(db, 'training'), 
+        collection(db, 'training'),
         where('amuId', '==', profile.amuId),
         where('shopId', '==', profile.shopId),
-        where('isDemo', '==', false)
+        where('isDemo', '==', false),
+        limit(1000)
       );
     }
     
@@ -111,19 +114,22 @@ export const TrainingTracker: React.FC = () => {
       if (profile.shopId !== 'ALL' && profile.shopId !== 'LEADERSHIP') {
         constraints.push(where('shopId', '==', profile.shopId));
       }
+      constraints.push(limit(500));
       qPersonnel = query(queryRef, ...constraints);
     } else if (isTechnician) {
       qPersonnel = query(
-        collection(db, 'users'), 
+        collection(db, 'users'),
         where('man_number', '==', profile.man_number),
-        where('isDemo', '==', false)
+        where('isDemo', '==', false),
+        limit(500)
       );
     } else {
       qPersonnel = query(
-        collection(db, 'users'), 
+        collection(db, 'users'),
         where('amuId', '==', profile.amuId),
         where('shopId', '==', profile.shopId),
-        where('isDemo', '==', false)
+        where('isDemo', '==', false),
+        limit(500)
       );
     }
     
