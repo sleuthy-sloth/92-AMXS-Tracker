@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { usePresence } from '../../hooks/usePresence';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
+import { motion, AnimatePresence } from 'motion/react';
 import { createNotification } from '../../services/notificationService';
 
 interface AppLayoutProps {
@@ -58,7 +59,20 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   }, [user?.uid, profile?.shopId, isDemoMode]);
 
   return (
-    <div className="min-h-screen flex bg-background">
+    <div className="min-h-screen flex bg-background relative">
+      {/* Mobile Backdrop */}
+      <AnimatePresence>
+        {isSidebarOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsSidebarOpen(false)}
+            className="fixed inset-0 bg-black/50 z-30 md:hidden"
+          />
+        )}
+      </AnimatePresence>
+
       <Sidebar 
         isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}
