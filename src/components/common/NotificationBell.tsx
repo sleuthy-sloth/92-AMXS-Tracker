@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { query, collection, where, orderBy, limit, onSnapshot, doc, updateDoc } from 'firebase/firestore';
-import { Bell, BellDot, ShieldAlert, Package, Clock, X } from 'lucide-react';
+import { query, collection, where, orderBy, limit, onSnapshot, doc, updateDoc, writeBatch } from 'firebase/firestore';
+import { Bell, BellDot, ShieldAlert, Package, Clock, X, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -56,6 +56,22 @@ export const NotificationBell: React.FC = () => {
     }
   };
 
+  const clearAllNotifications = async () => {
+    if (notifications.length === 0) return;
+    if (!window.confirm('Clear all notification history?')) return;
+    
+    try {
+      const batch = writeBatch(db);
+      notifications.forEach(notif => {
+        batch.delete(doc(db, 'notifications', notif.id!));
+      });
+      await batch.commit();
+      setIsOpen(false);
+    } catch (error) {
+      console.error('Failed to clear notifications:', error);
+    }
+  };
+
   const getIcon = (type: NotificationType) => {
     switch (type) {
       case 'red-ball': return <ShieldAlert className="w-4 h-4 text-safety-orange" />;
@@ -94,7 +110,18 @@ export const NotificationBell: React.FC = () => {
           >
             <div className="p-4 bg-slate-50 border-b border-outline flex justify-between items-center">
               <span className="tech-label text-primary">Operational Alerts</span>
-              {unreadCount > 0 && <span className="text-[8px] font-black uppercase text-slate-400 px-2 py-0.5 bg-white border border-outline">{unreadCount} New</span>}
+              <div className="flex items-center gap-3">
+                {notifications.length > 0 && (
+                  <button 
+                    onClick={clearAllNotifications}
+                    className="p-1.5 hover:bg-white text-slate-400 hover:text-safety-orange transition-all border border-transparent hover:border-outline"
+                    title="Clear All"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+                {unreadCount > 0 && <span className="text-[8px] font-black uppercase text-slate-400 px-2 py-0.5 bg-white border border-outline">{unreadCount} New</span>}
+              </div>
             </div>
 
             <div className="max-h-96 overflow-y-auto divide-y divide-outline custom-scrollbar">
