@@ -9,6 +9,7 @@ import { cn, tsToDate } from '../lib/utils';
 import { exportTurnoverToPDF } from '../lib/exportUtils';
 import { MOCK_LOGS, MOCK_PERSONNEL, MOCK_TRAINING, MOCK_DIFM } from '../mockData';
 import { IntelligenceFeed } from '../components/dashboard/IntelligenceFeed';
+import { LoopClosure } from '../components/dashboard/LoopClosure';
 
 
 export const Dashboard: React.FC = () => {
@@ -273,8 +274,9 @@ export const Dashboard: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <div className="lg:col-span-4">
+        <div className="lg:col-span-4 space-y-8">
           <IntelligenceFeed logs={logs} training={training} />
+          <LoopClosure logs={logs} />
         </div>
 
         <div className="lg:col-span-8">
