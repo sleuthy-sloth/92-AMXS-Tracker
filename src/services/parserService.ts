@@ -1,17 +1,5 @@
-import { GoogleGenAI, Type } from "@google/genai";
-
-let ai: GoogleGenAI | null = null;
-
-function getAI() {
-  if (!ai) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new Error("Gemini API key is not configured. Please add it to your environment variables.");
-    }
-    ai = new GoogleGenAI({ apiKey });
-  }
-  return ai;
-}
+import { Type } from "@google/genai";
+import { getAI } from "../lib/gemini";
 
 export async function parseTrainingReport(base64Data: string, mimeType: string) {
   try {
@@ -22,7 +10,7 @@ export async function parseTrainingReport(base64Data: string, mimeType: string) 
       : mimeType;
 
     const response = await aiClient.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       contents: [
         {
           parts: [

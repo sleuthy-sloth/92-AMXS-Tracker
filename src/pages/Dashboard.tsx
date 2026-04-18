@@ -17,7 +17,7 @@ import { motion } from 'motion/react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { UserProfile, MaintenanceLog, TrainingRecord, DIFMLog } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { ai } from '../lib/gemini';
+import { getAI } from '../lib/gemini';
 import { cn } from '../lib/utils';
 import { exportTurnoverToPDF } from '../lib/exportUtils';
 import { MOCK_LOGS, MOCK_PERSONNEL, MOCK_TRAINING, MOCK_DIFM } from '../mockData';
@@ -48,8 +48,8 @@ const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[], training: TrainingRec
           return;
         }
 
-        const response = await ai.models.generateContent({
-          model: "gemini-1.5-flash",
+        const response = await getAI().models.generateContent({
+          model: "gemini-2.5-flash",
           contents: [{ 
             role: "user", 
             parts: [{ 
