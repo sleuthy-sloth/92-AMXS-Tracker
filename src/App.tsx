@@ -82,93 +82,14 @@ import { motion, AnimatePresence } from 'motion/react';
 import { auth, db, handleFirestoreError, OperationType, FirestoreErrorInfo } from './firebase';
 import { UserProfile, MaintenanceLog, TrainingRecord, UserRole, AMUType, ShiftType, DIFMLog, Notification, NotificationType, UserPresence } from './types';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
+import { AppLayout } from './components/layout/AppLayout';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 import { cn } from './lib/utils';
+import { createNotification } from './services/notificationService';
 
-const createNotification = async (notif: Omit<Notification, 'timestamp' | 'isRead'>) => {
-  try {
-    const newNotif = {
-      ...notif,
-      isRead: false,
-      timestamp: serverTimestamp(),
-    };
-    await addDoc(collection(db, 'notifications'), newNotif);
-  } catch (error) {
-    console.error('Failed to create notification:', error);
-  }
-};
-
-// --- Error Boundary ---
-
-class ErrorBoundary extends Component<{ children: React.ReactNode }, { hasError: boolean, error: any }> {
-  constructor(props: { children: React.ReactNode }) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error: any) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error: any, errorInfo: any) {
-    console.error("Uncaught error:", error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      let displayError = "Something went wrong.";
-      let details = null;
-
-      try {
-        const parsed = JSON.parse(this.state.error.message) as FirestoreErrorInfo;
-        if (parsed.error) {
-          displayError = "Database Access Error";
-          details = (
-            <div className="mt-4 p-4 bg-error/10 border border-error/20 rounded-xl text-left">
-              <p className="text-error font-bold text-sm">Operation: {parsed.operationType.toUpperCase()}</p>
-              <p className="text-on-surface-variant text-xs mt-1">Path: {parsed.path || 'Unknown'}</p>
-              <p className="text-on-surface text-sm mt-2 font-mono">{parsed.error}</p>
-              <div className="mt-4 pt-4 border-t border-error/10">
-                <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Auth Context</p>
-                <p className="text-xs text-on-surface-variant">User ID: {parsed.authInfo.userId || 'Not Logged In'}</p>
-                <p className="text-xs text-on-surface-variant">Email: {parsed.authInfo.email || 'N/A'}</p>
-              </div>
-            </div>
-          );
-        }
-      } catch (e) {
-        displayError = this.state.error.message || String(this.state.error);
-      }
-
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-background p-6">
-          <div className="max-w-md w-full sleek-card text-center space-y-6">
-            <div className="w-16 h-16 bg-error/10 rounded-2xl flex items-center justify-center mx-auto text-error">
-              <ShieldAlert className="w-8 h-8" />
-            </div>
-            <div className="space-y-2">
-              <h2 className="text-2xl font-bold text-on-background tracking-tight">{displayError}</h2>
-              <p className="text-on-surface-variant text-sm">
-                The application encountered a critical error. Please try refreshing the page or contact support if the issue persists.
-              </p>
-            </div>
-            {details}
-            <button 
-              onClick={() => window.location.reload()}
-              className="sleek-button w-full bg-primary text-white"
-            >
-              Refresh Application
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    return this.props.children;
-  }
-}
 import { parseTrainingReport } from './services/parserService';
 import { 
   exportLogsToCSV, 
@@ -183,521 +104,6 @@ import { SHOPS, ShopType, AMUS, SHIFT_TIMES, MOCK_LOGS, MOCK_PERSONNEL, MOCK_TRA
 // --- Components ---
 
 // Tour component removed
-
-// --- Real-time Presence ---
-
-const usePresence = (location: string) => {
-  const { user, profile, isDemoMode } = useAuth();
-  const [activeUsers, setActiveUsers] = useState<UserPresence[]>([]);
-
-  useEffect(() => {
-    if (!user || !profile || !profile.shopId) return;
-
-    const presenceRef = doc(db, 'presence', user.uid);
-    const updatePresence = async () => {
-      try {
-        await setDoc(presenceRef, {
-          userId: user.uid,
-          userName: profile.name,
-          location,
-          activeAt: serverTimestamp(),
-          shopId: profile.shopId,
-          amuId: profile.amuId,
-          isDemo: isDemoMode
-        });
-      } catch (e) {
-        console.error("Presence update failed", e);
-      }
-    };
-
-    updatePresence();
-    const interval = setInterval(updatePresence, 30000); // Heartbeat every 30s
-
-    const q = query(
-      collection(db, 'presence'),
-      where('amuId', '==', profile.amuId),
-      where('shopId', '==', profile.shopId),
-      where('isDemo', '==', isDemoMode)
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const now = new Date();
-      const users = snapshot.docs
-        .map(d => d.data() as UserPresence)
-        .filter(u => {
-          if (u.userId === user.uid) return false;
-          // Only show users active in the last 2 minutes
-          const activeAt = u.activeAt?.toDate ? u.activeAt.toDate() : new Date(0);
-          return (now.getTime() - activeAt.getTime()) < 120000;
-        });
-      setActiveUsers(users);
-    });
-
-    return () => {
-      clearInterval(interval);
-      unsubscribe();
-    };
-  }, [user, profile, location]);
-
-  return activeUsers;
-};
-
-const PresenceIndicator: React.FC<{ users: UserPresence[] }> = ({ users }) => {
-  if (users.length === 0) return null;
-
-  return (
-    <div className="flex items-center -space-x-2">
-      {users.map(u => (
-        <div 
-          key={u.userId}
-          className="w-8 h-8 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center group relative cursor-help"
-          title={`${u.userName} is also on this page`}
-        >
-          <span className="text-[10px] font-black text-slate-600">
-            {u.userName.split(',')[0].slice(0, 2).toUpperCase()}
-          </span>
-          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-sidebar text-white text-[8px] font-black uppercase tracking-tighter rounded-none whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-[200]">
-            {u.userName} <span className="text-primary/60 ml-1">// {u.location}</span>
-          </div>
-          <div className="absolute top-0 right-0 w-2 h-2 bg-emerald-500 rounded-full border border-white"></div>
-        </div>
-      ))}
-      <span className="ml-4 text-[8px] font-black text-slate-400 uppercase tracking-widest pl-2">
-        {users.length} {users.length === 1 ? 'other tech' : 'other techs'} active
-      </span>
-    </div>
-  );
-};
-
-const NotificationBell: React.FC = () => {
-  const { user, profile, isDemoMode } = useAuth();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!user || !profile || !profile.shopId) return;
-
-    const q = query(
-      collection(db, 'notifications'),
-      where('shopId', '==', profile.shopId),
-      where('isDemo', '==', isDemoMode),
-      orderBy('timestamp', 'desc'),
-      limit(20)
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const notifs = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Notification[];
-      setNotifications(notifs);
-    });
-
-    return () => unsubscribe();
-  }, [user, profile]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const unreadCount = notifications.filter(n => !n.isRead).length;
-
-  const markAsRead = async (notifId: string) => {
-    try {
-      await updateDoc(doc(db, 'notifications', notifId), { isRead: true });
-    } catch (error) {
-      console.error('Failed to mark notification as read:', error);
-    }
-  };
-
-  const getIcon = (type: NotificationType) => {
-    switch (type) {
-      case 'red-ball': return <ShieldAlert className="w-4 h-4 text-safety-orange" />;
-      case 'parts': return <Package className="w-4 h-4 text-primary" />;
-      case 'training': return <Clock className="w-4 h-4 text-caution-yellow" />;
-      default: return <Bell className="w-4 h-4 text-slate-400" />;
-    }
-  };
-
-  return (
-    <div className="relative" ref={dropdownRef}>
-      <button 
-        onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2.5 bg-sidebar-foreground/5 hover:bg-sidebar-foreground/10 transition-colors border border-white/10"
-      >
-        {unreadCount > 0 ? (
-          <>
-            <BellDot className="w-5 h-5 text-primary" />
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary text-white text-[9px] font-black flex items-center justify-center animate-pulse">
-              {unreadCount}
-            </span>
-          </>
-        ) : (
-          <Bell className="w-5 h-5 text-white/40" />
-        )}
-      </button>
-
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div 
-            initial={{ opacity: 0, y: 10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            className="absolute right-0 mt-3 w-80 bg-white border border-outline shadow-2xl z-[150] overflow-hidden"
-          >
-            <div className="p-4 bg-slate-50 border-b border-outline flex justify-between items-center">
-              <span className="tech-label text-primary">Operational Alerts</span>
-              {unreadCount > 0 && <span className="text-[8px] font-black uppercase text-slate-400 px-2 py-0.5 bg-white border border-outline">{unreadCount} New</span>}
-            </div>
-
-            <div className="max-h-96 overflow-y-auto divide-y divide-outline custom-scrollbar">
-              {notifications.length === 0 ? (
-                <div className="p-10 text-center space-y-3">
-                  <Bell className="w-8 h-8 text-slate-200 mx-auto" />
-                  <p className="tech-label text-[9px] text-slate-400">All Systems Nominal // No Active Alerts</p>
-                </div>
-              ) : (
-                notifications.map((notif) => (
-                  <div 
-                    key={notif.id}
-                    className={cn(
-                      "p-4 hover:bg-slate-50 transition-colors cursor-pointer relative",
-                      !notif.isRead && "bg-primary/5"
-                    )}
-                    onClick={() => {
-                      if (!notif.isRead) markAsRead(notif.id!);
-                    }}
-                  >
-                    {!notif.isRead && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>}
-                    <div className="flex gap-3">
-                      <div className="mt-0.5">{getIcon(notif.type)}</div>
-                      <div className="flex-1 space-y-1">
-                        <div className="flex justify-between items-start gap-2">
-                          <p className="font-black text-[10px] uppercase tracking-tight text-slate-900 leading-tight">{notif.title}</p>
-                          <span className="text-[8px] font-mono text-slate-400 whitespace-nowrap">
-                            {notif.timestamp?.toDate ? format(notif.timestamp.toDate(), 'HH:mm') : '...'}
-                          </span>
-                        </div>
-                        <p className="text-[10px] text-slate-500 leading-relaxed font-medium line-clamp-2">{notif.message}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-            
-            <div className="p-3 bg-slate-50 border-t border-outline text-center">
-              <button 
-                onClick={() => setIsOpen(false)}
-                className="tech-label text-[8px] hover:text-primary transition-colors uppercase tracking-[0.2em]"
-              >
-                Close Comms
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-};
-
-const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, profile, logout, setShop, setAMU, setRole, isDemoMode, toggleDemoMode } = useAuth();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isShopDropdownOpen, setIsShopDropdownOpen] = useState(false);
-  const [isAMUDropdownOpen, setIsAMUDropdownOpen] = useState(false);
-  const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const location = useLocation();
-
-  // Presence logic
-  const activeUsers = usePresence(location.pathname);
-
-  useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
-
-  const navItems = [
-    { name: 'Dashboard', path: '/', icon: LayoutDashboard },
-    { name: 'Maintenance Log', path: '/maintenance', icon: Wrench },
-    { name: 'DIFM Log', path: '/difm', icon: FileDown },
-    { name: 'G081 Gallery', path: '/g081', icon: Camera },
-    { name: 'Training Tracker', path: '/training', icon: BarChart3 },
-    { name: 'Personnel', path: '/personnel', icon: Users },
-    { name: 'Support', path: '/support', icon: HelpCircle },
-  ];
-
-  if (profile?.role === 'ncoic' || profile?.role === 'leadership') {
-    navItems.push({ name: 'Onboarding', path: '/onboarding', icon: UserPlus });
-  }
-
-  return (
-    <div className="min-h-screen flex bg-background">
-      {/* Sidebar */}
-      <aside className={cn(
-        "fixed inset-y-0 left-0 z-40 w-[260px] bg-sidebar text-white transform transition-transform duration-300 md:translate-x-0 md:static flex flex-col border-r border-white/10",
-        isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-      )}>
-        <div className="branding px-8 py-12">
-          <div className="flex items-start gap-4">
-            <div className="flex flex-col">
-              <div className="flex items-baseline gap-1">
-                <span className="font-black text-5xl tracking-tighter leading-none text-white">92</span>
-                <div className="flex flex-col">
-                  <span className="text-primary font-black text-xs uppercase tracking-widest leading-none">nd</span>
-                  <span className="text-white font-black text-lg tracking-tighter uppercase leading-none">AMXS</span>
-                </div>
-              </div>
-              <div className="mt-4 flex items-center gap-3">
-                <div className="h-px flex-1 bg-white/10"></div>
-                <span className="tech-label text-white/30 text-[8px] whitespace-nowrap tracking-[0.3em]">Maintenance Control</span>
-                <div className="h-px flex-1 bg-white/10"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {(isDemoMode || profile?.role === 'ncoic' || profile?.role === 'leadership') && (
-          <div className="px-8 pb-8 space-y-6 border-b border-white/10">
-            {isDemoMode && (
-              <div className="relative">
-                <p className="tech-label text-white/60 mb-2">Simulated Role</p>
-                <button 
-                  onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
-                  className="w-full flex items-center justify-between bg-white/5 border border-white/10 px-4 py-3 text-white hover:bg-white/10 transition-colors"
-                >
-                  <span className="font-black text-[11px] tracking-widest uppercase">{profile?.role}</span>
-                  <ChevronDown className={cn("w-3 h-3 transition-transform", isRoleDropdownOpen && "rotate-180")} />
-                </button>
-                
-                <AnimatePresence>
-                  {isRoleDropdownOpen && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                      className="absolute top-full left-0 w-full mt-2 bg-sidebar border border-white/10 shadow-2xl overflow-hidden z-50"
-                    >
-                      {['technician', 'ncoic', 'leadership'].map(role => (
-                        <button
-                          key={role}
-                          onClick={() => {
-                            setRole(role as UserRole);
-                            setIsRoleDropdownOpen(false);
-                          }}
-                          className={cn(
-                            "w-full text-left px-4 py-3 text-[11px] font-black tracking-widest hover:bg-white/10 transition-colors uppercase",
-                            profile?.role === role ? "text-white bg-white/20" : "text-white/60"
-                          )}
-                        >
-                          {role}
-                        </button>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            )}
-
-            <div className="relative">
-              <p className="text-[11px] uppercase tracking-widest text-white/60 mb-2 font-bold">{profile?.role === 'leadership' ? 'Oversight AMU' : 'Assigned AMU'}</p>
-              <button 
-                onClick={() => setIsAMUDropdownOpen(!isAMUDropdownOpen)}
-                className="w-full flex items-center justify-between bg-white/5 border border-white/10 px-3 py-2 text-white hover:bg-white/10 transition-colors"
-              >
-                <span className="font-bold">{profile?.amuId}</span>
-                <ChevronDown className={cn("w-3 h-3 transition-transform", isAMUDropdownOpen && "rotate-180")} />
-              </button>
-              
-              <AnimatePresence>
-                {isAMUDropdownOpen && (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    className="absolute top-full left-0 w-full mt-2 bg-sidebar border border-white/10 shadow-xl overflow-hidden z-50"
-                  >
-                    {['ALL', ...AMUS].map(amu => (
-                      <button
-                        key={amu}
-                        onClick={() => {
-                          setAMU(amu as AMUType);
-                          setIsAMUDropdownOpen(false);
-                        }}
-                        className={cn(
-                          "w-full text-left px-4 py-2 text-xs hover:bg-white/10 transition-colors uppercase font-mono tracking-tighter",
-                          profile?.amuId === amu ? "text-primary font-bold bg-white/5" : "text-white/60"
-                        )}
-                      >
-                        {amu}
-                      </button>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            <div className="relative">
-              <p className="text-[11px] uppercase tracking-widest text-white/60 mb-2 font-bold">{profile?.role === 'leadership' ? 'Oversight Shop' : 'Assigned Shop'}</p>
-              <button 
-                onClick={() => setIsShopDropdownOpen(!isShopDropdownOpen)}
-                className="w-full flex items-center justify-between bg-white/5 border border-white/10 px-3 py-2 text-white hover:bg-white/10 transition-colors"
-              >
-                <span className="font-bold">{profile?.shopId}</span>
-                <ChevronDown className={cn("w-3 h-3 transition-transform", isShopDropdownOpen && "rotate-180")} />
-              </button>
-              
-              <AnimatePresence>
-                {isShopDropdownOpen && (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    className="absolute top-full left-0 w-full mt-2 bg-sidebar border border-white/10 shadow-xl overflow-hidden z-50"
-                  >
-                    {['ALL', ...SHOPS].map(shop => (
-                      <button
-                        key={shop}
-                        onClick={() => {
-                          setShop(shop as ShopType);
-                          setIsShopDropdownOpen(false);
-                        }}
-                        className={cn(
-                          "w-full text-left px-4 py-2 text-xs hover:bg-white/10 transition-colors uppercase font-mono tracking-tighter",
-                          profile?.shopId === shop ? "text-primary font-bold bg-white/5" : "text-white/60"
-                        )}
-                      >
-                        {shop}
-                      </button>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
-        )}
-
-        <nav className="flex-grow px-4 py-8 space-y-1">
-          <p className="tech-label text-white/40 px-4 mb-4">Operations</p>
-          {navItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              onClick={() => setIsSidebarOpen(false)}
-              className={cn(
-                "flex items-center gap-3 px-4 py-3 text-[11px] font-black uppercase tracking-widest transition-all",
-                location.pathname === item.path 
-                  ? "bg-white/10 text-primary border-r-2 border-primary" 
-                  : "text-white/60 hover:text-white hover:bg-white/5"
-              )}
-            >
-              <item.icon className="w-4 h-4" />
-              {item.name}
-            </Link>
-          ))}
-        </nav>
-
-        <div className="p-8 border-t border-white/10">
-          {/* Demo Mode Toggle */}
-          <div className="mb-8">
-            <p className="tech-label text-white/40 mb-3">System Environment</p>
-            <button 
-              onClick={toggleDemoMode}
-              className={cn(
-                "w-full flex items-center justify-between px-4 py-3 transition-all border",
-                isDemoMode 
-                  ? "bg-caution-yellow/10 border-caution-yellow/30 text-caution-yellow" 
-                  : "bg-emerald-500/10 border-emerald-500/30 text-emerald-500"
-              )}
-            >
-              <span className="font-black text-[10px] tracking-widest flex items-center gap-2 uppercase">
-                {isDemoMode ? <ShieldAlert className="w-3 h-3" /> : <ShieldCheck className="w-3 h-3" />}
-                {isDemoMode ? 'Sandbox' : 'Production'}
-              </span>
-              <div className={cn(
-                "w-1.5 h-1.5 rounded-full animate-pulse",
-                isDemoMode ? "bg-caution-yellow" : "bg-emerald-500"
-              )} />
-            </button>
-          </div>
-
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col min-h-screen">
-        <header className="flex justify-between items-start p-8">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">
-              {navItems.find(i => i.path === location.pathname)?.name || 'Dashboard'}
-            </h1>
-            <p className="text-slate-600 text-sm">92nd Aircraft Maintenance Squadron • Fairchild AFB</p>
-          </div>
-          <div className="text-right hidden sm:flex items-start gap-10">
-            <div className="flex items-center gap-6">
-              <PresenceIndicator users={activeUsers} />
-              <NotificationBell />
-              <div className="flex flex-col items-end pt-1">
-                <div className={cn(
-                  "flex items-center gap-2 px-2 py-0.5 rounded-none text-[9px] font-black uppercase tracking-widest border transition-all",
-                  isOnline 
-                    ? "bg-emerald-500/5 text-emerald-500 border-emerald-500/20" 
-                    : "bg-red-500/5 text-red-500 border-red-500/20"
-                )}>
-                  {isOnline ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
-                  {isOnline ? 'System Online / Sync Active' : 'Offline Mode / Local Cache'}
-                </div>
-                {!isOnline && (
-                  <p className="text-[8px] text-red-400 mt-1 font-bold animate-pulse">CHANGES WILL SYNC ON RECONNECT</p>
-                )}
-              </div>
-            </div>
-            <div>
-              <div className="font-semibold text-slate-900">{profile?.rank} {profile?.name}</div>
-              <div className="text-xs text-slate-600 uppercase tracking-wider mb-2">{profile?.role} • {profile?.amuId} • {profile?.shopId}</div>
-              <button 
-                onClick={logout}
-                className="ml-auto flex items-center gap-2 hover:text-safety-orange transition-colors text-slate-400 font-bold text-[10px] uppercase tracking-widest"
-              >
-                <LogOut className="w-3.5 h-3.5" /> Sign Out
-              </button>
-            </div>
-          </div>
-        </header>
-
-        <div className="flex-1 px-8 pb-8 overflow-y-auto">
-          <div className="max-w-7xl mx-auto">
-            {children}
-          </div>
-        </div>
-      </main>
-
-      {/* Mobile Toggle */}
-      <button 
-        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        className="md:hidden fixed bottom-6 left-6 z-50 w-12 h-12 bg-primary text-white rounded-full shadow-lg flex items-center justify-center"
-      >
-        {isSidebarOpen ? <X /> : <Menu />}
-      </button>
-    </div>
-  );
-};
 
 // --- Pages ---
 
@@ -4381,6 +3787,18 @@ const Support: React.FC = () => {
   const [passData, setPassData] = useState({ new: '', confirm: '' });
   const [passStatus, setPassStatus] = useState<{ type: 'success' | 'error', msg: string } | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const handlePasswordUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -4441,19 +3859,51 @@ const Support: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-0 visible-grid bg-surface">
-        <div className="p-10 space-y-6 border-r border-outline">
-          <h3 className="text-xl font-black tracking-tighter uppercase flex items-center gap-3 text-slate-900">
-            <Users className="w-6 h-6 text-primary" /> Technical Oversight
-          </h3>
-          <div className="space-y-6">
+        <div className="p-10 space-y-8 border-r border-outline">
+          <section className="space-y-6">
+            <h3 className="text-xl font-black tracking-tighter uppercase flex items-center gap-3 text-slate-900">
+              <Wifi className="w-6 h-6 text-primary" /> System Connectivity
+            </h3>
+            <div className={cn(
+              "p-6 border flex items-center gap-4 transition-all",
+              isOnline 
+                ? "bg-emerald-500/5 border-emerald-500/20" 
+                : "bg-red-500/5 border-red-500/20"
+            )}>
+              <div className={cn(
+                "w-12 h-12 flex items-center justify-center rounded-none border",
+                isOnline ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" : "bg-red-500/10 border-red-500/20 text-red-500"
+              )}>
+                {isOnline ? <Wifi className="w-6 h-6" /> : <WifiOff className="w-6 h-6" />}
+              </div>
+              <div className="flex-1">
+                <p className="tech-label text-[10px] text-slate-400 uppercase tracking-widest">Network Status</p>
+                <p className={cn("text-lg font-black uppercase tracking-tight", isOnline ? "text-emerald-600" : "text-red-600")}>
+                  {isOnline ? 'Active Link Established' : 'Offline Cache Mode'}
+                </p>
+                <p className="text-xs text-slate-500 font-medium mt-1">
+                  {isOnline 
+                    ? 'All maintenance records and training logs are currently syncing with live servers.' 
+                    : 'System is running in buffered mode. All changes will commit automatically once re-connected.'}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section className="space-y-6">
+            <h3 className="text-xl font-black tracking-tighter uppercase flex items-center gap-3 text-slate-900">
+              <Users className="w-6 h-6 text-primary" /> Technical Oversight
+            </h3>
+            <div className="space-y-6">
             <div className="p-6 bg-slate-50 border border-outline">
               <p className="tech-label mb-2">System Administrator & Developer</p>
               <p className="font-black text-sm uppercase tracking-tight text-slate-900">TSgt Steven Koehl</p>
               <p className="data-mono text-xs mt-1 opacity-60">Steven.Koehl.1@us.af.mil</p>
             </div>
           </div>
-        </div>
+        </section>
       </div>
+    </div>
 
       <div className="space-y-8">
         <h2 className="text-3xl font-black tracking-tighter uppercase text-center">Frequently Asked Questions</h2>
@@ -4946,7 +4396,7 @@ const AppContent: React.FC = () => {
   if (profile.status === 'pending') return <PendingApproval />;
 
   return (
-    <Layout>
+    <AppLayout>
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/maintenance" element={<MaintenanceLogs />} />
@@ -4959,7 +4409,7 @@ const AppContent: React.FC = () => {
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
       <MaintenanceAssistant />
-    </Layout>
+    </AppLayout>
   );
 };
 
