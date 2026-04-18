@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   Plus, 
   Search, 
@@ -143,10 +143,13 @@ export const TrainingTracker: React.FC = () => {
     };
   }, [profile, isDemoMode]);
 
-  const getPersonName = (manNumber: string) => {
-    const person = personnel.find(p => p.man_number === manNumber);
-    return person ? person.name : 'Unknown Personnel';
-  };
+  const getPersonName = useCallback(
+    (manNumber: string) => {
+      const person = personnel.find((p) => p.man_number === manNumber);
+      return person ? person.name : 'Unknown Personnel';
+    },
+    [personnel]
+  );
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -209,30 +212,34 @@ export const TrainingTracker: React.FC = () => {
     setNotifyModal({ isOpen: true, type });
   };
 
-  const filteredTraining = training.filter(record => {
-    const personName = getPersonName(record.man_number);
-    const matchesSearch = 
-      record.course_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (record.course_code && record.course_code.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      record.man_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      personName.toLowerCase().includes(searchQuery.toLowerCase());
-      
-    let matchesDate = true;
-    if (startDate || endDate) {
-      const recordDate = new Date(record.due_date);
-      if (startDate) matchesDate = matchesDate && recordDate >= new Date(startDate);
-      if (endDate) matchesDate = matchesDate && recordDate <= new Date(endDate);
-    }
-    
-    return matchesSearch && matchesDate;
-  });
+  const filteredTraining = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    const start = startDate ? new Date(startDate) : null;
+    const end = endDate ? new Date(endDate) : null;
+    return training.filter((record) => {
+      const personName = getPersonName(record.man_number);
+      const matchesSearch =
+        record.course_name.toLowerCase().includes(q) ||
+        (record.course_code && record.course_code.toLowerCase().includes(q)) ||
+        record.man_number.toLowerCase().includes(q) ||
+        personName.toLowerCase().includes(q);
+      if (!matchesSearch) return false;
 
-  const stats = {
-    current: filteredTraining.filter(t => t.status === 'current').length,
-    expiring: filteredTraining.filter(t => t.status === 'expiring').length,
-    expired: filteredTraining.filter(t => t.status === 'expired').length,
-    total: filteredTraining.length || 1
-  };
+      if (start || end) {
+        const recordDate = new Date(record.due_date);
+        if (start && recordDate < start) return false;
+        if (end && recordDate > end) return false;
+      }
+      return true;
+    });
+  }, [training, searchQuery, startDate, endDate, getPersonName]);
+
+  const stats = useMemo(() => ({
+    current: filteredTraining.filter((t) => t.status === 'current').length,
+    expiring: filteredTraining.filter((t) => t.status === 'expiring').length,
+    expired: filteredTraining.filter((t) => t.status === 'expired').length,
+    total: filteredTraining.length || 1,
+  }), [filteredTraining]);
 
   return (
     <div className="space-y-10">

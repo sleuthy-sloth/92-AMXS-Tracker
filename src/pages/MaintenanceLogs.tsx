@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Plus, 
   Search, 
@@ -387,24 +387,29 @@ export const MaintenanceLogs: React.FC = () => {
     }
   };
 
-  const filteredLogs = logs.filter(log => {
-    const matchesSearch = 
-      log.tail_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      log.technician_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      log.discrepancy.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (log.man_number && log.man_number.includes(searchQuery)) ||
-      (log.jcn && log.jcn.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (log.personnel && log.personnel.some(p => p.toLowerCase().includes(searchQuery.toLowerCase())));
-      
-    let matchesDate = true;
-    if (startDate || endDate) {
-      const logDate = tsToDate(log.timestamp);
-      if (startDate) matchesDate = matchesDate && logDate >= new Date(startDate);
-      if (endDate) matchesDate = matchesDate && logDate <= new Date(endDate);
-    }
-    
-    return matchesSearch && matchesDate;
-  });
+  const filteredLogs = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    const start = startDate ? new Date(startDate) : null;
+    const end = endDate ? new Date(endDate) : null;
+    return logs.filter((log) => {
+      const matchesSearch =
+        log.tail_number.toLowerCase().includes(q) ||
+        log.technician_name.toLowerCase().includes(q) ||
+        log.discrepancy.toLowerCase().includes(q) ||
+        (log.man_number && log.man_number.includes(searchQuery)) ||
+        (log.jcn && log.jcn.toLowerCase().includes(q)) ||
+        (log.personnel && log.personnel.some((p) => p.toLowerCase().includes(q)));
+
+      if (!matchesSearch) return false;
+
+      if (start || end) {
+        const logDate = tsToDate(log.timestamp);
+        if (start && logDate < start) return false;
+        if (end && logDate > end) return false;
+      }
+      return true;
+    });
+  }, [logs, searchQuery, startDate, endDate]);
 
   return (
     <div className="space-y-10">
