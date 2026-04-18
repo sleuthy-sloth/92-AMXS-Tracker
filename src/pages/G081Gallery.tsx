@@ -1,53 +1,54 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Camera, 
-  Loader2, 
-  Eye, 
-  CheckCircle2, 
-  ShieldCheck, 
-  Check, 
-  X 
-} from 'lucide-react';
-import { serverTimestamp, collection, query, orderBy, onSnapshot, updateDoc, doc, limit } from 'firebase/firestore';
+import { serverTimestamp, collection, query, orderBy, onSnapshot, updateDoc, doc, limit, where, deleteDoc } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { MaintenanceLog } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import { Search, Loader2, Camera, Eye, CheckCircle2, ShieldCheck, Check, X, Trash2, Archive, History } from 'lucide-react';
+import { cn } from '../lib/utils';
 
 export const G081Gallery: React.FC = () => {
   const { profile, isDemoMode } = useAuth();
   const [logs, setLogs] = useState<MaintenanceLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isArchiveView, setIsArchiveView] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   useEffect(() => {
     if (!profile) return;
     
-    // In demo mode, we just show empty or mock data
     if (isDemoMode) {
       setLogs([]);
       setLoading(false);
       return;
     }
 
-    // Query for all logs with photos
-    const q = query(
-      collection(db, 'logs'),
+    const constraints: any[] = [
       orderBy('timestamp', 'desc'),
-      limit(50)
-    );
+      limit(100)
+    ];
+
+    if (profile.amuId !== 'ALL') constraints.push(where('amuId', '==', profile.amuId));
+    if (profile.shopId !== 'ALL' && profile.shopId !== 'LEADERSHIP') constraints.push(where('shopId', '==', profile.shopId));
+    
+    // Default to isArchived false/true based on toggle
+    constraints.push(where('isArchived', '==', isArchiveView));
+
+    const q = query(collection(db, 'logs'), ...constraints);
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const allLogs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-      // Filter in memory for photos to avoid immediate index requirement
+      // Filter for logs that HAVE photos
       setLogs(allLogs.filter(log => log.g081_photo));
       setLoading(false);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'logs');
     });
     return unsubscribe;
-  }, [profile, isDemoMode]);
+  }, [profile, isDemoMode, isArchiveView]);
 
   const handleVerify = async (logId: string) => {
     if (isDemoMode) {
@@ -58,12 +59,46 @@ export const G081Gallery: React.FC = () => {
       await updateDoc(doc(db, 'logs', logId), {
         g081_status: 'verified',
         g081_verified_by: profile?.name,
-        g081_verified_at: serverTimestamp()
+        g081_verified_at: serverTimestamp(),
+      });
+      
+      // The user said: "After G081 has been verified let’s move it to a G081 gallery archive"
+      // So we automatically archive it when verified
+      await updateDoc(doc(db, 'logs', logId), {
+        isArchived: true,
+        archivedAt: serverTimestamp()
       });
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'logs');
     }
   };
+
+  const handleArchive = async (logId: string, archive: boolean) => {
+    try {
+      await updateDoc(doc(db, 'logs', logId), {
+        isArchived: archive,
+        archivedAt: archive ? serverTimestamp() : null
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, 'logs');
+    }
+  };
+
+  const handleDelete = async (logId: string) => {
+    if (!window.confirm('Are you sure you want to delete this photo record?')) return;
+    try {
+      await deleteDoc(doc(db, 'logs', logId));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, 'logs');
+    }
+  };
+
+  const filteredLogs = logs.filter(log => 
+    log.tail_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    log.technician_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (log.man_number && log.man_number.includes(searchQuery)) ||
+    log.discrepancy.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="space-y-10">
@@ -87,6 +122,31 @@ export const G081Gallery: React.FC = () => {
             </div>
           </div>
         </div>
+        <div className="flex items-center gap-3">
+          <div className="flex bg-white border border-outline p-1.5 shadow-sm">
+            <button 
+              onClick={() => setIsArchiveView(!isArchiveView)}
+              className={cn("p-2 transition-all flex items-center gap-2", isArchiveView ? "bg-amber-600 text-white" : "text-slate-400 hover:text-slate-900")}
+              title={isArchiveView ? "Viewing Archive" : "View Archive"}
+            >
+              <History className="w-4 h-4" />
+              {isArchiveView && <span className="text-[10px] font-black uppercase tracking-widest">G081 Archive</span>}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="visible-grid bg-surface p-4">
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant z-10" />
+          <input 
+            type="text" 
+            placeholder="Search tail, technician, or man#..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="sleek-input pl-10 w-full !border-none !bg-transparent"
+          />
+        </div>
       </div>
 
       {loading ? (
@@ -99,10 +159,66 @@ export const G081Gallery: React.FC = () => {
           <Camera className="w-12 h-12 text-slate-200" />
           <p className="tech-label opacity-40">No G081 Proofs Found in Recent Logs</p>
         </div>
+      ) : isArchiveView ? (
+        <div className="visible-grid bg-surface overflow-hidden">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50 text-[10px] font-black text-on-surface-variant tracking-[0.2em] uppercase font-mono border-b border-outline">
+                <th className="px-8 py-5">Tail Number</th>
+                <th className="px-8 py-5">Technician</th>
+                <th className="px-8 py-5">Verified By</th>
+                <th className="px-8 py-5">Date</th>
+                <th className="px-8 py-5 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-outline">
+              {filteredLogs.map((log) => (
+                <tr key={log.id} className="hover:bg-slate-50/50 transition-colors group">
+                  <td className="px-8 py-5 font-black text-slate-900 uppercase tracking-tighter">{log.tail_number}</td>
+                  <td className="px-8 py-5 text-sm uppercase font-medium">{log.technician_name}</td>
+                  <td className="px-8 py-5">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                      <span className="text-xs font-bold uppercase tracking-tight text-slate-600">{log.g081_verified_by}</span>
+                    </div>
+                  </td>
+                  <td className="px-8 py-5 text-xs font-mono text-slate-400">
+                    {log.timestamp?.toDate ? format(log.timestamp.toDate(), 'MM/dd HH:mm') : 'N/A'}
+                  </td>
+                  <td className="px-8 py-5 text-right">
+                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button 
+                        onClick={() => setSelectedPhoto(log.g081_photo || null)}
+                        className="p-2 hover:bg-white border border-transparent hover:border-outline text-slate-600 transition-all"
+                        title="View Proof"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => handleArchive(log.id!, false)}
+                        className="p-2 hover:bg-white border border-transparent hover:border-outline text-amber-600 transition-all"
+                        title="Restore to Gallery"
+                      >
+                        <Archive className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(log.id!)}
+                        className="p-2 hover:bg-white border border-transparent hover:border-outline text-safety-orange transition-all"
+                        title="Delete Permanently"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           <AnimatePresence mode="popLayout">
-            {logs.map((log) => (
+            {filteredLogs.map((log) => (
               <motion.div 
                 key={log.id}
                 layout
@@ -144,10 +260,10 @@ export const G081Gallery: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="mt-6 pt-6 border-t border-outline flex items-center justify-between">
+                  <div className="mt-6 pt-6 border-t border-outline flex items-center justify-between gap-3">
                     {log.g081_status === 'verified' ? (
-                      <div className="flex items-center gap-3 text-emerald-600">
-                        <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
+                      <div className="flex-1 flex items-center gap-3 text-emerald-600">
+                        <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
                           <ShieldCheck className="w-4 h-4" />
                         </div>
                         <div className="flex flex-col">
@@ -158,12 +274,29 @@ export const G081Gallery: React.FC = () => {
                     ) : (
                       <button 
                         onClick={() => handleVerify(log.id!)}
-                        className="sleek-button w-full bg-sidebar !text-white flex items-center justify-center gap-3 py-3 group hover:scale-[1.02]"
+                        className="flex-1 sleek-button bg-sidebar !text-white flex items-center justify-center gap-3 py-3 group hover:scale-[1.01]"
                       >
                         <Check className="w-5 h-5 group-hover:animate-bounce" />
                         <span className="font-black text-[11px] tracking-widest uppercase text-white">React: G081 Good</span>
                       </button>
                     )}
+                    
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => handleArchive(log.id!, !log.isArchived)}
+                        className="p-3 bg-slate-50 border border-outline text-slate-400 hover:text-amber-600 hover:border-amber-200 transition-all shadow-sm"
+                        title={log.isArchived ? "Restore to Gallery" : "Archive Entry"}
+                      >
+                        <Archive className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(log.id!)}
+                        className="p-3 bg-slate-50 border border-outline text-slate-400 hover:text-safety-orange hover:border-safety-orange/20 transition-all shadow-sm"
+                        title="Delete Record"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </motion.div>
