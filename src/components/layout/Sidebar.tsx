@@ -12,6 +12,7 @@ import {
   Users, 
   HelpCircle, 
   UserPlus,
+  X,
   LucideIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -66,9 +67,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside className={cn(
-      "fixed inset-y-0 left-0 z-40 w-[260px] bg-sidebar text-white transform transition-transform duration-300 md:translate-x-0 md:static flex flex-col border-r border-white/10",
+      "fixed inset-y-0 left-0 z-40 w-[260px] bg-sidebar text-white transform transition-transform duration-300 md:translate-x-0 md:static flex flex-col border-r border-white/10 overflow-y-auto",
       isSidebarOpen ? "translate-x-0" : "-translate-x-full"
     )}>
+      {/* Mobile Close Button */}
+      <button 
+        onClick={() => setIsSidebarOpen(false)}
+        className="md:hidden absolute top-4 right-4 p-2 text-white/60 hover:text-white transition-colors"
+      >
+        <X className="w-6 h-6" />
+      </button>
+
       <div className="branding px-8 py-12">
         <div className="flex items-start gap-4">
           <div className="flex flex-col">
