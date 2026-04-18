@@ -42,6 +42,8 @@ export interface MaintenanceLog {
   g081_status?: 'pending' | 'verified';
   g081_verified_by?: string;
   g081_verified_at?: any;
+  isArchived?: boolean;
+  archivedAt?: any;
 }
 
 export interface TrainingRecord {

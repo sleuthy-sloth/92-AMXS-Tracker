@@ -21,7 +21,7 @@ import {
   Send, 
   Trash2 
 } from 'lucide-react';
-import { serverTimestamp, collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, doc, getDocs } from 'firebase/firestore';
+import { serverTimestamp, collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, doc, getDocs, deleteDoc } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
@@ -69,6 +69,7 @@ export const MaintenanceLogs: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isActionsOpen, setIsActionsOpen] = useState(false);
   const [selectedLog, setSelectedLog] = useState<MaintenanceLog | null>(null);
+  const [isArchiveView, setIsArchiveView] = useState(false);
 
   useEffect(() => {
     if (!profile) return;
@@ -93,11 +94,12 @@ export const MaintenanceLogs: React.FC = () => {
       return;
     }
 
-    let qLogs;
     const logConstraints: any[] = [where('isDemo', '==', false), orderBy('timestamp', 'desc')];
-    if (profile.amuId !== 'ALL') logConstraints.unshift(where('amuId', '==', profile.amuId));
-    if (profile.shopId !== 'ALL' && profile.shopId !== 'LEADERSHIP') logConstraints.unshift(where('shopId', '==', profile.shopId));
-    qLogs = query(collection(db, 'logs'), ...logConstraints);
+    if (profile.amuId !== 'ALL') logConstraints.push(where('amuId', '==', profile.amuId));
+    if (profile.shopId !== 'ALL' && profile.shopId !== 'LEADERSHIP') logConstraints.push(where('shopId', '==', profile.shopId));
+    
+    const logConstraintsWithArchive: any[] = [...logConstraints, where('isArchived', '==', isArchiveView)];
+    const qLogs = query(collection(db, 'logs'), ...logConstraintsWithArchive);
     
     const unsubLogs = onSnapshot(qLogs, (snap) => {
       setLogs(snap.docs.map(d => ({ id: d.id, ...d.data() } as MaintenanceLog)));
@@ -117,7 +119,7 @@ export const MaintenanceLogs: React.FC = () => {
       unsubLogs();
       unsubDifm();
     };
-  }, [profile, isDemoMode]);
+  }, [profile, isDemoMode, isArchiveView]);
 
   const handleScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -282,6 +284,7 @@ export const MaintenanceLogs: React.FC = () => {
           shift: formData.shift,
           timestamp: serverTimestamp(),
           isDemo: isDemoMode,
+          isArchived: false,
           g081_photo: formData.g081Photo || null,
           g081_status: formData.g081Photo ? 'pending' : undefined
         };
@@ -324,11 +327,34 @@ export const MaintenanceLogs: React.FC = () => {
     setIsModalOpen(true);
   };
 
+  const handleDeleteLog = async (logId: string) => {
+    if (isDemoMode) return;
+    if (!window.confirm('Are you sure you want to delete this log? This action is irreversible.')) return;
+    try {
+      await deleteDoc(doc(db, 'logs', logId));
+    } catch (e) {
+      handleFirestoreError(e, OperationType.DELETE, 'logs');
+    }
+  };
+
+  const handleArchiveLog = async (logId: string, archive: boolean) => {
+    if (isDemoMode) return;
+    try {
+      await updateDoc(doc(db, 'logs', logId), {
+        isArchived: archive,
+        archivedAt: archive ? serverTimestamp() : null
+      });
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, 'logs');
+    }
+  };
+
   const filteredLogs = logs.filter(log => {
     const matchesSearch = 
       log.tail_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
       log.technician_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       log.discrepancy.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (log.man_number && log.man_number.includes(searchQuery)) ||
       (log.jcn && log.jcn.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (log.personnel && log.personnel.some(p => p.toLowerCase().includes(searchQuery.toLowerCase())));
       
@@ -381,6 +407,15 @@ export const MaintenanceLogs: React.FC = () => {
               title="List View"
             >
               <List className="w-4 h-4" />
+            </button>
+            <div className="w-px h-4 bg-outline/50 mx-1"></div>
+            <button 
+              onClick={() => setIsArchiveView(!isArchiveView)}
+              className={cn("p-2 transition-all flex items-center gap-2", isArchiveView ? "bg-amber-600 text-white" : "text-slate-400 hover:text-slate-900")}
+              title={isArchiveView ? "Viewing Archive" : "View Archive"}
+            >
+              <HistoryIcon className="w-4 h-4" />
+              {isArchiveView && <span className="text-[9px] font-black uppercase tracking-tighter">Archive</span>}
             </button>
           </div>
 
@@ -546,14 +581,14 @@ export const MaintenanceLogs: React.FC = () => {
 
       <div className="flex flex-col md:flex-row gap-0 visible-grid bg-surface">
         <div className="flex-1 relative p-4">
-          <Search className="absolute left-7 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
-          <input 
-            type="text" 
-            placeholder="Search by tail number, name, JCN, or discrepancy..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="sleek-input pl-12 w-full !border-none !bg-transparent"
-          />
+                <Search className="absolute left-7 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant z-10" />
+                <input 
+                  type="text" 
+                  placeholder="Search by tail, name, man#, JCN, or discrepancy..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="sleek-input pl-12 w-full !border-none !bg-transparent relative z-0"
+                />
         </div>
         <div className="flex gap-0">
           <div className="flex flex-col p-4 border-l border-outline">
@@ -589,6 +624,7 @@ export const MaintenanceLogs: React.FC = () => {
                   <th className="px-8 py-5">Discrepancy</th>
                   <th className="px-8 py-5">G081</th>
                   <th className="px-8 py-5">Status</th>
+                  <th className="px-8 py-5 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline">
@@ -641,6 +677,34 @@ export const MaintenanceLogs: React.FC = () => {
                       ) : (
                         <span className="badge bg-slate-100 text-slate-500">NORMAL</span>
                       )}
+                    </td>
+                    <td className="px-8 py-5 text-right">
+                      <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                        <button 
+                          onClick={() => handleEditClick(log)}
+                          className="p-2 hover:bg-slate-100 text-slate-400 hover:text-primary transition-colors"
+                          title="Edit"
+                        >
+                          <Wrench className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleArchiveLog(log.id!, !log.isArchived)}
+                          className={cn(
+                            "p-2 hover:bg-slate-100 transition-colors",
+                            log.isArchived ? "text-emerald-600" : "text-amber-600"
+                          )}
+                          title={log.isArchived ? "Restore" : "Archive"}
+                        >
+                          <HistoryIcon className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteLog(log.id!)}
+                          className="p-2 hover:bg-slate-100 text-slate-400 hover:text-safety-orange transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </motion.tr>
                 ))}
@@ -808,6 +872,29 @@ export const MaintenanceLogs: React.FC = () => {
                   )}
                 </div>
                 <div className="flex gap-4">
+                  <button 
+                    onClick={() => {
+                      handleArchiveLog(selectedLog.id!, !selectedLog.isArchived);
+                      setSelectedLog(null);
+                    }}
+                    className={cn(
+                      "sleek-button border",
+                      selectedLog.isArchived 
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100" 
+                        : "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"
+                    )}
+                  >
+                    {selectedLog.isArchived ? 'Restore' : 'Archive'}
+                  </button>
+                  <button 
+                    onClick={() => {
+                      handleDeleteLog(selectedLog.id!);
+                      setSelectedLog(null);
+                    }}
+                    className="sleek-button bg-safety-orange/10 !text-safety-orange border border-safety-orange/30 hover:bg-safety-orange/20"
+                  >
+                    Delete Record
+                  </button>
                   <button 
                     onClick={() => handleEditClick(selectedLog)}
                     className="sleek-button bg-white !text-on-surface border border-outline hover:bg-putty"
