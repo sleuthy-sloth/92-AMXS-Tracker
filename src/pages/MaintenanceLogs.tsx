@@ -28,7 +28,7 @@ import { db, handleFirestoreError, OperationType } from '../firebase';
 import { MaintenanceLog, DIFMLog, ShiftType } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { MOCK_LOGS, MOCK_DIFM, SHIFT_TIMES } from '../mockData';
-import { cn } from '../lib/utils';
+import { cn, tsToDate, tsToMillis } from '../lib/utils';
 import { createNotification } from '../services/notificationService';
 import { scanMaintenanceForm, scanLogBook } from '../services/ocrService';
 import { 
@@ -206,12 +206,24 @@ export const MaintenanceLogs: React.FC = () => {
             ...b
           } as MaintenanceLog));
           setLogs(prev => [...mockEntries, ...prev]);
+          alert(`Successfully imported ${results.length} entries.`);
         } else {
-          for (const entry of batch) {
-            await addDoc(collection(db, 'logs'), entry);
+          const settled = await Promise.allSettled(
+            batch.map(entry => addDoc(collection(db, 'logs'), entry))
+          );
+          const succeeded = settled.filter(s => s.status === 'fulfilled').length;
+          const failed = settled.length - succeeded;
+          if (failed > 0) {
+            settled.forEach((s, i) => {
+              if (s.status === 'rejected') {
+                console.error(`Bulk import entry ${i} failed:`, s.reason);
+              }
+            });
+            alert(`Imported ${succeeded} of ${settled.length} entries. ${failed} failed — see console for details.`);
+          } else {
+            alert(`Successfully imported ${succeeded} entries.`);
           }
         }
-        alert(`Successfully imported ${results.length} entries.`);
       } else {
         alert("No clear maintenance entries found in the image. Please try a clearer picture of the logbook.");
       }
@@ -256,8 +268,8 @@ export const MaintenanceLogs: React.FC = () => {
     if (editingLogId && originalLogState) {
       const latestVersion = logs.find(l => l.id === editingLogId);
       if (latestVersion && latestVersion.lastEditedAt && originalLogState.lastEditedAt) {
-        const latestTime = latestVersion.lastEditedAt.toMillis ? latestVersion.lastEditedAt.toMillis() : new Date(latestVersion.lastEditedAt).getTime();
-        const originalTime = originalLogState.lastEditedAt.toMillis ? originalLogState.lastEditedAt.toMillis() : new Date(originalLogState.lastEditedAt).getTime();
+        const latestTime = tsToMillis(latestVersion.lastEditedAt);
+        const originalTime = tsToMillis(originalLogState.lastEditedAt);
         
         if (latestTime > originalTime) {
           const proceed = window.confirm(
@@ -386,7 +398,7 @@ export const MaintenanceLogs: React.FC = () => {
       
     let matchesDate = true;
     if (startDate || endDate) {
-      const logDate = log.timestamp?.toDate ? log.timestamp.toDate() : new Date();
+      const logDate = tsToDate(log.timestamp);
       if (startDate) matchesDate = matchesDate && logDate >= new Date(startDate);
       if (endDate) matchesDate = matchesDate && logDate <= new Date(endDate);
     }
@@ -576,7 +588,7 @@ export const MaintenanceLogs: React.FC = () => {
           </div>
           <div className="absolute inset-0 flex px-2 pointer-events-none">
             {filteredLogs.slice(0, 50).map((log, i) => {
-              const date = log.timestamp?.toDate ? log.timestamp.toDate() : new Date();
+              const date = tsToDate(log.timestamp);
               const hours = date.getHours();
               const minutes = date.getMinutes();
               const left = ((hours * 60 + minutes) / (24 * 60)) * 100;
@@ -669,7 +681,7 @@ export const MaintenanceLogs: React.FC = () => {
                     </td>
                     <td className="px-8 py-5">
                       <div className="data-mono text-xs">
-                        {log.timestamp?.toDate ? format(log.timestamp.toDate(), 'yyyy.MM.dd') : 'Pending'}
+                        {log.timestamp ? format(tsToDate(log.timestamp), 'yyyy.MM.dd') : 'Pending'}
                       </div>
                       {log.shift && <span className="tech-label text-[10px] mt-1 block opacity-70 font-bold">{log.shift} Shift</span>}
                     </td>
@@ -783,7 +795,7 @@ export const MaintenanceLogs: React.FC = () => {
                     <div className="flex justify-between border-b border-outline pb-2">
                       <span className="tech-label !text-[9px]">Timestamp</span>
                       <span className="data-mono text-[10px]">
-                        {log.timestamp?.toDate ? format(log.timestamp.toDate(), 'yyyy.MM.dd') : 'Pending'}
+                        {log.timestamp ? format(tsToDate(log.timestamp), 'yyyy.MM.dd') : 'Pending'}
                         {log.shift && <span className="ml-2 opacity-60">[{log.shift} {SHIFT_TIMES[log.shift]}]</span>}
                       </span>
                     </div>
@@ -834,7 +846,7 @@ export const MaintenanceLogs: React.FC = () => {
                   <div className="space-y-2">
                     <span className="tech-label">Date Logged</span>
                     <p className="data-mono text-sm">
-                      {selectedLog.timestamp?.toDate ? format(selectedLog.timestamp.toDate(), 'MMMM dd, yyyy HH:mm') : 'Pending'}
+                      {selectedLog.timestamp ? format(tsToDate(selectedLog.timestamp), 'MMMM dd, yyyy HH:mm') : 'Pending'}
                       {selectedLog.shift && <span className="ml-3 tech-label !text-[8px] bg-putty px-2 py-1">{selectedLog.shift} ({SHIFT_TIMES[selectedLog.shift]})</span>}
                     </p>
                   </div>
@@ -894,7 +906,7 @@ export const MaintenanceLogs: React.FC = () => {
               <div className="p-8 border-t border-outline bg-slate-50 flex justify-between items-center">
                 <div className="tech-label !text-[8px] opacity-50">
                   {selectedLog.lastEditedBy && (
-                    <span>Last edited by {selectedLog.lastEditedBy} {selectedLog.lastEditedAt?.toDate && `on ${format(selectedLog.lastEditedAt.toDate(), 'MM/dd HH:mm')}`}</span>
+                    <span>Last edited by {selectedLog.lastEditedBy} {selectedLog.lastEditedAt && `on ${format(tsToDate(selectedLog.lastEditedAt), 'MM/dd HH:mm')}`}</span>
                   )}
                 </div>
                 <div className="flex gap-4">

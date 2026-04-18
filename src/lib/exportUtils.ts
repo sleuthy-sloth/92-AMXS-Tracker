@@ -3,6 +3,7 @@ import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import { MaintenanceLog, TrainingRecord, DIFMLog } from '../types';
+import { tsToDate } from './utils';
 
 export const exportLogsToCSV = (logs: MaintenanceLog[], shopId: string) => {
   const data = logs.map(log => ({
@@ -12,7 +13,7 @@ export const exportLogsToCSV = (logs: MaintenanceLog[], shopId: string) => {
     'Doc Number': log.doc_number || 'N/A',
     'Technician': log.technician_name,
     'Man Number': log.man_number,
-    'Date': log.timestamp?.toDate ? format(log.timestamp.toDate(), 'yyyy-MM-dd HH:mm') : 'Pending',
+    'Date': log.timestamp ? format(tsToDate(log.timestamp), 'yyyy-MM-dd HH:mm') : 'Pending',
     'Red Ball': log.isRedBall ? 'YES' : 'NO'
   }));
 
@@ -35,7 +36,7 @@ export const exportLogsToPDF = (logs: MaintenanceLog[], shopId: string) => {
     log.tail_number,
     log.discrepancy,
     log.technician_name,
-    log.timestamp?.toDate ? format(log.timestamp.toDate(), 'yyyy-MM-dd') : 'Pending',
+    log.timestamp ? format(tsToDate(log.timestamp), 'yyyy-MM-dd') : 'Pending',
     log.isRedBall ? 'RED BALL' : 'NORMAL'
   ]);
 

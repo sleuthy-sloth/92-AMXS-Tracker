@@ -16,7 +16,7 @@ import { db, handleFirestoreError, OperationType } from '../firebase';
 import { UserProfile, TrainingRecord, MaintenanceLog, AMUType, ShopType } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { MOCK_PERSONNEL, MOCK_TRAINING, MOCK_LOGS, AMUS, SHOPS } from '../mockData';
-import { cn } from '../lib/utils';
+import { cn, tsToDate } from '../lib/utils';
 
 export const Personnel: React.FC = () => {
   const { user, profile, isDemoMode } = useAuth();
@@ -407,7 +407,7 @@ export const Personnel: React.FC = () => {
                             <div className="flex justify-between items-start mb-4">
                               <p className="font-black text-sm uppercase tracking-tighter">{l.tail_number}</p>
                               <p className="data-mono text-[9px] opacity-60">
-                                {l.timestamp?.toDate ? format(l.timestamp.toDate(), 'yyyy.MM.dd') : 'Pending'}
+                                {l.timestamp ? format(tsToDate(l.timestamp), 'yyyy.MM.dd') : 'Pending'}
                               </p>
                             </div>
                             <div className="space-y-2">

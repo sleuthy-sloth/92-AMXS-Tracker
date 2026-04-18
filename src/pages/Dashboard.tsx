@@ -18,7 +18,8 @@ import { db, handleFirestoreError, OperationType } from '../firebase';
 import { UserProfile, MaintenanceLog, TrainingRecord, DIFMLog } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { getAI } from '../lib/gemini';
-import { cn } from '../lib/utils';
+import { safeParse, TrendAlertsSchema } from '../lib/aiSchemas';
+import { cn, tsToDate } from '../lib/utils';
 import { exportTurnoverToPDF } from '../lib/exportUtils';
 import { MOCK_LOGS, MOCK_PERSONNEL, MOCK_TRAINING, MOCK_DIFM } from '../mockData';
 
@@ -72,8 +73,8 @@ const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[], training: TrainingRec
           }
         });
 
-        const data = JSON.parse(response.text);
-        if (data.length === 0) {
+        const data = safeParse(TrendAlertsSchema, response.text, "IntelligenceFeed");
+        if (!data || data.length === 0) {
           setAlerts([{
             id: 'nominal',
             type: 'info',
@@ -82,7 +83,7 @@ const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[], training: TrainingRec
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           }]);
         } else {
-          setAlerts(data.map((a: any, i: number) => ({
+          setAlerts(data.map((a, i) => ({
             ...a,
             id: `intel-${i}`,
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -171,7 +172,7 @@ export const Dashboard: React.FC = () => {
         if (profile.amuId !== 'ALL' && l.amuId !== profile.amuId) return false;
         if (profile.shopId !== 'ALL' && l.shopId !== profile.shopId) return false;
         return true;
-      }).sort((a, b) => b.timestamp.toDate().getTime() - a.timestamp.toDate().getTime());
+      }).sort((a, b) => tsToDate(b.timestamp).getTime() - tsToDate(a.timestamp).getTime());
       setLogs(filteredMockLogs);
 
       const filteredMockPersonnel = MOCK_PERSONNEL.filter(p => {
