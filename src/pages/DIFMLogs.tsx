@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Plus, 
-  Package, 
-  X, 
-  Sparkles, 
-  Package as PackageIcon, 
-  History as HistoryIcon 
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  Plus,
+  X,
+  Sparkles,
+  Package as PackageIcon,
+  History as HistoryIcon
 } from 'lucide-react';
 import { serverTimestamp, collection, query, where, onSnapshot, addDoc, updateDoc, doc, deleteDoc, limit } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
@@ -19,7 +18,8 @@ import { exportTurnoverToPDF } from '../lib/exportUtils';
 
 export const DIFMLogs: React.FC = () => {
   const { profile, isDemoMode } = useAuth();
-  const [logs, setLogs] = useState<DIFMLog[]>([]);
+  const [firestoreLogs, setFirestoreLogs] = useState<DIFMLog[]>([]);
+  const [demoSeededLogs, setDemoSeededLogs] = useState<DIFMLog[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     tail_number: '',
@@ -31,20 +31,21 @@ export const DIFMLogs: React.FC = () => {
   });
   const [loading, setLoading] = useState(false);
 
+  const logs = useMemo<DIFMLog[]>(() => {
+    if (!profile) return [];
+    if (!isDemoMode) return firestoreLogs;
+    const isLeadership = profile.role === 'leadership';
+    const filteredMockDifm = MOCK_DIFM.filter(log => {
+      if (isLeadership && profile.amuId === 'ALL' && profile.shopId === 'ALL') return true;
+      if (profile.amuId !== 'ALL' && log.amuId !== profile.amuId) return false;
+      if (profile.shopId !== 'ALL' && log.shopId !== profile.shopId) return false;
+      return true;
+    });
+    return [...demoSeededLogs, ...filteredMockDifm];
+  }, [isDemoMode, profile, firestoreLogs, demoSeededLogs]);
+
   useEffect(() => {
-    if (!profile) return;
-    
-    if (isDemoMode) {
-      const isLeadership = profile.role === 'leadership';
-      const filteredMockDifm = MOCK_DIFM.filter(log => {
-        if (isLeadership && profile.amuId === 'ALL' && profile.shopId === 'ALL') return true;
-        if (profile.amuId !== 'ALL' && log.amuId !== profile.amuId) return false;
-        if (profile.shopId !== 'ALL' && log.shopId !== profile.shopId) return false;
-        return true;
-      });
-      setLogs(filteredMockDifm);
-      return;
-    }
+    if (!profile || isDemoMode) return;
 
     let q;
     if (profile.amuId === 'ALL' || profile.shopId === 'ALL' || profile.role === 'leadership') {
@@ -71,7 +72,7 @@ export const DIFMLogs: React.FC = () => {
     }
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setLogs(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)));
+      setFirestoreLogs(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'difm');
     });
@@ -160,7 +161,7 @@ export const DIFMLogs: React.FC = () => {
       timestamp: { toDate: () => new Date() } as any,
       isDemo: true
     }));
-    setLogs(prev => [...newLogs, ...prev]);
+    setDemoSeededLogs(prev => [...newLogs, ...prev]);
   };
 
   return (
