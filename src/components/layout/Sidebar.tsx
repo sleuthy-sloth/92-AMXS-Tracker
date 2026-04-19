@@ -15,8 +15,11 @@ import {
   Stethoscope,
   Shield,
   X,
+  PlayCircle,
   LucideIcon
 } from 'lucide-react';
+import { useContext } from 'react';
+import { TourContext } from '../../contexts/TourContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../contexts/AuthContext';
 import { AMUS, SHOPS, ShopType } from '../../mockData';
@@ -52,6 +55,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const { profile, isDemoMode, toggleDemoMode, setRole, setAMU, setShop } = useAuth();
   const location = useLocation();
+  const tour = useContext(TourContext);
 
   const navItems: NavItem[] = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
@@ -242,7 +246,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       )}
 
-      <nav className="flex-grow px-4 py-8 space-y-1">
+      <nav className="flex-grow px-4 py-8 space-y-1" data-tour="sidebar-nav">
         <p className="tech-label text-white/40 px-4 mb-4">Operations</p>
         {navItems.map((item) => (
           <Link
@@ -331,6 +335,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
               isDemoMode ? "bg-caution-yellow" : "bg-emerald-500"
             )} />
           </button>
+          {isDemoMode && tour && (
+            <button
+              onClick={tour.restartTour}
+              className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white transition-colors text-[10px] font-black tracking-widest uppercase"
+            >
+              <PlayCircle className="w-3.5 h-3.5" />
+              Restart Tour
+            </button>
+          )}
         </div>
       </div>
     </aside>

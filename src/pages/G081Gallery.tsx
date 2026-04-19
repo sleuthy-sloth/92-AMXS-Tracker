@@ -99,7 +99,7 @@ export const G081Gallery: React.FC = () => {
   );
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-10" data-tour="g081-grid">
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
         <div className="flex items-center gap-6">
           <div className="w-16 h-16 flex items-center justify-center">
