@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import type { ClassifiedError } from '../lib/aiRetry';
+import type { AIProvider } from '../lib/aiProvider';
 
 export type ScanKind =
   | 'assistant'
@@ -15,6 +16,8 @@ export interface ScanState {
   status: ScanStatus;
   lastRunAt?: number;
   lastError?: { kind: ClassifiedError['kind']; message: string };
+  /** Which provider answered most recently (sticky across runs that omit it). */
+  lastSource?: AIProvider;
   runCount: number;
 }
 
@@ -36,8 +39,8 @@ const initialState = (): Record<ScanKind, ScanState> =>
 interface AIScanStatusContextType {
   statuses: Record<ScanKind, ScanState>;
   reportStart: (kind: ScanKind) => void;
-  reportSuccess: (kind: ScanKind) => void;
-  reportError: (kind: ScanKind, error: ClassifiedError) => void;
+  reportSuccess: (kind: ScanKind, source?: AIProvider) => void;
+  reportError: (kind: ScanKind, error: ClassifiedError, source?: AIProvider) => void;
 }
 
 const AIScanStatusContext = createContext<AIScanStatusContextType | undefined>(undefined);
@@ -58,25 +61,27 @@ export const AIScanStatusProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }));
   }, []);
 
-  const reportSuccess = useCallback((kind: ScanKind) => {
+  const reportSuccess = useCallback((kind: ScanKind, source?: AIProvider) => {
     setStatuses(prev => ({
       ...prev,
       [kind]: {
         status: 'success',
         lastRunAt: Date.now(),
         lastError: undefined,
+        lastSource: source ?? prev[kind].lastSource,
         runCount: prev[kind].runCount + 1,
       },
     }));
   }, []);
 
-  const reportError = useCallback((kind: ScanKind, error: ClassifiedError) => {
+  const reportError = useCallback((kind: ScanKind, error: ClassifiedError, source?: AIProvider) => {
     setStatuses(prev => ({
       ...prev,
       [kind]: {
         status: 'error',
         lastRunAt: Date.now(),
         lastError: { kind: error.kind, message: error.message },
+        lastSource: source ?? prev[kind].lastSource,
         runCount: prev[kind].runCount + 1,
       },
     }));
