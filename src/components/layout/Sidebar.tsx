@@ -72,7 +72,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const isOnAdminRoute = adminItems.some(i => location.pathname === i.path);
   const [isAdminOpen, setIsAdminOpen] = useState(isOnAdminRoute);
 
+  // Route → panel sync: auto-expand the admin section when the active route
+  // becomes an admin page (direct URL, nav links, browser back/forward).
+  // The user can still manually collapse via the Admin button; this only
+  // re-opens on a transition *into* an admin route.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (isOnAdminRoute) setIsAdminOpen(true);
   }, [isOnAdminRoute]);
 

@@ -42,9 +42,9 @@ export function useAuthConstrainedQuery<T>(
   opts: ConstrainedQueryOptions = {}
 ): ConstrainedQueryResult<T> {
   const { profile, isDemoMode } = useAuth();
-  const [data, setData] = useState<(T & { id: string })[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const [firestoreData, setFirestoreData] = useState<(T & { id: string })[]>([]);
+  const [firestoreLoading, setFirestoreLoading] = useState(true);
+  const [firestoreError, setFirestoreError] = useState<Error | null>(null);
 
   const {
     constraints,
@@ -57,16 +57,21 @@ export function useAuthConstrainedQuery<T>(
   // Stable identity of the caller-supplied constraints (by reference).
   const extraConstraints = useMemo(() => constraints ?? [], [constraints]);
 
+  // The subscription is only live when we have a profile, are not in demo
+  // mode, and the caller has opted in. Outside of that window the hook
+  // returns empty data, not-loading, no-error without touching state from
+  // inside the effect.
+  const active = !!profile && enabled && !isDemoMode;
+
+  const data = useMemo<(T & { id: string })[]>(
+    () => (active ? firestoreData : []),
+    [active, firestoreData]
+  );
+  const loading = active ? firestoreLoading : false;
+  const error = active ? firestoreError : null;
+
   useEffect(() => {
-    if (!profile || !enabled) {
-      setLoading(false);
-      return;
-    }
-    if (isDemoMode) {
-      setData([]);
-      setLoading(false);
-      return;
-    }
+    if (!active || !profile) return;
 
     const assembled: QueryConstraint[] = [];
     if (excludeDemo) assembled.push(where('isDemo', '==', false));
@@ -84,30 +89,27 @@ export function useAuthConstrainedQuery<T>(
     for (const c of extraConstraints) assembled.push(c);
     assembled.push(fsLimit(resultLimit));
 
-    setLoading(true);
-    setError(null);
+    // Note: we intentionally do not reset loading/error on re-subscription.
+    // The next onSnapshot callback flips them correctly and any stale data
+    // from the previous subscription stays visible during the brief gap.
     const q = query(collection(db, collectionName), ...assembled);
     const unsub = onSnapshot(
       q,
       (snap) => {
-        setData(snap.docs.map((d) => ({ id: d.id, ...(d.data() as T) })));
-        setLoading(false);
+        setFirestoreData(snap.docs.map((d) => ({ id: d.id, ...(d.data() as T) })));
+        setFirestoreLoading(false);
       },
       (err) => {
         console.error(`useAuthConstrainedQuery(${collectionName}):`, err);
-        setError(err);
-        setLoading(false);
+        setFirestoreError(err);
+        setFirestoreLoading(false);
       }
     );
     return unsub;
   }, [
+    active,
     collectionName,
-    profile?.uid,
-    profile?.shopId,
-    profile?.amuId,
-    profile?.role,
-    isDemoMode,
-    enabled,
+    profile,
     excludeDemo,
     allowLeadershipWide,
     resultLimit,

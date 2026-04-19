@@ -14,44 +14,53 @@ import { LoopClosure } from '../components/dashboard/LoopClosure';
 
 export const Dashboard: React.FC = () => {
   const { profile, isDemoMode } = useAuth();
-  const [logs, setLogs] = useState<MaintenanceLog[]>([]);
-  const [personnel, setPersonnel] = useState<UserProfile[]>([]);
-  const [training, setTraining] = useState<TrainingRecord[]>([]);
-  const [difm, setDifm] = useState<DIFMLog[]>([]);
+  const [firestoreLogs, setFirestoreLogs] = useState<MaintenanceLog[]>([]);
+  const [firestorePersonnel, setFirestorePersonnel] = useState<UserProfile[]>([]);
+  const [firestoreTraining, setFirestoreTraining] = useState<TrainingRecord[]>([]);
+  const [firestoreDifm, setFirestoreDifm] = useState<DIFMLog[]>([]);
+
+  const logs = useMemo<MaintenanceLog[]>(() => {
+    if (!profile) return [];
+    if (!isDemoMode) return firestoreLogs;
+    return MOCK_LOGS.filter(l => {
+      if (profile.amuId !== 'ALL' && l.amuId !== profile.amuId) return false;
+      if (profile.shopId !== 'ALL' && l.shopId !== profile.shopId) return false;
+      return true;
+    }).sort((a, b) => tsToDate(b.timestamp).getTime() - tsToDate(a.timestamp).getTime());
+  }, [isDemoMode, profile, firestoreLogs]);
+
+  const personnel = useMemo<UserProfile[]>(() => {
+    if (!profile) return [];
+    if (!isDemoMode) return firestorePersonnel;
+    return MOCK_PERSONNEL.filter(p => {
+      if (profile.amuId !== 'ALL' && p.amuId !== profile.amuId) return false;
+      if (profile.shopId !== 'ALL' && p.shopId !== profile.shopId) return false;
+      return true;
+    });
+  }, [isDemoMode, profile, firestorePersonnel]);
+
+  const training = useMemo<TrainingRecord[]>(() => {
+    if (!profile) return [];
+    if (!isDemoMode) return firestoreTraining;
+    return MOCK_TRAINING.filter(t => {
+      if (profile.amuId !== 'ALL' && t.amuId !== profile.amuId) return false;
+      if (profile.shopId !== 'ALL' && t.shopId !== profile.shopId) return false;
+      return true;
+    });
+  }, [isDemoMode, profile, firestoreTraining]);
+
+  const difm = useMemo<DIFMLog[]>(() => {
+    if (!profile) return [];
+    if (!isDemoMode) return firestoreDifm;
+    return MOCK_DIFM.filter(d => {
+      if (profile.amuId !== 'ALL' && d.amuId !== profile.amuId) return false;
+      if (profile.shopId !== 'ALL' && d.shopId !== profile.shopId) return false;
+      return true;
+    });
+  }, [isDemoMode, profile, firestoreDifm]);
 
   useEffect(() => {
-    if (!profile) return;
-
-    if (isDemoMode) {
-      const filteredMockLogs = MOCK_LOGS.filter(l => {
-        if (profile.amuId !== 'ALL' && l.amuId !== profile.amuId) return false;
-        if (profile.shopId !== 'ALL' && l.shopId !== profile.shopId) return false;
-        return true;
-      }).sort((a, b) => tsToDate(b.timestamp).getTime() - tsToDate(a.timestamp).getTime());
-      setLogs(filteredMockLogs);
-
-      const filteredMockPersonnel = MOCK_PERSONNEL.filter(p => {
-        if (profile.amuId !== 'ALL' && p.amuId !== profile.amuId) return false;
-        if (profile.shopId !== 'ALL' && p.shopId !== profile.shopId) return false;
-        return true;
-      });
-      setPersonnel(filteredMockPersonnel);
-
-      const filteredMockTraining = MOCK_TRAINING.filter(t => {
-        if (profile.amuId !== 'ALL' && t.amuId !== profile.amuId) return false;
-        if (profile.shopId !== 'ALL' && t.shopId !== profile.shopId) return false;
-        return true;
-      });
-      setTraining(filteredMockTraining);
-
-      const filteredMockDifm = MOCK_DIFM.filter(d => {
-        if (profile.amuId !== 'ALL' && d.amuId !== profile.amuId) return false;
-        if (profile.shopId !== 'ALL' && d.shopId !== profile.shopId) return false;
-        return true;
-      });
-      setDifm(filteredMockDifm);
-      return;
-    }
+    if (!profile || isDemoMode) return;
 
     let qLogs;
     if (profile.role === 'leadership' || profile.amuId === 'ALL' || profile.shopId === 'ALL') {
@@ -82,7 +91,7 @@ export const Dashboard: React.FC = () => {
     }
     
     const unsubLogs = onSnapshot(qLogs, (snap) => {
-      setLogs(snap.docs.map(d => ({ id: d.id, ...d.data() } as any)));
+      setFirestoreLogs(snap.docs.map(d => ({ id: d.id, ...d.data() } as any)));
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'logs'));
 
     let qPersonnel;
@@ -101,7 +110,7 @@ export const Dashboard: React.FC = () => {
     }
     
     const unsubPersonnel = onSnapshot(qPersonnel, (snap) => {
-      setPersonnel(snap.docs.map(d => ({ id: d.id, ...d.data() } as any)));
+      setFirestorePersonnel(snap.docs.map(d => ({ id: d.id, ...d.data() } as any)));
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'users'));
 
     let qTraining;
@@ -120,7 +129,7 @@ export const Dashboard: React.FC = () => {
     }
     
     const unsubTraining = onSnapshot(qTraining, (snap) => {
-      setTraining(snap.docs.map(d => ({ id: d.id, ...d.data() } as any)));
+      setFirestoreTraining(snap.docs.map(d => ({ id: d.id, ...d.data() } as any)));
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'training'));
 
     let qDifm;
@@ -136,7 +145,7 @@ export const Dashboard: React.FC = () => {
     }
 
     const unsubDifm = onSnapshot(qDifm, (snap) => {
-      setDifm(snap.docs.map(d => ({ id: d.id, ...d.data() } as any)));
+      setFirestoreDifm(snap.docs.map(d => ({ id: d.id, ...d.data() } as any)));
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'difm'));
 
     return () => {
