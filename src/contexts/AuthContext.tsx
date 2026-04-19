@@ -169,9 +169,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
+      const uidToClear = user?.uid;
       await signOut(auth);
       setUser(null);
       setProfile(null);
+      if (uidToClear && typeof window !== 'undefined') {
+        try {
+          window.sessionStorage.removeItem(`amxs-ai-chat:${uidToClear}`);
+        } catch {
+          // sessionStorage unavailable — non-fatal
+        }
+      }
     } catch (error) {
       console.error('Logout error:', error);
     }

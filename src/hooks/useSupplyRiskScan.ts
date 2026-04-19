@@ -14,17 +14,20 @@ import {
 import { format, subDays } from 'date-fns';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { useScanStatus } from '../contexts/AIScanStatusContext';
 import { createNotification } from '../services/notificationService';
 import { MaintenanceLog } from '../types';
 import { tsToMillis } from '../lib/utils';
 import { getAI, isGeminiConfigured } from '../lib/gemini';
 import { safeParse, SupplyRiskListSchema } from '../lib/aiSchemas';
+import { withRetry, classifyError, AIRetryError } from '../lib/aiRetry';
 
 const WINDOW_DAYS = 7;
 const SCAN_CAP = 25;
 
 export const useSupplyRiskScan = () => {
   const { profile, isDemoMode } = useAuth();
+  const { reportStart, reportSuccess, reportError } = useScanStatus();
 
   useEffect(() => {
     if (!profile || isDemoMode) return;
@@ -32,6 +35,7 @@ export const useSupplyRiskScan = () => {
     if (!isGeminiConfigured()) return;
 
     const scan = async () => {
+      reportStart('supply-risk');
       try {
         const cutoff = subDays(new Date(), WINDOW_DAYS).getTime();
         const qLogs = query(
@@ -47,14 +51,17 @@ export const useSupplyRiskScan = () => {
           .map((d) => ({ id: d.id, ...d.data() }) as MaintenanceLog)
           .filter((l) => tsToMillis(l.timestamp) >= cutoff && (!l.repair || l.repair.trim() === ''));
 
-        if (candidates.length === 0) return;
+        if (candidates.length === 0) {
+          reportSuccess('supply-risk');
+          return;
+        }
 
         const summary = candidates
           .slice(0, 15)
           .map((l) => `${l.id}|${l.tail_number}: ${l.discrepancy}`)
           .join('\n');
 
-        const response = await getAI().models.generateContent({
+        const response = await withRetry(() => getAI().models.generateContent({
           model: 'gemini-2.5-flash',
           contents: [
             {
@@ -73,10 +80,13 @@ OUTPUT JSON: [{"logId","tail_number","risk":"high|medium|low","likely_parts":[st
             },
           ],
           config: { responseMimeType: 'application/json', temperature: 0.1 },
-        });
+        }));
 
         const parsed = safeParse(SupplyRiskListSchema, response.text, 'SupplyRiskScan');
-        if (!parsed) return;
+        if (!parsed) {
+          reportError('supply-risk', { kind: 'parse', message: 'Gemini response failed schema validation', retryable: false });
+          return;
+        }
 
         const today = format(new Date(), 'yyyy-MM-dd');
         for (const f of parsed) {
@@ -102,8 +112,11 @@ OUTPUT JSON: [{"logId","tail_number","risk":"high|medium|low","likely_parts":[st
             sentAt: serverTimestamp(),
           });
         }
+        reportSuccess('supply-risk');
       } catch (err) {
         console.error('Supply risk scan failed', err);
+        const classified = err instanceof AIRetryError ? err.classified : classifyError(err);
+        reportError('supply-risk', classified);
       }
     };
 
@@ -113,5 +126,5 @@ OUTPUT JSON: [{"logId","tail_number","risk":"high|medium|low","likely_parts":[st
       clearTimeout(timeout);
       clearInterval(interval);
     };
-  }, [profile, isDemoMode]);
+  }, [profile, isDemoMode, reportStart, reportSuccess, reportError]);
 };

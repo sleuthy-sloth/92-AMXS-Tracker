@@ -6,6 +6,7 @@ import {
   Navigate
 } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AIScanStatusProvider } from './contexts/AIScanStatusContext';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { AppLayout } from './components/layout/AppLayout';
 
@@ -84,9 +85,11 @@ export default function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <Router>
-          <AppContent />
-        </Router>
+        <AIScanStatusProvider>
+          <Router>
+            <AppContent />
+          </Router>
+        </AIScanStatusProvider>
       </AuthProvider>
     </ErrorBoundary>
   );
