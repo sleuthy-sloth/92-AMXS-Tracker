@@ -65,7 +65,16 @@ export const useProactiveTrainingScan = () => {
         reportSuccess('training');
       } catch (e) {
         console.error("Training scan failed", e);
-        reportError('training', classifyError(e));
+        const classified = classifyError(e);
+        reportError('training', classified);
+        await createNotification({
+          shopId: profile.shopId,
+          amuId: profile.amuId,
+          type: 'system',
+          title: 'Training Scan Failed',
+          message: `Background compliance scan could not complete (${classified.kind}). Data may be stale.`,
+          metadata: { kind: classified.kind },
+        });
       }
     };
 
