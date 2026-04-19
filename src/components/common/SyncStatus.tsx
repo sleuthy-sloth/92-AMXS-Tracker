@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { onSnapshotsInSync } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { Wifi, WifiOff, RefreshCcw } from 'lucide-react';
-import { cn } from '../../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 
 export const SyncStatus: React.FC = () => {

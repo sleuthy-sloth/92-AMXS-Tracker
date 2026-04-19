@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { query, collection, where, orderBy, limit, onSnapshot, doc, updateDoc, writeBatch } from 'firebase/firestore';
-import { Bell, BellDot, ShieldAlert, Package, Clock, X, Trash2 } from 'lucide-react';
+import { Bell, BellDot, ShieldAlert, Package, Clock, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../contexts/AuthContext';

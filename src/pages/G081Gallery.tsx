@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { serverTimestamp, collection, query, orderBy, onSnapshot, updateDoc, doc, limit, where, deleteDoc } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
@@ -10,21 +10,20 @@ import { cn, tsToDate } from '../lib/utils';
 
 export const G081Gallery: React.FC = () => {
   const { profile, isDemoMode } = useAuth();
-  const [logs, setLogs] = useState<MaintenanceLog[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [firestoreLogs, setFirestoreLogs] = useState<MaintenanceLog[]>([]);
+  const [firestoreLoading, setFirestoreLoading] = useState(true);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isArchiveView, setIsArchiveView] = useState(false);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
+  const logs = useMemo<MaintenanceLog[]>(
+    () => (isDemoMode ? [] : firestoreLogs),
+    [isDemoMode, firestoreLogs]
+  );
+  const loading = isDemoMode ? false : firestoreLoading;
 
   useEffect(() => {
-    if (!profile) return;
-    
-    if (isDemoMode) {
-      setLogs([]);
-      setLoading(false);
-      return;
-    }
+    if (!profile || isDemoMode) return;
 
     const constraints: any[] = [
       orderBy('timestamp', 'desc'),
@@ -41,9 +40,8 @@ export const G081Gallery: React.FC = () => {
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const allLogs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-      // Filter for logs that HAVE photos
-      setLogs(allLogs.filter(log => log.g081_photo));
-      setLoading(false);
+      setFirestoreLogs(allLogs.filter(log => log.g081_photo));
+      setFirestoreLoading(false);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'logs');
     });
