@@ -210,8 +210,8 @@ export const Dashboard: React.FC = () => {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-0 visible-grid">
-        <motion.div 
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-0 visible-grid" data-tour="dashboard-matrix">
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="md:col-span-2 md:row-span-2 p-10 flex flex-col justify-between bg-surface"
@@ -290,7 +290,7 @@ export const Dashboard: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <div className="lg:col-span-4 space-y-8">
+        <div className="lg:col-span-4 space-y-8" data-tour="intelligence-feed">
           <IntelligenceFeed logs={logs} training={training} />
           <LoopClosure logs={logs} />
         </div>

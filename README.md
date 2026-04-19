@@ -31,13 +31,15 @@ The 92nd AMXS platform is a purpose-built aerospace maintenance ecosystem design
 - **Classified Error Handling**: Every Gemini call is routed through a typed retry wrapper that distinguishes retryable (rate-limit, quota, network, timeout) from terminal (auth, parse) failures.
 - **Exponential Backoff**: 3 retries by default (1s → 2s → 4s) with configurable per-call timeout (default 30s) enforced via `AbortController`.
 - **External Cancellation**: Aborting the parent signal short-circuits the retry loop cleanly — no leaked `DOMException` surfaces.
-- **Live Health Telemetry**: A shared `AIScanStatusContext` tracks 6 concurrent AI pipelines (assistant, supply-risk, g081-expiry, training, diagnostics, intelligence-feed) with status, last-run timestamp, run count, and last error — visible to NCOIC/leadership on the Support page.
+- **Live Health Telemetry**: A shared `AIScanStatusContext` tracks 6 concurrent AI pipelines (assistant, supply-risk, g081-expiry, training, diagnostics, intelligence-feed) with status, last-run timestamp, run count, last error, and **which provider answered most recently** — visible to NCOIC/leadership on the Support page.
+- **OpenRouter Fallback**: Text→JSON scans (Intelligence Feed, Supply Risk, Diagnostics) automatically reroute to OpenRouter's free tier (`meta-llama/llama-3.2-3b-instruct:free`) when Gemini exhausts its daily quota or trips a 429. The Support panel surfaces a `GEMINI` / `OPENROUTER` chip per scan so operators see at a glance which provider is active.
 - **Graceful Degradation**: AI errors never crash a page; they surface as inline status chips with the classified kind, so the rest of the app stays operational.
 
 ### 5. Resilient Mission Continuity
 - **Offline-First PWA**: Built-in persistence allows technicians to log maintenance in deep-hangar "dead zones" where Wi-Fi is unstable. Data syncs automatically once the link is re-established.
 - **Live Collaborative Presence**: 30-second heartbeats show which NCOICs or Production Supers are currently viewing your shop's logs or turnover reports, preventing duplicate documentation.
 - **Real-Time Sync Indicator**: A visible beacon in the top bar surfaces online/offline state and last-sync timestamp.
+- **Guided Sandbox Tour**: First-time entry into Sandbox mode auto-launches a `driver.js`-powered walkthrough covering navigation, the AI Intelligence Feed, OCR + bulk-scan entry, the DIFM pipeline, the G081 gallery, handoff, training, diagnostics (NCOIC), workload (Leadership), and the AI health panel. Replayable any time via the **Restart Tour** button in the sidebar (sandbox-only).
 
 ### 6. Integrated Logistics (DIFM)
 - **Pipeline Visibility**: Track components from `Ordered → En-Route → Received → Bench-Check → Installed` with a visual progress bar on every track.
@@ -127,7 +129,8 @@ VITE_FIREBASE_PROJECT_ID=...
 VITE_FIREBASE_STORAGE_BUCKET=...
 VITE_FIREBASE_MESSAGING_SENDER_ID=...
 VITE_FIREBASE_APP_ID=...
-VITE_GEMINI_API_KEY=...
+GEMINI_API_KEY=...
+OPENROUTER_API_KEY=...   # optional — enables automatic fallback when Gemini quota is exhausted
 ```
 
 ---
@@ -156,7 +159,7 @@ The AI reliability layer and scan-status context are fully covered:
 ## 🚧 Roadmap
 
 - **Firestore pagination** — replace the current `limit(500)` guardrails with cursor-based paging on the high-volume collections (`logs`, `difm`).
-- **Gemini API key proxy** — move key handling to a Cloud Function so it never ships in the client bundle.
+- **AI provider proxy** — move Gemini + OpenRouter key handling to a Cloud Function so neither key ships in the client bundle. (OpenRouter fallback already mitigates the immediate availability risk.)
 - **Fleet Health Predictor** — longitudinal ML-based trend analysis for airframe fatigue.
 - **Native mobile PWA** — personalized maintainer feed on iOS/Android home screens.
 - **Unified Support Request** — inline specialist routing from any log or DIFM track.
