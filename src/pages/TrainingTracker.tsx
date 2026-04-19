@@ -242,7 +242,7 @@ export const TrainingTracker: React.FC = () => {
   }), [filteredTraining]);
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-10" data-tour="page-root">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div>
           <h2 className="text-4xl font-black tracking-tighter uppercase text-slate-900">Training Readiness</h2>

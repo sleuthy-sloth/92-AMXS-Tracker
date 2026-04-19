@@ -31,10 +31,13 @@ import { MaintenanceAssistant } from './components/MaintenanceAssistant';
 import { useProactiveTrainingScan } from './hooks/useProactiveTrainingScan';
 import { useG081ExpiryScan } from './hooks/useG081ExpiryScan';
 import { useSupplyRiskScan } from './hooks/useSupplyRiskScan';
+import { useGuidedTour } from './hooks/useGuidedTour';
+import { TourContext } from './contexts/TourContext';
 
 const AppContent: React.FC = () => {
   const { user, profile, loading } = useAuth();
-  
+  const tour = useGuidedTour();
+
   // Proactive compliance monitoring
   useProactiveTrainingScan();
   useG081ExpiryScan();
@@ -56,6 +59,7 @@ const AppContent: React.FC = () => {
   if (profile.status === 'pending') return <PendingApproval />;
 
   return (
+    <TourContext.Provider value={tour}>
     <AppLayout>
       <Routes>
         <Route path="/" element={<Dashboard />} />
@@ -78,6 +82,7 @@ const AppContent: React.FC = () => {
       </Routes>
       <MaintenanceAssistant />
     </AppLayout>
+    </TourContext.Provider>
   );
 };
 
