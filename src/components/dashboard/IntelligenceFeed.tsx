@@ -3,8 +3,10 @@ import { Activity, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { motion } from 'motion/react';
 import { MaintenanceLog, TrainingRecord } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
+import { useScanStatus } from '../../contexts/AIScanStatusContext';
 import { getAI } from '../../lib/gemini';
 import { safeParse, TrendAlertsSchema } from '../../lib/aiSchemas';
+import { withRetry, classifyError, AIRetryError } from '../../lib/aiRetry';
 import { cn } from '../../lib/utils';
 
 type IntelAlert = {
@@ -18,6 +20,7 @@ type IntelAlert = {
 export const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[]; training: TrainingRecord[] }> = memo(
   ({ logs, training }) => {
     const { profile } = useAuth();
+    const { reportStart, reportSuccess, reportError } = useScanStatus();
     const [alerts, setAlerts] = useState<IntelAlert[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -25,6 +28,7 @@ export const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[]; training: Trai
       const generateIntelligence = async () => {
         if (!profile) return;
         setLoading(true);
+        reportStart('intelligence-feed');
         try {
           const recentLogs = logs
             .slice(0, 15)
@@ -46,10 +50,11 @@ export const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[]; training: Trai
               },
             ]);
             setLoading(false);
+            reportSuccess('intelligence-feed');
             return;
           }
 
-          const response = await getAI().models.generateContent({
+          const response = await withRetry(() => getAI().models.generateContent({
             model: 'gemini-2.5-flash',
             contents: [
               {
@@ -72,7 +77,7 @@ export const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[]; training: Trai
               },
             ],
             config: { responseMimeType: 'application/json', temperature: 0.1 },
-          });
+          }));
 
           const data = safeParse(TrendAlertsSchema, response.text, 'IntelligenceFeed');
           if (!data || data.length === 0) {
@@ -95,8 +100,11 @@ export const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[]; training: Trai
               }))
             );
           }
+          reportSuccess('intelligence-feed');
         } catch (err) {
           console.error('Intelligence Feed Error:', err);
+          const classified = err instanceof AIRetryError ? err.classified : classifyError(err);
+          reportError('intelligence-feed', classified);
           setAlerts([
             {
               id: 'err',
@@ -115,7 +123,7 @@ export const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[]; training: Trai
       generateIntelligence();
       const interval = setInterval(generateIntelligence, 300000);
       return () => clearInterval(interval);
-    }, [profile, logs.length, training.length]);
+    }, [profile, logs.length, training.length, reportStart, reportSuccess, reportError]);
 
     return (
       <div className="visible-grid bg-white border border-outline h-full">
