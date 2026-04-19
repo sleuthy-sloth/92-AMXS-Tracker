@@ -487,11 +487,12 @@ export const MaintenanceLogs: React.FC = () => {
 
           {/* Action Group */}
           <div className="flex items-center gap-3 flex-1 md:flex-none">
-            <button 
+            <button
+              data-tour="logs-ocr-button"
               onClick={() => setIsModalOpen(true)}
               className="sleek-button flex-1 md:flex-none flex items-center justify-center gap-2 bg-primary text-white px-6 shadow-lg shadow-primary/20"
             >
-              <Plus className="w-5 h-5" /> 
+              <Plus className="w-5 h-5" />
               <span className="font-black tracking-widest text-[11px] uppercase">New Entry</span>
             </button>
 
@@ -549,7 +550,8 @@ export const MaintenanceLogs: React.FC = () => {
                         accept="image/*" 
                         onChange={handleScanLogbook}
                       />
-                      <button 
+                      <button
+                        data-tour="logs-bulk-scan"
                         onClick={() => {
                           bulkScanInputRef.current?.click();
                           setIsActionsOpen(false);
