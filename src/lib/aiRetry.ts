@@ -125,7 +125,11 @@ export async function withRetry<T>(
       }
 
       const delay = baseDelay * Math.pow(2, attempt);
-      await sleep(delay, opts.signal);
+      try {
+        await sleep(delay, opts.signal);
+      } catch {
+        throw new AIRetryError({ kind: 'timeout', message: 'Cancelled', retryable: false });
+      }
     } finally {
       clearTimeout(timeoutId);
       opts.signal?.removeEventListener('abort', onParentAbort);
