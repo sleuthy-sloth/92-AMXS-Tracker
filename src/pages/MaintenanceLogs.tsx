@@ -71,18 +71,30 @@ export const MaintenanceLogs: React.FC = () => {
   const [selectedLog, setSelectedLog] = useState<MaintenanceLog | null>(null);
   const [isArchiveView, setIsArchiveView] = useState(false);
   const [originalLogState, setOriginalLogState] = useState<MaintenanceLog | null>(null);
+  // Demo-mode only: session-level archive overrides keyed by mock log id,
+  // so Archive/Restore clicks persist across list re-renders without
+  // mutating the shared MOCK_LOGS module.
+  const [demoArchiveOverrides, setDemoArchiveOverrides] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!profile) return;
 
     if (isDemoMode) {
       const isLeadership = profile.role === 'leadership';
-      const filteredMockLogs = MOCK_LOGS.filter(log => {
-        if (isLeadership && profile.amuId === 'ALL' && profile.shopId === 'ALL') return true;
-        if (profile.amuId !== 'ALL' && log.amuId !== profile.amuId) return false;
-        if (profile.shopId !== 'ALL' && log.shopId !== profile.shopId) return false;
-        return true;
-      });
+      const filteredMockLogs = MOCK_LOGS
+        .filter(log => {
+          if (isLeadership && profile.amuId === 'ALL' && profile.shopId === 'ALL') return true;
+          if (profile.amuId !== 'ALL' && log.amuId !== profile.amuId) return false;
+          if (profile.shopId !== 'ALL' && log.shopId !== profile.shopId) return false;
+          return true;
+        })
+        .map(log => {
+          const override = log.id && log.id in demoArchiveOverrides
+            ? demoArchiveOverrides[log.id]
+            : Boolean(log.isArchived);
+          return { ...log, isArchived: override };
+        })
+        .filter(log => Boolean(log.isArchived) === isArchiveView);
       setLogs(filteredMockLogs);
 
       const filteredMockDifm = MOCK_DIFM.filter(d => {
@@ -120,7 +132,7 @@ export const MaintenanceLogs: React.FC = () => {
       unsubLogs();
       unsubDifm();
     };
-  }, [profile, isDemoMode, isArchiveView]);
+  }, [profile, isDemoMode, isArchiveView, demoArchiveOverrides]);
 
   const handleScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -376,7 +388,10 @@ export const MaintenanceLogs: React.FC = () => {
   };
 
   const handleArchiveLog = async (logId: string, archive: boolean) => {
-    if (isDemoMode) return;
+    if (isDemoMode) {
+      setDemoArchiveOverrides(prev => ({ ...prev, [logId]: archive }));
+      return;
+    }
     try {
       await updateDoc(doc(db, 'logs', logId), {
         isArchived: archive,

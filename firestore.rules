@@ -90,8 +90,7 @@ service cloud.firestore {
              data.amuId is string &&
              data.role in ['leadership', 'ncoic', 'technician', 'pending'] &&
              data.status in ['active', 'pending', 'rejected'] &&
-             data.email is string && data.email.size() < 254 &&
-             (!('skill_tags' in data) || (data.skill_tags is list && data.skill_tags.size() < 50));
+             data.email is string && data.email.size() < 254;
     }
 
     function isValidLog(data) {
