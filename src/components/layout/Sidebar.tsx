@@ -15,7 +15,6 @@ import {
   ClipboardList,
   Gauge,
   Stethoscope,
-  Grid3x3,
   X,
   LucideIcon
 } from 'lucide-react';
@@ -63,12 +62,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { name: 'Training Tracker', path: '/training', icon: BarChart3 },
     { name: 'Personnel', path: '/personnel', icon: Users },
     { name: 'Handoff', path: '/handoff', icon: ClipboardList },
-    { name: 'Diagnostics', path: '/diagnostics', icon: Stethoscope },
-    { name: 'Skill Matrix', path: '/skills', icon: Grid3x3 },
     { name: 'Support', path: '/support', icon: HelpCircle },
   ];
 
   if (profile?.role === 'ncoic' || profile?.role === 'leadership') {
+    navItems.push({ name: 'Diagnostics', path: '/diagnostics', icon: Stethoscope });
     navItems.push({ name: 'Workload', path: '/workload', icon: Gauge });
     navItems.push({ name: 'Onboarding', path: '/onboarding', icon: UserPlus });
   }

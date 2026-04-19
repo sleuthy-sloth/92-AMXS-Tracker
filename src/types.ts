@@ -23,7 +23,6 @@ export interface UserProfile {
   status: 'active' | 'pending' | 'rejected';
   createdAt?: FirestoreTime;
   isDemo?: boolean;
-  skill_tags?: string[];
 }
 
 export interface MaintenanceLog {
