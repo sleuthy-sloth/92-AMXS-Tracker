@@ -12,20 +12,24 @@ import {
 import { format, subDays } from 'date-fns';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { useScanStatus } from '../contexts/AIScanStatusContext';
 import { createNotification } from '../services/notificationService';
 import { MaintenanceLog } from '../types';
 import { tsToMillis } from '../lib/utils';
+import { classifyError } from '../lib/aiRetry';
 
 const EXPIRY_DAYS = 30;
 
 export const useG081ExpiryScan = () => {
   const { profile, isDemoMode } = useAuth();
+  const { reportStart, reportSuccess, reportError } = useScanStatus();
 
   useEffect(() => {
     if (!profile || isDemoMode) return;
     if (!(profile.role === 'ncoic' || profile.role === 'leadership')) return;
 
     const scan = async () => {
+      reportStart('g081-expiry');
       try {
         const cutoff = subDays(new Date(), EXPIRY_DAYS).getTime();
         const q = query(
@@ -62,8 +66,10 @@ export const useG081ExpiryScan = () => {
             sentAt: serverTimestamp(),
           });
         }
+        reportSuccess('g081-expiry');
       } catch (err) {
         console.error('G081 expiry scan failed', err);
+        reportError('g081-expiry', classifyError(err));
       }
     };
 
@@ -73,5 +79,5 @@ export const useG081ExpiryScan = () => {
       clearTimeout(timeout);
       clearInterval(interval);
     };
-  }, [profile, isDemoMode]);
+  }, [profile, isDemoMode, reportStart, reportSuccess, reportError]);
 };

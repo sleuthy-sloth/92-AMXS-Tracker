@@ -3,16 +3,20 @@ import { query, collection, where, getDocs, doc, getDoc, setDoc, serverTimestamp
 import { format, addDays, parseISO, isBefore } from 'date-fns';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { useScanStatus } from '../contexts/AIScanStatusContext';
 import { createNotification } from '../services/notificationService';
 import { TrainingRecord } from '../types';
+import { classifyError } from '../lib/aiRetry';
 
 export const useProactiveTrainingScan = () => {
   const { profile, isDemoMode } = useAuth();
+  const { reportStart, reportSuccess, reportError } = useScanStatus();
 
   useEffect(() => {
     if (!profile || isDemoMode || !(profile.role === 'ncoic' || profile.role === 'leadership')) return;
 
     const scanTraining = async () => {
+      reportStart('training');
       try {
         const now = new Date();
         const thirtyDaysFromNow = addDays(now, 30);
@@ -58,8 +62,10 @@ export const useProactiveTrainingScan = () => {
              }
           }
         }
+        reportSuccess('training');
       } catch (e) {
         console.error("Training scan failed", e);
+        reportError('training', classifyError(e));
       }
     };
 
@@ -70,5 +76,5 @@ export const useProactiveTrainingScan = () => {
       clearTimeout(timeout);
       clearInterval(interval);
     };
-  }, [profile, isDemoMode]);
+  }, [profile, isDemoMode, reportStart, reportSuccess, reportError]);
 };
