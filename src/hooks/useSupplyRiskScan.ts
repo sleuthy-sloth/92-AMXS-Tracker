@@ -112,6 +112,14 @@ OUTPUT JSON: [{"logId","tail_number","risk":"high|medium|low","likely_parts":[st
         console.error('Supply risk scan failed', err);
         const classified = err instanceof AIRetryError ? err.classified : classifyError(err);
         reportError('supply-risk', classified);
+        await createNotification({
+          shopId: profile.shopId,
+          amuId: profile.amuId,
+          type: 'system',
+          title: 'Supply Risk Scan Failed',
+          message: `Background scan could not complete (${classified.kind}). Data may be stale.`,
+          metadata: { kind: classified.kind },
+        });
       }
     };
 
