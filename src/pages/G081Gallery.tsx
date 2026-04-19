@@ -6,7 +6,7 @@ import { db, handleFirestoreError, OperationType } from '../firebase';
 import { MaintenanceLog } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { Search, Loader2, Camera, Eye, CheckCircle2, ShieldCheck, Check, X, Trash2, Archive, History } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn, tsToDate } from '../lib/utils';
 
 export const G081Gallery: React.FC = () => {
   const { profile, isDemoMode } = useAuth();
@@ -183,7 +183,7 @@ export const G081Gallery: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-8 py-5 text-xs font-mono text-slate-400">
-                    {log.timestamp?.toDate ? format(log.timestamp.toDate(), 'MM/dd HH:mm') : 'N/A'}
+                    {log.timestamp ? format(tsToDate(log.timestamp), 'MM/dd HH:mm') : 'N/A'}
                   </td>
                   <td className="px-8 py-5 text-right">
                     <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -250,7 +250,7 @@ export const G081Gallery: React.FC = () => {
                     <div className="flex justify-between items-start">
                       <div>
                         <h3 className="font-black text-xl tracking-tighter uppercase text-slate-900">{log.tail_number}</h3>
-                        <p className="tech-label text-slate-400 !text-[8px] mt-1">{log.technician_name} • {format(log.timestamp?.toDate ? log.timestamp.toDate() : new Date(), 'MMM dd, HH:mm')}</p>
+                        <p className="tech-label text-slate-400 !text-[8px] mt-1">{log.technician_name} • {format(tsToDate(log.timestamp), 'MMM dd, HH:mm')}</p>
                       </div>
                       <span className="px-2 py-1 bg-putty text-[9px] font-black uppercase tracking-widest">{log.shopId}</span>
                     </div>

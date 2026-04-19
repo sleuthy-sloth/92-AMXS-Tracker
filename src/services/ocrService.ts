@@ -1,13 +1,16 @@
 import { Type } from "@google/genai";
 import { getAI } from "../lib/gemini";
+import {
+  safeParse,
+  ScannedLogSchema,
+  ScannedLogBookSchema,
+  TrainingReportSchema,
+  type ScannedLogParsed,
+  type ScannedLogBookParsed,
+  type TrainingReportParsed,
+} from "../lib/aiSchemas";
 
-export interface ScannedLog {
-  tail_number: string;
-  discrepancy: string;
-  repair: string;
-  jcn?: string;
-  doc_number?: string;
-}
+export type ScannedLog = ScannedLogParsed;
 
 export const scanMaintenanceForm = async (base64Image: string): Promise<ScannedLog | null> => {
   try {
@@ -43,14 +46,14 @@ export const scanMaintenanceForm = async (base64Image: string): Promise<ScannedL
       }
     });
 
-    return JSON.parse(response.text);
+    return safeParse(ScannedLogSchema, response.text, "scanMaintenanceForm");
   } catch (error) {
     console.error("OCR Error:", error);
     return null;
   }
 };
 
-export const scanLogBook = async (base64Image: string): Promise<ScannedLog[] | null> => {
+export const scanLogBook = async (base64Image: string): Promise<ScannedLogBookParsed | null> => {
   try {
     const response = await getAI().models.generateContent({
       model: "gemini-2.5-flash",
@@ -86,14 +89,14 @@ export const scanLogBook = async (base64Image: string): Promise<ScannedLog[] | n
       }
     });
 
-    return JSON.parse(response.text);
+    return safeParse(ScannedLogBookSchema, response.text, "scanLogBook");
   } catch (error) {
     console.error("Log Book OCR Error:", error);
     return null;
   }
 };
 
-export const parseTrainingReport = async (base64Data: string, mimeType: string = "application/pdf"): Promise<any[]> => {
+export const parseTrainingReport = async (base64Data: string, mimeType: string = "application/pdf"): Promise<TrainingReportParsed> => {
   try {
     const response = await getAI().models.generateContent({
       model: "gemini-2.5-flash",
@@ -129,7 +132,7 @@ export const parseTrainingReport = async (base64Data: string, mimeType: string =
       }
     });
 
-    return JSON.parse(response.text);
+    return safeParse(TrainingReportSchema, response.text, "parseTrainingReport") ?? [];
   } catch (error) {
     console.error("Training Report Extraction Error:", error);
     return [];

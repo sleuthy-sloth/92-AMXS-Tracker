@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { query, collection, where, getDocs } from 'firebase/firestore';
+import { query, collection, where, getDocs, doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { format, addDays, parseISO, isBefore } from 'date-fns';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -34,9 +34,14 @@ export const useProactiveTrainingScan = () => {
           const dueDate = parseISO(data.due_date);
           
           if (isBefore(dueDate, thirtyDaysFromNow)) {
-             // Create a notification for the NCOIC if one doesn't exist for this specific record today
-             const storageKey = `training-notif-${d.id}-${format(now, 'yyyy-MM-dd')}`;
-             if (!localStorage.getItem(storageKey)) {
+             // Server-side dedup: one notification per (user, training record, day).
+             // Keys off profile.uid so different NCOICs scanning the same shop
+             // don't double-notify each other — and works across devices unlike
+             // the previous localStorage approach.
+             const dedupKey = `${profile.uid}_${d.id}_${format(now, 'yyyy-MM-dd')}`;
+             const dedupRef = doc(db, 'training_notifications_dedup', dedupKey);
+             const existing = await getDoc(dedupRef);
+             if (!existing.exists()) {
                 await createNotification({
                   shopId: profile.shopId,
                   amuId: profile.amuId,
@@ -45,7 +50,11 @@ export const useProactiveTrainingScan = () => {
                   message: `Task ${data.course_name} for Man# ${data.man_number} expires in <30 days (${data.due_date})`,
                   metadata: { trainingId: d.id, man_number: data.man_number }
                 });
-                localStorage.setItem(storageKey, 'sent');
+                await setDoc(dedupRef, {
+                  userId: profile.uid,
+                  trainingId: d.id,
+                  sentAt: serverTimestamp(),
+                });
              }
           }
         }
