@@ -59,7 +59,7 @@ const dotColor = (state: ScanState): string => {
 const AIStatusPanel: React.FC<{ showDetails: boolean }> = ({ showDetails }) => {
   const { statuses } = useScanStatus();
   return (
-    <section className="space-y-6">
+    <section className="space-y-6" data-tour="ai-health-panel">
       <h3 className="text-xl font-black tracking-tighter uppercase flex items-center gap-3 text-slate-900">
         <Sparkles className="w-6 h-6 text-primary" /> AI System Status
       </h3>
@@ -77,9 +77,24 @@ const AIStatusPanel: React.FC<{ showDetails: boolean }> = ({ showDetails }) => {
                   <span className="font-black uppercase tracking-tight text-slate-900 text-[11px]">
                     {SCAN_LABELS[kind]}
                   </span>
-                  <span className="data-mono text-[10px] text-slate-400">
-                    {formatRelative(state.lastRunAt)}
-                  </span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {state.lastSource && (
+                      <span
+                        className={cn(
+                          'tech-label text-[8px] px-1.5 py-0.5 border tracking-widest',
+                          state.lastSource === 'gemini'
+                            ? 'border-primary/30 text-primary bg-primary/5'
+                            : 'border-amber-500/30 text-amber-700 bg-amber-50'
+                        )}
+                        title={`Last response served by ${state.lastSource}`}
+                      >
+                        {state.lastSource}
+                      </span>
+                    )}
+                    <span className="data-mono text-[10px] text-slate-400">
+                      {formatRelative(state.lastRunAt)}
+                    </span>
+                  </div>
                 </div>
                 {showDetails && state.lastError && (
                   <p className="text-[10px] text-red-600 mt-1 break-words">

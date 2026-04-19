@@ -82,6 +82,20 @@ describe('AIScanStatusContext', () => {
     expect(result.current.statuses['assistant'].status).toBe('idle');
   });
 
+  it('records lastSource on reportSuccess when provided', () => {
+    const { result } = renderHook(() => useScanStatus(), { wrapper });
+    act(() => result.current.reportSuccess('intelligence-feed', 'openrouter'));
+    expect(result.current.statuses['intelligence-feed'].lastSource).toBe('openrouter');
+  });
+
+  it('preserves prior lastSource when reportSuccess omits the source', () => {
+    const { result } = renderHook(() => useScanStatus(), { wrapper });
+    act(() => result.current.reportSuccess('supply-risk', 'gemini'));
+    act(() => result.current.reportSuccess('supply-risk'));
+    expect(result.current.statuses['supply-risk'].lastSource).toBe('gemini');
+    expect(result.current.statuses['supply-risk'].runCount).toBe(2);
+  });
+
   it('throws when useScanStatus is called outside a provider', () => {
     const Consumer: React.FC = () => {
       useScanStatus();

@@ -18,9 +18,10 @@ import { useScanStatus } from '../contexts/AIScanStatusContext';
 import { createNotification } from '../services/notificationService';
 import { MaintenanceLog } from '../types';
 import { tsToMillis } from '../lib/utils';
-import { getAI, isGeminiConfigured } from '../lib/gemini';
-import { safeParse, SupplyRiskListSchema } from '../lib/aiSchemas';
-import { withRetry, classifyError, AIRetryError } from '../lib/aiRetry';
+import { isGeminiConfigured } from '../lib/gemini';
+import { SupplyRiskListSchema } from '../lib/aiSchemas';
+import { generateJSONWithFallback, isOpenRouterConfigured } from '../lib/aiProvider';
+import { classifyError, AIRetryError } from '../lib/aiRetry';
 
 const WINDOW_DAYS = 7;
 const SCAN_CAP = 25;
@@ -32,7 +33,7 @@ export const useSupplyRiskScan = () => {
   useEffect(() => {
     if (!profile || isDemoMode) return;
     if (!(profile.role === 'ncoic' || profile.role === 'leadership')) return;
-    if (!isGeminiConfigured()) return;
+    if (!isGeminiConfigured() && !isOpenRouterConfigured()) return;
 
     const scan = async () => {
       reportStart('supply-risk');
@@ -61,30 +62,24 @@ export const useSupplyRiskScan = () => {
           .map((l) => `${l.id}|${l.tail_number}: ${l.discrepancy}`)
           .join('\n');
 
-        const response = await withRetry(() => getAI().models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: [
-            {
-              role: 'user',
-              parts: [
-                {
-                  text: `SYSTEM: 92nd AMXS supply-chain risk classifier.
+        const { data: parsed, source } = await generateJSONWithFallback({
+          schema: SupplyRiskListSchema,
+          context: 'SupplyRiskScan',
+          prompt: `SYSTEM: 92nd AMXS supply-chain risk classifier.
 DATA (open discrepancies, id|tail: text):
 ${summary}
 
 TASK: For each entry that is LIKELY to require supply parts (NSN, kit, LRU), output one finding. Skip entries that are operator adjustments or soft-fault resets.
 CONSTRAINT: Use only ids present in DATA. Do not invent.
 OUTPUT JSON: [{"logId","tail_number","risk":"high|medium|low","likely_parts":[string],"rationale"}]`,
-                },
-              ],
-            },
-          ],
-          config: { responseMimeType: 'application/json', temperature: 0.1 },
-        }));
+        });
 
-        const parsed = safeParse(SupplyRiskListSchema, response.text, 'SupplyRiskScan');
         if (!parsed) {
-          reportError('supply-risk', { kind: 'parse', message: 'Gemini response failed schema validation', retryable: false });
+          reportError(
+            'supply-risk',
+            { kind: 'parse', message: 'AI response failed schema validation', retryable: false },
+            source,
+          );
           return;
         }
 
@@ -112,7 +107,7 @@ OUTPUT JSON: [{"logId","tail_number","risk":"high|medium|low","likely_parts":[st
             sentAt: serverTimestamp(),
           });
         }
-        reportSuccess('supply-risk');
+        reportSuccess('supply-risk', source);
       } catch (err) {
         console.error('Supply risk scan failed', err);
         const classified = err instanceof AIRetryError ? err.classified : classifyError(err);
