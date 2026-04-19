@@ -69,7 +69,7 @@ export const AIScanStatusProvider: React.FC<{ children: React.ReactNode }> = ({ 
         lastRunAt: Date.now(),
         lastError: undefined,
         lastSource: source ?? prev[kind].lastSource,
-        runCount: prev[kind].runCount + 1,
+        runCount: (prev[kind].runCount ?? 0) + 1,
       },
     }));
   }, []);
@@ -82,7 +82,7 @@ export const AIScanStatusProvider: React.FC<{ children: React.ReactNode }> = ({ 
         lastRunAt: Date.now(),
         lastError: { kind: error.kind, message: error.message },
         lastSource: source ?? prev[kind].lastSource,
-        runCount: prev[kind].runCount + 1,
+        runCount: (prev[kind].runCount ?? 0) + 1,
       },
     }));
   }, []);
