@@ -18,16 +18,18 @@ export const TopBar: React.FC<TopBarProps> = ({ activeUsers, setIsSidebarOpen })
 
   const navItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
-    { name: 'Maintenance Log', path: '/maintenance', icon: Wrench },
-    { name: 'DIFM Log', path: '/difm', icon: FileDown },
-    { name: 'G081 Gallery', path: '/g081', icon: Camera },
+    { name: 'Maintenance Log', path: '/ops/maintenance', icon: Wrench },
+    { name: 'DIFM Log', path: '/ops/difm', icon: FileDown },
+    { name: 'G081 Gallery', path: '/ops/g081', icon: Camera },
     { name: 'Training Tracker', path: '/training', icon: BarChart3 },
     { name: 'Personnel', path: '/personnel', icon: Users },
     { name: 'Support', path: '/support', icon: HelpCircle },
     { name: 'Onboarding', path: '/onboarding', icon: UserPlus },
   ];
 
-  const currentPathName = navItems.find(i => i.path === location.pathname)?.name || 'Dashboard';
+  const currentPathName =
+    navItems.find(i => i.path === location.pathname)?.name ||
+    (location.pathname === '/ops' ? 'Maintenance Log' : 'Dashboard');
 
   return (
     <header className="flex justify-between items-start p-8">

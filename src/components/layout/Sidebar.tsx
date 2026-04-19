@@ -1,20 +1,19 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  ChevronDown, 
-  ShieldAlert, 
-  ShieldCheck, 
-  LayoutDashboard, 
-  Wrench, 
-  FileDown, 
-  Camera, 
-  BarChart3, 
+import {
+  ChevronDown,
+  ShieldAlert,
+  ShieldCheck,
+  LayoutDashboard,
+  Wrench,
+  BarChart3,
   Users,
   HelpCircle,
   UserPlus,
   ClipboardList,
   Gauge,
   Stethoscope,
+  Shield,
   X,
   LucideIcon
 } from 'lucide-react';
@@ -56,20 +55,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const navItems: NavItem[] = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
-    { name: 'Maintenance Log', path: '/maintenance', icon: Wrench },
-    { name: 'DIFM Log', path: '/difm', icon: FileDown },
-    { name: 'G081 Gallery', path: '/g081', icon: Camera },
+    { name: 'Operations', path: '/ops', icon: Wrench },
     { name: 'Training Tracker', path: '/training', icon: BarChart3 },
     { name: 'Personnel', path: '/personnel', icon: Users },
     { name: 'Handoff', path: '/handoff', icon: ClipboardList },
     { name: 'Support', path: '/support', icon: HelpCircle },
   ];
 
-  if (profile?.role === 'ncoic' || profile?.role === 'leadership') {
-    navItems.push({ name: 'Diagnostics', path: '/diagnostics', icon: Stethoscope });
-    navItems.push({ name: 'Workload', path: '/workload', icon: Gauge });
-    navItems.push({ name: 'Onboarding', path: '/onboarding', icon: UserPlus });
-  }
+  const adminItems: NavItem[] = [
+    { name: 'Diagnostics', path: '/diagnostics', icon: Stethoscope },
+    { name: 'Workload', path: '/workload', icon: Gauge },
+    { name: 'Onboarding', path: '/onboarding', icon: UserPlus },
+  ];
+
+  const isAdminRole = profile?.role === 'ncoic' || profile?.role === 'leadership';
+  const isOnAdminRoute = adminItems.some(i => location.pathname === i.path);
+  const [isAdminOpen, setIsAdminOpen] = useState(isOnAdminRoute);
+
+  useEffect(() => {
+    if (isOnAdminRoute) setIsAdminOpen(true);
+  }, [isOnAdminRoute]);
+
+  const isNavItemActive = (path: string) => {
+    if (path === '/') return location.pathname === '/';
+    return location.pathname === path || location.pathname.startsWith(`${path}/`);
+  };
 
   return (
     <aside className={cn(
@@ -232,8 +242,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             onClick={() => setIsSidebarOpen(false)}
             className={cn(
               "flex items-center gap-3 px-4 py-3 text-[11px] font-black uppercase tracking-widest transition-all",
-              location.pathname === item.path 
-                ? "bg-white/10 text-primary border-r-2 border-primary" 
+              isNavItemActive(item.path)
+                ? "bg-white/10 text-primary border-r-2 border-primary"
                 : "text-white/60 hover:text-white hover:bg-white/5"
             )}
           >
@@ -241,6 +251,53 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {item.name}
           </Link>
         ))}
+
+        {isAdminRole && (
+          <div className="pt-4">
+            <button
+              onClick={() => setIsAdminOpen(!isAdminOpen)}
+              className={cn(
+                "w-full flex items-center gap-3 px-4 py-3 text-[11px] font-black uppercase tracking-widest transition-all",
+                isOnAdminRoute
+                  ? "bg-white/10 text-primary border-r-2 border-primary"
+                  : "text-white/60 hover:text-white hover:bg-white/5"
+              )}
+            >
+              <Shield className="w-4 h-4" />
+              <span>Admin</span>
+              <ChevronDown className={cn("ml-auto w-3 h-3 transition-transform", isAdminOpen && "rotate-180")} />
+            </button>
+            <AnimatePresence initial={false}>
+              {isAdminOpen && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="pl-4 space-y-1 mt-1">
+                    {adminItems.map((item) => (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => setIsSidebarOpen(false)}
+                        className={cn(
+                          "flex items-center gap-3 px-4 py-2.5 text-[11px] font-black uppercase tracking-widest transition-all",
+                          location.pathname === item.path
+                            ? "bg-white/10 text-primary border-r-2 border-primary"
+                            : "text-white/60 hover:text-white hover:bg-white/5"
+                        )}
+                      >
+                        <item.icon className="w-4 h-4" />
+                        {item.name}
+                      </Link>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
       </nav>
 
       <div className="p-8 border-t border-white/10">
