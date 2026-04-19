@@ -3,15 +3,18 @@ import { Stethoscope, RefreshCw, AlertTriangle } from 'lucide-react';
 import { collection, onSnapshot, query, where, orderBy, limit } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { useScanStatus } from '../contexts/AIScanStatusContext';
 import { MaintenanceLog } from '../types';
 import { getAI, isGeminiConfigured } from '../lib/gemini';
 import { safeParse, DiagnosticsSchema, DiagnosticFindingParsed } from '../lib/aiSchemas';
+import { withRetry, classifyError, AIRetryError } from '../lib/aiRetry';
 import { cn } from '../lib/utils';
 
 const MAX_LOGS = 60;
 
 export const Diagnostics: React.FC = () => {
   const { profile } = useAuth();
+  const { reportStart, reportSuccess, reportError } = useScanStatus();
   const [logs, setLogs] = useState<MaintenanceLog[]>([]);
   const [findings, setFindings] = useState<DiagnosticFindingParsed[]>([]);
   const [loading, setLoading] = useState(false);
@@ -59,6 +62,7 @@ export const Diagnostics: React.FC = () => {
     }
     setLoading(true);
     setError(null);
+    reportStart('diagnostics');
     try {
       const summary = byTail
         .slice(0, 10)
@@ -70,7 +74,7 @@ export const Diagnostics: React.FC = () => {
         )
         .join('\n');
 
-      const response = await getAI().models.generateContent({
+      const response = await withRetry(() => getAI().models.generateContent({
         model: 'gemini-2.5-flash',
         contents: [
           {
@@ -89,17 +93,21 @@ OUTPUT JSON: [{"tail_number","component","risk":"high|medium|low","pattern","rec
           },
         ],
         config: { responseMimeType: 'application/json', temperature: 0.15 },
-      });
+      }));
       const parsed = safeParse(DiagnosticsSchema, response.text, 'Diagnostics');
       if (!parsed) {
         setError('AI returned an unparseable response. Try again in a moment.');
         setFindings([]);
+        reportError('diagnostics', { kind: 'parse', message: 'Gemini response failed schema validation', retryable: false });
       } else {
         setFindings(parsed);
+        reportSuccess('diagnostics');
       }
     } catch (err) {
       console.error('Diagnostics failed', err);
-      setError((err as Error).message);
+      const classified = err instanceof AIRetryError ? err.classified : classifyError(err);
+      setError(classified.message);
+      reportError('diagnostics', classified);
     } finally {
       setLoading(false);
     }

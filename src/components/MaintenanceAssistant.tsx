@@ -10,14 +10,35 @@ import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { useScanStatus } from '../contexts/AIScanStatusContext';
 import { MOCK_LOGS, MOCK_DIFM, MOCK_TRAINING } from '../mockData';
 import { cn } from '../lib/utils';
 import { getAI, isGeminiConfigured } from '../lib/gemini';
+import { withRetry, classifyError, AIRetryError } from '../lib/aiRetry';
+
+const chatStorageKey = (uid?: string) => (uid ? `amxs-ai-chat:${uid}` : null);
+
+type ChatMessage = { role: 'user' | 'assistant'; content: string };
+
+const loadPersistedMessages = (uid?: string): ChatMessage[] => {
+  const key = chatStorageKey(uid);
+  if (!key || typeof window === 'undefined') return [];
+  try {
+    const raw = window.sessionStorage.getItem(key);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed as ChatMessage[];
+    return [];
+  } catch {
+    return [];
+  }
+};
 
 export const MaintenanceAssistant: React.FC = () => {
-  const { profile, isDemoMode } = useAuth();
+  const { user, profile, isDemoMode } = useAuth();
+  const { reportStart, reportSuccess, reportError } = useScanStatus();
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<{ role: 'user' | 'assistant', content: string }[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => loadPersistedMessages(user?.uid));
   const [input, setInput] = useState('');
   const [isThinking, setIsThinking] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -27,6 +48,20 @@ export const MaintenanceAssistant: React.FC = () => {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, isThinking]);
+
+  useEffect(() => {
+    const key = chatStorageKey(user?.uid);
+    if (!key || typeof window === 'undefined') return;
+    try {
+      if (messages.length === 0) {
+        window.sessionStorage.removeItem(key);
+      } else {
+        window.sessionStorage.setItem(key, JSON.stringify(messages));
+      }
+    } catch {
+      // sessionStorage quota/availability issues — non-fatal
+    }
+  }, [messages, user?.uid]);
 
   const maintenanceTools: FunctionDeclaration[] = [
     {
@@ -83,29 +118,30 @@ export const MaintenanceAssistant: React.FC = () => {
       return;
     }
 
+    reportStart('assistant');
     try {
       const ai = getAI();
-      const response = await ai.models.generateContent({
+      const response = await withRetry(() => ai.models.generateContent({
         model: "gemini-2.5-flash",
         contents: userMsg,
         config: {
           systemInstruction: `You are the 92nd AMXS Maintenance Assistant. Your mission is to assist 92nd Air Refueling Squadron maintainers with technical data analysis and readiness reporting.
-          
+
           CAPABILITIES:
           - You can query maintenance logs, DIFM inventory, and training compliance data using real-time database functions.
           - Use these tools to provide factual, data-driven answers about squadron readiness.
-          
+
           TONE:
-          - Professional, technical, and mission-focused military tone. 
+          - Professional, technical, and mission-focused military tone.
           - Keep responses concise and scannable using tables and bullet points.
-          
+
           FORMATTING:
           - Always use Markdown tables for data.
           - Highlight critical issues (RED BALLS or EXPIRED training) in bold.`,
           tools: [{ functionDeclarations: maintenanceTools }],
           temperature: 0,
         }
-      });
+      }));
 
       if (response.functionCalls) {
         const toolOutputs: any[] = [];
@@ -184,7 +220,7 @@ export const MaintenanceAssistant: React.FC = () => {
         }
 
         // Send tool outputs back to model to get final response
-        const finalResponse = await ai.models.generateContent({
+        const finalResponse = await withRetry(() => ai.models.generateContent({
           model: "gemini-2.5-flash",
           contents: [
             { role: 'user', parts: [{ text: userMsg }] },
@@ -203,7 +239,7 @@ export const MaintenanceAssistant: React.FC = () => {
             systemInstruction: `Analyze the provided data result and summarize it for the maintainer.`,
             temperature: 0,
           }
-        });
+        }));
 
         if (finalResponse.text) {
           setMessages(prev => [...prev, { role: 'assistant', content: finalResponse.text! }]);
@@ -211,12 +247,14 @@ export const MaintenanceAssistant: React.FC = () => {
       } else if (response.text) {
         setMessages(prev => [...prev, { role: 'assistant', content: response.text }]);
       }
+      reportSuccess('assistant');
     } catch (err) {
       console.error("AI Assistant Error:", err);
-      const detail = err instanceof Error ? err.message : String(err);
+      const classified = err instanceof AIRetryError ? err.classified : classifyError(err);
+      reportError('assistant', classified);
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: `SYSTEM ERROR: ${detail}`
+        content: `SYSTEM ERROR (${classified.kind}): ${classified.message}`
       }]);
     } finally {
       setIsThinking(false);
