@@ -61,6 +61,7 @@ const AppContent: React.FC = () => {
   return (
     <TourContext.Provider value={tour}>
     <AppLayout>
+      <ErrorBoundary>
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/ops/*" element={<Operations />} />
@@ -80,6 +81,7 @@ const AppContent: React.FC = () => {
         {(profile?.role === 'ncoic' || profile?.role === 'leadership') && <Route path="/onboarding" element={<Onboarding />} />}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
+      </ErrorBoundary>
       <MaintenanceAssistant />
     </AppLayout>
     </TourContext.Provider>
