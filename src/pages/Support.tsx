@@ -1,19 +1,106 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  HelpCircle, 
-  Wifi, 
-  WifiOff, 
-  Users, 
-  ChevronRight, 
-  ShieldCheck, 
-  ShieldAlert 
+import {
+  HelpCircle,
+  Wifi,
+  WifiOff,
+  Users,
+  ChevronRight,
+  ShieldCheck,
+  ShieldAlert,
+  Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../contexts/AuthContext';
+import { useScanStatus, ScanKind, ScanState } from '../contexts/AIScanStatusContext';
 import { cn } from '../lib/utils';
 
+const SCAN_LABELS: Record<ScanKind, string> = {
+  'assistant': 'Maintenance Assistant',
+  'supply-risk': 'Supply Risk Scan',
+  'g081-expiry': 'G081 Expiry Scan',
+  'training': 'Training Compliance Scan',
+  'diagnostics': 'Predictive Diagnostics',
+  'intelligence-feed': 'Intelligence Feed',
+};
+
+const SCAN_ORDER: ScanKind[] = [
+  'assistant',
+  'intelligence-feed',
+  'supply-risk',
+  'training',
+  'g081-expiry',
+  'diagnostics',
+];
+
+const formatRelative = (ms?: number): string => {
+  if (!ms) return 'Never';
+  const delta = Date.now() - ms;
+  if (delta < 60_000) return 'Just now';
+  const mins = Math.floor(delta / 60_000);
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+};
+
+const dotColor = (state: ScanState): string => {
+  if (state.status === 'running') return 'bg-sky-500 animate-pulse';
+  if (state.status === 'error') {
+    if (state.lastError?.kind === 'auth' || state.lastError?.kind === 'parse' || state.lastError?.kind === 'unknown') {
+      return 'bg-red-500';
+    }
+    return 'bg-amber-500';
+  }
+  if (state.status === 'success') return 'bg-emerald-500';
+  return 'bg-slate-300';
+};
+
+const AIStatusPanel: React.FC<{ showDetails: boolean }> = ({ showDetails }) => {
+  const { statuses } = useScanStatus();
+  return (
+    <section className="space-y-6">
+      <h3 className="text-xl font-black tracking-tighter uppercase flex items-center gap-3 text-slate-900">
+        <Sparkles className="w-6 h-6 text-primary" /> AI System Status
+      </h3>
+      <div className="p-6 bg-slate-50 border border-outline space-y-3">
+        {SCAN_ORDER.map((kind) => {
+          const state = statuses[kind];
+          return (
+            <div key={kind} className="flex items-start gap-3 text-xs">
+              <span
+                className={cn('w-2.5 h-2.5 rounded-full mt-1.5 shrink-0', dotColor(state))}
+                title={state.status}
+              />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-black uppercase tracking-tight text-slate-900 text-[11px]">
+                    {SCAN_LABELS[kind]}
+                  </span>
+                  <span className="data-mono text-[10px] text-slate-400">
+                    {formatRelative(state.lastRunAt)}
+                  </span>
+                </div>
+                {showDetails && state.lastError && (
+                  <p className="text-[10px] text-red-600 mt-1 break-words">
+                    <span className="font-bold uppercase">{state.lastError.kind}:</span> {state.lastError.message}
+                  </p>
+                )}
+                {showDetails && state.status === 'running' && (
+                  <p className="text-[10px] text-sky-600 mt-1">Running…</p>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+};
+
 export const Support: React.FC = () => {
-  const { updateUserPassword } = useAuth();
+  const { profile, updateUserPassword } = useAuth();
+  const showAIDetails = profile?.role === 'ncoic' || profile?.role === 'leadership';
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [passData, setPassData] = useState({ new: '', confirm: '' });
   const [passStatus, setPassStatus] = useState<{ type: 'success' | 'error', msg: string } | null>(null);
@@ -133,6 +220,9 @@ export const Support: React.FC = () => {
             </div>
           </div>
         </section>
+      </div>
+      <div className="p-10">
+        <AIStatusPanel showDetails={showAIDetails} />
       </div>
     </div>
 

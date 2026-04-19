@@ -1,37 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Users, 
-  Clock, 
-  X, 
-  UserPlus 
+import {
+  Users,
+  Clock,
+  UserPlus
 } from 'lucide-react';
-import { 
-  doc, 
-  setDoc, 
-  collection, 
-  query, 
-  where, 
+import {
+  doc,
+  setDoc,
+  collection,
+  query,
+  where,
   onSnapshot
 } from 'firebase/firestore';
-import { motion, AnimatePresence } from 'motion/react';
+import { AnimatePresence } from 'motion/react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
-import { UserProfile, UserRole, AMUType, ShopType } from '../types';
+import { UserProfile } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { AMUS, SHOPS } from '../mockData';
+import { OnboardingApprovalForm } from '../components/OnboardingApprovalForm';
 
 export const Onboarding: React.FC = () => {
   const { profile } = useAuth();
   const [pendingUsers, setPendingUsers] = useState<UserProfile[]>([]);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    rank: '',
-    man_number: '',
-    shopId: '' as ShopType | '',
-    amuId: '' as AMUType | '',
-    role: 'technician' as UserRole
-  });
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!profile) return;
@@ -42,57 +32,6 @@ export const Onboarding: React.FC = () => {
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'users'));
     return unsubscribe;
   }, [profile]);
-
-  useEffect(() => {
-    if (selectedUser) {
-      setFormData({
-        name: selectedUser.name,
-        rank: selectedUser.rank || '',
-        man_number: selectedUser.man_number !== 'PENDING' ? selectedUser.man_number : '',
-        shopId: selectedUser.shopId !== 'PENDING' ? (selectedUser.shopId as ShopType) : (profile?.shopId as ShopType) || '',
-        amuId: selectedUser.amuId !== 'NONE' ? selectedUser.amuId : (profile?.amuId as AMUType) || '',
-        role: 'technician'
-      });
-    }
-  }, [selectedUser, profile]);
-
-  const ALLOWED_APPROVAL_ROLES: UserRole[] =
-    profile?.role === 'leadership'
-      ? ['technician', 'ncoic', 'leadership']
-      : ['technician', 'ncoic'];
-
-  const handleApprove = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedUser) return;
-    if (!ALLOWED_APPROVAL_ROLES.includes(formData.role)) {
-      alert(`Your role (${profile?.role}) is not allowed to assign "${formData.role}".`);
-      return;
-    }
-    setLoading(true);
-    try {
-      // Whitelist the fields that can be written here so a crafted client
-      // can't ride the approval write to modify unrelated attributes
-      // (createdAt, isDemo, etc.).
-      await setDoc(doc(db, 'users', selectedUser.uid), {
-        uid: selectedUser.uid,
-        email: selectedUser.email,
-        name: formData.name,
-        rank: formData.rank,
-        man_number: formData.man_number,
-        shopId: formData.shopId,
-        amuId: formData.amuId,
-        role: formData.role,
-        status: 'active',
-      });
-      setSelectedUser(null);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      alert(`Approval failed: ${message}`);
-      console.error('Approval error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleReject = async (uid: string) => {
     if (!window.confirm('Are you sure you want to reject this access request?')) return;
@@ -130,13 +69,13 @@ export const Onboarding: React.FC = () => {
               </div>
             </div>
             <div className="flex gap-4">
-              <button 
+              <button
                 onClick={() => setSelectedUser(u)}
                 className="sleek-button px-8 py-3"
               >
                 Approve & Assign
               </button>
-              <button 
+              <button
                 onClick={() => handleReject(u.uid)}
                 className="sleek-button bg-transparent !text-safety-orange border border-outline hover:bg-safety-orange/10 px-8 py-3"
               >
@@ -154,108 +93,12 @@ export const Onboarding: React.FC = () => {
 
       <AnimatePresence>
         {selectedUser && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/90 backdrop-blur-md">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-surface w-full max-w-2xl rounded-none shadow-2xl border border-outline overflow-hidden"
-            >
-              <div className="p-10 border-b border-outline bg-slate-50 flex justify-between items-center">
-                <div>
-                  <h3 className="text-3xl font-black tracking-tighter uppercase leading-none text-slate-900">Onboard Personnel</h3>
-                  <p className="tech-label mt-3 text-slate-500">Assign credentials for {selectedUser.name}</p>
-                </div>
-                <button onClick={() => setSelectedUser(null)} className="p-2 hover:bg-slate-100 transition-colors text-slate-900">
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-
-              <form onSubmit={handleApprove} className="p-8 space-y-6">
-                <div className="grid grid-cols-2 gap-8">
-                  <div className="space-y-2">
-                    <label className="tech-label">Full Name</label>
-                    <input 
-                      required
-                      className="sleek-input w-full"
-                      value={formData.name}
-                      onChange={e => setFormData({...formData, name: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="tech-label">Man Number</label>
-                    <input 
-                      required
-                      className="sleek-input w-full data-mono"
-                      placeholder="00000"
-                      value={formData.man_number}
-                      onChange={e => setFormData({...formData, man_number: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="tech-label">AMU Assignment</label>
-                    <select 
-                      className="sleek-input w-full"
-                      value={formData.amuId}
-                      onChange={e => setFormData({...formData, amuId: e.target.value as AMUType})}
-                    >
-                      {AMUS.map(a => <option key={a} value={a}>{a}</option>)}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="tech-label">Shop Assignment</label>
-                    <select 
-                      className="sleek-input w-full"
-                      value={formData.shopId}
-                      onChange={e => setFormData({...formData, shopId: e.target.value as ShopType})}
-                    >
-                      {SHOPS.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="tech-label">System Role</label>
-                    <select
-                      className="sleek-input w-full"
-                      value={formData.role}
-                      onChange={e => setFormData({...formData, role: e.target.value as UserRole})}
-                    >
-                      {ALLOWED_APPROVAL_ROLES.map(r => (
-                        <option key={r} value={r}>
-                          {r === 'ncoic' ? 'NCOIC' : r.charAt(0).toUpperCase() + r.slice(1)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="tech-label">Rank</label>
-                    <input 
-                      required
-                      className="sleek-input w-full"
-                      value={formData.rank}
-                      onChange={e => setFormData({...formData, rank: e.target.value})}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex gap-4 pt-6">
-                  <button 
-                    type="button"
-                    onClick={() => setSelectedUser(null)}
-                    className="sleek-button bg-transparent !text-slate-900 border border-outline hover:bg-slate-100 flex-1"
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    type="submit"
-                    disabled={loading}
-                    className="sleek-button flex-1"
-                  >
-                    {loading ? 'Processing...' : 'Approve Access'}
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
+          <OnboardingApprovalForm
+            key={selectedUser.uid}
+            user={selectedUser}
+            profile={profile}
+            onClose={() => setSelectedUser(null)}
+          />
         )}
       </AnimatePresence>
     </div>
