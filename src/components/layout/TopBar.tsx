@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
-import { LogOut, LayoutDashboard, Wrench, FileDown, Camera, BarChart3, Users, HelpCircle, UserPlus, Menu } from 'lucide-react';
+import { LogOut, LayoutDashboard, Wrench, FileDown, Camera, BarChart3, Users, HelpCircle, UserPlus, Menu, ClipboardList, Stethoscope, Gauge } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { NotificationBell } from '../common/NotificationBell';
 import { PresenceIndicator } from '../common/PresenceIndicator';
@@ -18,16 +18,21 @@ export const TopBar: React.FC<TopBarProps> = ({ activeUsers, setIsSidebarOpen })
 
   const navItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
-    { name: 'Maintenance Log', path: '/maintenance', icon: Wrench },
-    { name: 'DIFM Log', path: '/difm', icon: FileDown },
-    { name: 'G081 Gallery', path: '/g081', icon: Camera },
+    { name: 'Maintenance Log', path: '/ops/maintenance', icon: Wrench },
+    { name: 'DIFM Log', path: '/ops/difm', icon: FileDown },
+    { name: 'G081 Gallery', path: '/ops/g081', icon: Camera },
     { name: 'Training Tracker', path: '/training', icon: BarChart3 },
     { name: 'Personnel', path: '/personnel', icon: Users },
+    { name: 'Shift Handoff', path: '/handoff', icon: ClipboardList },
     { name: 'Support', path: '/support', icon: HelpCircle },
+    { name: 'Diagnostics', path: '/diagnostics', icon: Stethoscope },
+    { name: 'Workload', path: '/workload', icon: Gauge },
     { name: 'Onboarding', path: '/onboarding', icon: UserPlus },
   ];
 
-  const currentPathName = navItems.find(i => i.path === location.pathname)?.name || 'Dashboard';
+  const currentPathName =
+    navItems.find(i => i.path === location.pathname)?.name ||
+    (location.pathname === '/ops' ? 'Maintenance Log' : 'Dashboard');
 
   return (
     <header className="flex justify-between items-start p-8">
