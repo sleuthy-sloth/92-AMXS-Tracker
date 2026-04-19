@@ -1,26 +1,19 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { 
-  Plus, 
-  Search, 
-  Grid, 
-  List, 
-  UploadCloud, 
-  FileSpreadsheet, 
-  FileText, 
-  X, 
-  Camera, 
-  Loader2, 
-  CheckCircle2, 
-  ShieldAlert, 
-  ShieldCheck, 
-  Wrench, 
-  ChevronRight, 
-  Send, 
-  Trash2, 
-  Clock 
+import {
+  Search,
+  Grid,
+  List,
+  UploadCloud,
+  FileSpreadsheet,
+  FileText,
+  X,
+  ShieldAlert,
+  ChevronRight,
+  Send,
+  Clock
 } from 'lucide-react';
-import { serverTimestamp, collection, query, where, onSnapshot, addDoc, updateDoc, doc, limit } from 'firebase/firestore';
-import { parseISO, isBefore, addDays, format } from 'date-fns';
+import { collection, query, where, onSnapshot, addDoc, limit } from 'firebase/firestore';
+import { parseISO, isBefore, addDays } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { TrainingRecord, UserProfile } from '../types';
@@ -32,8 +25,8 @@ import { exportTrainingToCSV, exportTrainingToPDF } from '../lib/exportUtils';
 
 export const TrainingTracker: React.FC = () => {
   const { profile, isDemoMode } = useAuth();
-  const [training, setTraining] = useState<TrainingRecord[]>([]);
-  const [personnel, setPersonnel] = useState<UserProfile[]>([]);
+  const [firestoreTraining, setFirestoreTraining] = useState<TrainingRecord[]>([]);
+  const [firestorePersonnel, setFirestorePersonnel] = useState<UserProfile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<TrainingRecord | null>(null);
 
@@ -43,29 +36,36 @@ export const TrainingTracker: React.FC = () => {
   const [endDate, setEndDate] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
 
-  useEffect(() => {
-    if (!profile) return;
-
+  const training = useMemo<TrainingRecord[]>(() => {
+    if (!profile) return [];
     if (isDemoMode) {
       const isTechnician = profile.role === 'technician';
-      
-      const filteredMockTraining = MOCK_TRAINING.filter(t => {
+      return MOCK_TRAINING.filter(t => {
         if (isTechnician) return t.man_number === profile.man_number;
         if (profile.amuId !== 'ALL' && t.amuId !== profile.amuId) return false;
         if (profile.shopId !== 'ALL' && t.shopId !== profile.shopId) return false;
         return true;
       });
-      setTraining(filteredMockTraining);
+    }
+    return firestoreTraining;
+  }, [profile, isDemoMode, firestoreTraining]);
 
-      const filteredMockPersonnel = MOCK_PERSONNEL.filter(p => {
+  const personnel = useMemo<UserProfile[]>(() => {
+    if (!profile) return [];
+    if (isDemoMode) {
+      const isTechnician = profile.role === 'technician';
+      return MOCK_PERSONNEL.filter(p => {
         if (isTechnician) return p.man_number === profile.man_number;
         if (profile.amuId !== 'ALL' && p.amuId !== profile.amuId) return false;
         if (profile.shopId !== 'ALL' && p.shopId !== profile.shopId) return false;
         return true;
       });
-      setPersonnel(filteredMockPersonnel);
-      return;
     }
+    return firestorePersonnel;
+  }, [profile, isDemoMode, firestorePersonnel]);
+
+  useEffect(() => {
+    if (!profile || isDemoMode) return;
 
     const isTechnician = profile.role === 'technician';
 
@@ -100,7 +100,7 @@ export const TrainingTracker: React.FC = () => {
     }
     
     const unsubTraining = onSnapshot(qTraining, (snap) => {
-      setTraining(snap.docs.map(d => ({ id: d.id, ...d.data() } as TrainingRecord)));
+      setFirestoreTraining(snap.docs.map(d => ({ id: d.id, ...d.data() } as TrainingRecord)));
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'training'));
 
     let qPersonnel;
@@ -134,7 +134,7 @@ export const TrainingTracker: React.FC = () => {
     }
     
     const unsubPersonnel = onSnapshot(qPersonnel, (snap) => {
-      setPersonnel(snap.docs.map(d => ({ id: d.id, ...d.data() } as any)));
+      setFirestorePersonnel(snap.docs.map(d => d.data() as UserProfile));
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'users'));
 
     return () => {

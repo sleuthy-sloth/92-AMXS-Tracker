@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
-import { LogOut, LayoutDashboard, Wrench, FileDown, Camera, BarChart3, Users, HelpCircle, UserPlus, Menu } from 'lucide-react';
+import { LogOut, LayoutDashboard, Wrench, FileDown, Camera, BarChart3, Users, HelpCircle, UserPlus, Menu, ClipboardList, Stethoscope, Gauge } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { NotificationBell } from '../common/NotificationBell';
 import { PresenceIndicator } from '../common/PresenceIndicator';
@@ -23,7 +23,10 @@ export const TopBar: React.FC<TopBarProps> = ({ activeUsers, setIsSidebarOpen })
     { name: 'G081 Gallery', path: '/ops/g081', icon: Camera },
     { name: 'Training Tracker', path: '/training', icon: BarChart3 },
     { name: 'Personnel', path: '/personnel', icon: Users },
+    { name: 'Shift Handoff', path: '/handoff', icon: ClipboardList },
     { name: 'Support', path: '/support', icon: HelpCircle },
+    { name: 'Diagnostics', path: '/diagnostics', icon: Stethoscope },
+    { name: 'Workload', path: '/workload', icon: Gauge },
     { name: 'Onboarding', path: '/onboarding', icon: UserPlus },
   ];
 
