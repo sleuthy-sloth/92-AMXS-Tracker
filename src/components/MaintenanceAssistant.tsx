@@ -12,7 +12,7 @@ import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { MOCK_LOGS, MOCK_DIFM, MOCK_TRAINING } from '../mockData';
 import { cn } from '../lib/utils';
-import { getAI } from '../lib/gemini';
+import { getAI, isGeminiConfigured } from '../lib/gemini';
 
 export const MaintenanceAssistant: React.FC = () => {
   const { profile, isDemoMode } = useAuth();
@@ -74,6 +74,15 @@ export const MaintenanceAssistant: React.FC = () => {
     setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
     setIsThinking(true);
 
+    if (!isGeminiConfigured()) {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'SYSTEM OFFLINE: Gemini API key is not configured. Set `GEMINI_API_KEY` in `.env` (dev) or the `GEMINI_API_KEY` repository secret (prod build) and redeploy.'
+      }]);
+      setIsThinking(false);
+      return;
+    }
+
     try {
       const ai = getAI();
       const response = await ai.models.generateContent({
@@ -129,21 +138,35 @@ export const MaintenanceAssistant: React.FC = () => {
                }).slice(0, 10);
              }
           } else {
-             // Real Firestore logic
-             const collectionName = call.name === "query_maintenance_logs" ? "logs" : 
+             // Real Firestore logic. Mirrors the query shape that
+             // firestore.rules permits for each collection — scoped to
+             // the caller's shop/AMU and to non-demo data.
+             const collectionName = call.name === "query_maintenance_logs" ? "logs" :
                                    call.name === "query_difm_inventory" ? "difm" : "training";
-             
-             let q = query(collection(db, collectionName), limit(20));
-             
-             // Apply shop filter if applicable
-             if (profile?.shopId !== 'ALL' && profile?.shopId !== 'LEADERSHIP') {
-               q = query(q, where('shopId', '==', profile?.shopId));
+
+             let q = query(collection(db, collectionName), where('isDemo', '==', false), limit(20));
+
+             if (profile?.shopId && profile.shopId !== 'ALL' && profile.shopId !== 'LEADERSHIP') {
+               q = query(q, where('shopId', '==', profile.shopId));
+             }
+             if (profile?.amuId && profile.amuId !== 'ALL' && profile.amuId !== 'NONE') {
+               q = query(q, where('amuId', '==', profile.amuId));
              }
 
              const args = call.args as any;
              if (args.tail_number) q = query(q, where('tail_number', '==', args.tail_number));
-             if (args.status) q = query(q, where('status', '==', args.status));
-             if (args.shift) q = query(q, where('shift', '==', args.shift));
+             if (args.status && collectionName !== 'logs') {
+               q = query(q, where('status', '==', args.status));
+             }
+             if (args.shift && collectionName === 'logs') {
+               q = query(q, where('shift', '==', args.shift));
+             }
+             if (args.isRedBall && collectionName === 'logs') {
+               q = query(q, where('isRedBall', '==', true));
+             }
+             if (args.course_code && collectionName === 'training') {
+               q = query(q, where('course_code', '==', args.course_code));
+             }
 
              const snap = await getDocs(q);
              data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -155,12 +178,17 @@ export const MaintenanceAssistant: React.FC = () => {
           });
         }
 
+        const modelParts = response.candidates?.[0]?.content?.parts;
+        if (!modelParts) {
+          throw new Error('Gemini returned no candidate parts for the tool round-trip.');
+        }
+
         // Send tool outputs back to model to get final response
         const finalResponse = await ai.models.generateContent({
           model: "gemini-2.5-flash",
           contents: [
             { role: 'user', parts: [{ text: userMsg }] },
-            { role: 'model', parts: response.candidates[0].content.parts },
+            { role: 'model', parts: modelParts },
             {
               role: 'user',
               parts: toolOutputs.map(o => ({
@@ -185,7 +213,11 @@ export const MaintenanceAssistant: React.FC = () => {
       }
     } catch (err) {
       console.error("AI Assistant Error:", err);
-      setMessages(prev => [...prev, { role: 'assistant', content: "SYSTEM ERROR: Signal interference during operational analysis. Terminal link unstable." }]);
+      const detail = err instanceof Error ? err.message : String(err);
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: `SYSTEM ERROR: ${detail}`
+      }]);
     } finally {
       setIsThinking(false);
     }
