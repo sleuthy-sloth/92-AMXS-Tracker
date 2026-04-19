@@ -21,18 +21,26 @@ import { Login } from './pages/Login';
 import { Setup } from './pages/Setup';
 import { PendingApproval } from './pages/PendingApproval';
 import { Onboarding } from './pages/Onboarding';
+import { Handoff } from './pages/Handoff';
+import { Workload } from './pages/Workload';
+import { Diagnostics } from './pages/Diagnostics';
+import { SkillMatrix } from './pages/SkillMatrix';
 
 // Components
 import { MaintenanceAssistant } from './components/MaintenanceAssistant';
 
 // Hooks
 import { useProactiveTrainingScan } from './hooks/useProactiveTrainingScan';
+import { useG081ExpiryScan } from './hooks/useG081ExpiryScan';
+import { useSupplyRiskScan } from './hooks/useSupplyRiskScan';
 
 const AppContent: React.FC = () => {
   const { user, profile, loading } = useAuth();
   
   // Proactive compliance monitoring
   useProactiveTrainingScan();
+  useG081ExpiryScan();
+  useSupplyRiskScan();
 
   if (loading) {
     return (
@@ -59,6 +67,12 @@ const AppContent: React.FC = () => {
         <Route path="/training" element={<TrainingTracker />} />
         <Route path="/personnel" element={<Personnel />} />
         <Route path="/support" element={<Support />} />
+        <Route path="/handoff" element={<Handoff />} />
+        <Route path="/diagnostics" element={<Diagnostics />} />
+        <Route path="/skills" element={<SkillMatrix />} />
+        {(profile?.role === 'ncoic' || profile?.role === 'leadership') && (
+          <Route path="/workload" element={<Workload />} />
+        )}
         {(profile?.role === 'ncoic' || profile?.role === 'leadership') && <Route path="/onboarding" element={<Onboarding />} />}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

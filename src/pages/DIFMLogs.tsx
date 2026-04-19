@@ -7,7 +7,7 @@ import {
   Package as PackageIcon, 
   History as HistoryIcon 
 } from 'lucide-react';
-import { serverTimestamp, collection, query, where, onSnapshot, addDoc, updateDoc, doc, deleteDoc } from 'firebase/firestore';
+import { serverTimestamp, collection, query, where, onSnapshot, addDoc, updateDoc, doc, deleteDoc, limit } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { DIFMLog } from '../types';
@@ -59,12 +59,14 @@ export const DIFMLogs: React.FC = () => {
         constraints.push(where('shopId', '==', profile.shopId));
       }
 
+      constraints.push(limit(500));
       q = query(queryRef, ...constraints);
     } else {
       q = query(
-        collection(db, 'difm'), 
+        collection(db, 'difm'),
         where('amuId', '==', profile.amuId),
-        where('shopId', '==', profile.shopId)
+        where('shopId', '==', profile.shopId),
+        limit(500)
       );
     }
 

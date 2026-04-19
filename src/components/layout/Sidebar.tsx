@@ -9,9 +9,13 @@ import {
   FileDown, 
   Camera, 
   BarChart3, 
-  Users, 
-  HelpCircle, 
+  Users,
+  HelpCircle,
   UserPlus,
+  ClipboardList,
+  Gauge,
+  Stethoscope,
+  Grid3x3,
   X,
   LucideIcon
 } from 'lucide-react';
@@ -58,10 +62,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { name: 'G081 Gallery', path: '/g081', icon: Camera },
     { name: 'Training Tracker', path: '/training', icon: BarChart3 },
     { name: 'Personnel', path: '/personnel', icon: Users },
+    { name: 'Handoff', path: '/handoff', icon: ClipboardList },
+    { name: 'Diagnostics', path: '/diagnostics', icon: Stethoscope },
+    { name: 'Skill Matrix', path: '/skills', icon: Grid3x3 },
     { name: 'Support', path: '/support', icon: HelpCircle },
   ];
 
   if (profile?.role === 'ncoic' || profile?.role === 'leadership') {
+    navItems.push({ name: 'Workload', path: '/workload', icon: Gauge });
     navItems.push({ name: 'Onboarding', path: '/onboarding', icon: UserPlus });
   }
 
