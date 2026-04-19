@@ -69,7 +69,16 @@ export const useG081ExpiryScan = () => {
         reportSuccess('g081-expiry');
       } catch (err) {
         console.error('G081 expiry scan failed', err);
-        reportError('g081-expiry', classifyError(err));
+        const classified = classifyError(err);
+        reportError('g081-expiry', classified);
+        await createNotification({
+          shopId: profile.shopId,
+          amuId: profile.amuId,
+          type: 'system',
+          title: 'G081 Expiry Scan Failed',
+          message: `Background verification scan could not complete (${classified.kind}). Data may be stale.`,
+          metadata: { kind: classified.kind },
+        });
       }
     };
 
