@@ -4,9 +4,9 @@ import { motion } from 'motion/react';
 import { MaintenanceLog, TrainingRecord } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import { useScanStatus } from '../../contexts/AIScanStatusContext';
-import { getAI } from '../../lib/gemini';
-import { safeParse, TrendAlertsSchema } from '../../lib/aiSchemas';
-import { withRetry, classifyError, AIRetryError } from '../../lib/aiRetry';
+import { TrendAlertsSchema } from '../../lib/aiSchemas';
+import { generateJSONWithFallback } from '../../lib/aiProvider';
+import { classifyError, AIRetryError } from '../../lib/aiRetry';
 import { cn } from '../../lib/utils';
 
 type IntelAlert = {
@@ -54,14 +54,10 @@ export const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[]; training: Trai
             return;
           }
 
-          const response = await withRetry(() => getAI().models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: [
-              {
-                role: 'user',
-                parts: [
-                  {
-                    text: `SYSTEM ROLE: 92nd AMXS Operational Intelligence Engine.
+          const { data, source } = await generateJSONWithFallback({
+            schema: TrendAlertsSchema,
+            context: 'IntelligenceFeed',
+            prompt: `SYSTEM ROLE: 92nd AMXS Operational Intelligence Engine.
               MISSION: Provide forensic analysis of maintenance and training data.
 
               DATA SOURCE (Shop: ${profile.shopId}, AMU: ${profile.amuId}):
@@ -72,14 +68,8 @@ export const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[]; training: Trai
               STRICT NEGATIVE CONSTRAINT: Do NOT hallucinate or assume data. If data is sparse or shows no significant issues, return an empty array or only include factual observations (e.g. "Low volume of maintenance entries detected").
 
               OUTPUT: JSON array [ { "type": "critical" | "warning" | "info", "title": string, "description": string } ]`,
-                  },
-                ],
-              },
-            ],
-            config: { responseMimeType: 'application/json', temperature: 0.1 },
-          }));
+          });
 
-          const data = safeParse(TrendAlertsSchema, response.text, 'IntelligenceFeed');
           if (!data || data.length === 0) {
             setAlerts([
               {
@@ -100,7 +90,7 @@ export const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[]; training: Trai
               }))
             );
           }
-          reportSuccess('intelligence-feed');
+          reportSuccess('intelligence-feed', source);
         } catch (err) {
           console.error('Intelligence Feed Error:', err);
           const classified = err instanceof AIRetryError ? err.classified : classifyError(err);
