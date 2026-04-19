@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../firebase';
 import { Notification, NotificationType } from '../../types';
-import { cn } from '../../lib/utils';
+import { cn, tsToDate } from '../../lib/utils';
 
 export const NotificationBell: React.FC = () => {
   const { user, profile, isDemoMode } = useAuth();
@@ -149,7 +149,7 @@ export const NotificationBell: React.FC = () => {
                         <div className="flex justify-between items-start gap-2">
                           <p className="font-black text-[10px] uppercase tracking-tight text-slate-900 leading-tight">{notif.title}</p>
                           <span className="text-[8px] font-mono text-slate-400 whitespace-nowrap">
-                            {notif.timestamp?.toDate ? format(notif.timestamp.toDate(), 'HH:mm') : '...'}
+                            {notif.timestamp ? format(tsToDate(notif.timestamp), 'HH:mm') : '...'}
                           </span>
                         </div>
                         <p className="text-[10px] text-slate-500 leading-relaxed font-medium line-clamp-2">{notif.message}</p>

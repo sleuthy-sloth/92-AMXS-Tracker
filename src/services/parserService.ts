@@ -1,7 +1,8 @@
 import { Type } from "@google/genai";
 import { getAI } from "../lib/gemini";
+import { safeParse, TrainingReportSchema, type TrainingReportParsed } from "../lib/aiSchemas";
 
-export async function parseTrainingReport(base64Data: string, mimeType: string) {
+export async function parseTrainingReport(base64Data: string, mimeType: string): Promise<TrainingReportParsed> {
   try {
     const aiClient = getAI();
     // Alias .xlsm to .xlsx for compatibility
@@ -53,7 +54,11 @@ export async function parseTrainingReport(base64Data: string, mimeType: string) 
       }
     });
 
-    return JSON.parse(response.text);
+    const parsed = safeParse(TrainingReportSchema, response.text, "parseTrainingReport");
+    if (!parsed) {
+      throw new Error('Training report AI response was empty or malformed.');
+    }
+    return parsed;
   } catch (error) {
     console.error('Parsing error:', error);
     throw new Error('Failed to parse training report. Please ensure the file is a valid Excel or CSV document.');

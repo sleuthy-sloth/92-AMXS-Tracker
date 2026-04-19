@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   Plus, 
   Search, 
@@ -73,26 +73,29 @@ export const TrainingTracker: React.FC = () => {
     if (profile.amuId === 'ALL' || profile.shopId === 'ALL' || profile.role === 'leadership') {
       let queryRef = collection(db, 'training');
       const constraints: any[] = [where('isDemo', '==', false)];
-      
+
       if (profile.amuId !== 'ALL' && profile.amuId !== 'NONE') {
         constraints.push(where('amuId', '==', profile.amuId));
       }
       if (profile.shopId !== 'ALL' && profile.shopId !== 'LEADERSHIP') {
         constraints.push(where('shopId', '==', profile.shopId));
       }
+      constraints.push(limit(1000));
       qTraining = query(queryRef, ...constraints);
     } else if (isTechnician) {
       qTraining = query(
-        collection(db, 'training'), 
+        collection(db, 'training'),
         where('man_number', '==', profile.man_number),
-        where('isDemo', '==', false)
+        where('isDemo', '==', false),
+        limit(1000)
       );
     } else {
       qTraining = query(
-        collection(db, 'training'), 
+        collection(db, 'training'),
         where('amuId', '==', profile.amuId),
         where('shopId', '==', profile.shopId),
-        where('isDemo', '==', false)
+        where('isDemo', '==', false),
+        limit(1000)
       );
     }
     
@@ -111,19 +114,22 @@ export const TrainingTracker: React.FC = () => {
       if (profile.shopId !== 'ALL' && profile.shopId !== 'LEADERSHIP') {
         constraints.push(where('shopId', '==', profile.shopId));
       }
+      constraints.push(limit(500));
       qPersonnel = query(queryRef, ...constraints);
     } else if (isTechnician) {
       qPersonnel = query(
-        collection(db, 'users'), 
+        collection(db, 'users'),
         where('man_number', '==', profile.man_number),
-        where('isDemo', '==', false)
+        where('isDemo', '==', false),
+        limit(500)
       );
     } else {
       qPersonnel = query(
-        collection(db, 'users'), 
+        collection(db, 'users'),
         where('amuId', '==', profile.amuId),
         where('shopId', '==', profile.shopId),
-        where('isDemo', '==', false)
+        where('isDemo', '==', false),
+        limit(500)
       );
     }
     
@@ -137,10 +143,13 @@ export const TrainingTracker: React.FC = () => {
     };
   }, [profile, isDemoMode]);
 
-  const getPersonName = (manNumber: string) => {
-    const person = personnel.find(p => p.man_number === manNumber);
-    return person ? person.name : 'Unknown Personnel';
-  };
+  const getPersonName = useCallback(
+    (manNumber: string) => {
+      const person = personnel.find((p) => p.man_number === manNumber);
+      return person ? person.name : 'Unknown Personnel';
+    },
+    [personnel]
+  );
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -203,30 +212,34 @@ export const TrainingTracker: React.FC = () => {
     setNotifyModal({ isOpen: true, type });
   };
 
-  const filteredTraining = training.filter(record => {
-    const personName = getPersonName(record.man_number);
-    const matchesSearch = 
-      record.course_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (record.course_code && record.course_code.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      record.man_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      personName.toLowerCase().includes(searchQuery.toLowerCase());
-      
-    let matchesDate = true;
-    if (startDate || endDate) {
-      const recordDate = new Date(record.due_date);
-      if (startDate) matchesDate = matchesDate && recordDate >= new Date(startDate);
-      if (endDate) matchesDate = matchesDate && recordDate <= new Date(endDate);
-    }
-    
-    return matchesSearch && matchesDate;
-  });
+  const filteredTraining = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    const start = startDate ? new Date(startDate) : null;
+    const end = endDate ? new Date(endDate) : null;
+    return training.filter((record) => {
+      const personName = getPersonName(record.man_number);
+      const matchesSearch =
+        record.course_name.toLowerCase().includes(q) ||
+        (record.course_code && record.course_code.toLowerCase().includes(q)) ||
+        record.man_number.toLowerCase().includes(q) ||
+        personName.toLowerCase().includes(q);
+      if (!matchesSearch) return false;
 
-  const stats = {
-    current: filteredTraining.filter(t => t.status === 'current').length,
-    expiring: filteredTraining.filter(t => t.status === 'expiring').length,
-    expired: filteredTraining.filter(t => t.status === 'expired').length,
-    total: filteredTraining.length || 1
-  };
+      if (start || end) {
+        const recordDate = new Date(record.due_date);
+        if (start && recordDate < start) return false;
+        if (end && recordDate > end) return false;
+      }
+      return true;
+    });
+  }, [training, searchQuery, startDate, endDate, getPersonName]);
+
+  const stats = useMemo(() => ({
+    current: filteredTraining.filter((t) => t.status === 'current').length,
+    expiring: filteredTraining.filter((t) => t.status === 'expiring').length,
+    expired: filteredTraining.filter((t) => t.status === 'expired').length,
+    total: filteredTraining.length || 1,
+  }), [filteredTraining]);
 
   return (
     <div className="space-y-10">

@@ -1,3 +1,8 @@
+import type { Timestamp, FieldValue } from 'firebase/firestore';
+
+/** Fields written with serverTimestamp() are FieldValue on send, Timestamp on read. */
+export type FirestoreTime = Timestamp | FieldValue;
+
 export type UserRole = 'leadership' | 'ncoic' | 'technician' | 'pending';
 export type AMUType = 'BLACK' | 'GREEN' | 'SILVER' | 'BLUE' | 'NONE' | 'ALL';
 export type ShiftType = 'Days' | 'Swings' | 'Nights' | 'Weekend Duty';
@@ -16,8 +21,9 @@ export interface UserProfile {
   email: string;
   phone?: string;
   status: 'active' | 'pending' | 'rejected';
-  createdAt?: any;
+  createdAt?: FirestoreTime;
   isDemo?: boolean;
+  skill_tags?: string[];
 }
 
 export interface MaintenanceLog {
@@ -32,18 +38,18 @@ export interface MaintenanceLog {
   technician_name: string;
   man_number: string;
   personnel?: string[];
-  timestamp: any; // Firestore Timestamp
+  timestamp: FirestoreTime;
   isRedBall?: boolean;
   isDemo?: boolean;
   shift?: ShiftType;
   lastEditedBy?: string;
-  lastEditedAt?: any;
+  lastEditedAt?: FirestoreTime;
   g081_photo?: string;
   g081_status?: 'pending' | 'verified';
   g081_verified_by?: string;
-  g081_verified_at?: any;
+  g081_verified_at?: FirestoreTime;
   isArchived?: boolean;
-  archivedAt?: any;
+  archivedAt?: FirestoreTime;
 }
 
 export interface TrainingRecord {
@@ -69,11 +75,11 @@ export interface DIFMLog {
   shopId: string;
   amuId: AMUType;
   technician_name: string;
-  timestamp: any; // Firestore Timestamp
+  timestamp: FirestoreTime;
   isDemo?: boolean;
 }
 
-export type NotificationType = 'red-ball' | 'parts' | 'training' | 'system';
+export type NotificationType = 'red-ball' | 'parts' | 'training' | 'system' | 'supply-risk' | 'g081-expiry';
 
 export interface Notification {
   id?: string;
@@ -84,8 +90,8 @@ export interface Notification {
   title: string;
   message: string;
   isRead: boolean;
-  timestamp: any;
-  metadata?: any;
+  timestamp: FirestoreTime;
+  metadata?: Record<string, unknown>;
   isDemo?: boolean;
 }
 
@@ -93,7 +99,7 @@ export interface UserPresence {
   userId: string;
   userName: string;
   location: string;
-  activeAt: any;
+  activeAt: FirestoreTime;
   shopId: string;
   amuId: string;
   isDemo?: boolean;

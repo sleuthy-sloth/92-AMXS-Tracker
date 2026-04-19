@@ -56,19 +56,38 @@ export const Onboarding: React.FC = () => {
     }
   }, [selectedUser, profile]);
 
+  const ALLOWED_APPROVAL_ROLES: UserRole[] =
+    profile?.role === 'leadership'
+      ? ['technician', 'ncoic', 'leadership']
+      : ['technician', 'ncoic'];
+
   const handleApprove = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUser) return;
+    if (!ALLOWED_APPROVAL_ROLES.includes(formData.role)) {
+      alert(`Your role (${profile?.role}) is not allowed to assign "${formData.role}".`);
+      return;
+    }
     setLoading(true);
     try {
+      // Whitelist the fields that can be written here so a crafted client
+      // can't ride the approval write to modify unrelated attributes
+      // (createdAt, isDemo, etc.).
       await setDoc(doc(db, 'users', selectedUser.uid), {
-        ...selectedUser,
-        ...formData,
+        uid: selectedUser.uid,
+        email: selectedUser.email,
+        name: formData.name,
+        rank: formData.rank,
+        man_number: formData.man_number,
+        shopId: formData.shopId,
+        amuId: formData.amuId,
+        role: formData.role,
         status: 'active',
-        isDemo: false
       });
       setSelectedUser(null);
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      alert(`Approval failed: ${message}`);
       console.error('Approval error:', error);
     } finally {
       setLoading(false);
@@ -195,14 +214,16 @@ export const Onboarding: React.FC = () => {
                   </div>
                   <div className="space-y-2">
                     <label className="tech-label">System Role</label>
-                    <select 
+                    <select
                       className="sleek-input w-full"
                       value={formData.role}
                       onChange={e => setFormData({...formData, role: e.target.value as UserRole})}
                     >
-                      <option value="technician">Technician</option>
-                      <option value="ncoic">NCOIC</option>
-                      <option value="leadership">Leadership</option>
+                      {ALLOWED_APPROVAL_ROLES.map(r => (
+                        <option key={r} value={r}>
+                          {r === 'ncoic' ? 'NCOIC' : r.charAt(0).toUpperCase() + r.slice(1)}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div className="space-y-2">

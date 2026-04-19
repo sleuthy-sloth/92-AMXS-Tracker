@@ -3,82 +3,14 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // ===============================================================
-    // Assumed Data Model
+    // Assumed Data Model — see src/types.ts for authoritative shapes.
     // ===============================================================
     //
-    // Collection: users
-    // Document ID: {uid}
-    // Fields:
-    //   - uid: string (required)
-    //   - name: string (required)
-    //   - man_number: string (required)
-    //   - shopId: string (required)
-    //   - amuId: string (required)
-    //   - role: string (required, 'leadership' | 'ncoic' | 'technician')
-    //   - email: string (required)
-    //   - status: string (required, 'active' | 'pending' | 'rejected')
-    //   - isDemo: bool (optional)
-    //
-    // Collection: logs
-    // Document ID: {logId}
-    // Fields:
-    //   - tail_number: string (required)
-    //   - discrepancy: string (required)
-    //   - repair: string (required)
-    //   - shopId: string (required)
-    //   - amuId: string (required)
-    //   - technician_name: string (required)
-    //   - man_number: string (required)
-    //   - timestamp: timestamp (required)
-    //   - jcn: string (optional)
-    //   - personnel: list (optional)
-    //   - isRedBall: bool (optional)
-    //   - shift: string (optional)
-    //   - g081_photo: string (optional)
-    //   - g081_status: string (optional)
-    //   - g081_verified_by: string (optional)
-    //   - g081_verified_at: timestamp (optional)
-    //   - isDemo: bool (optional)
-    //
-    // Collection: training
-    // Document ID: {trainingId}
-    // Fields:
-    //   - man_number: string (required)
-    //   - course_name: string (required)
-    //   - due_date: string (required, ISO 8601)
-    //   - shopId: string (required)
-    //   - amuId: string (required)
-    //   - status: string (required, 'current' | 'expiring' | 'expired')
-    //   - isDemo: bool (optional)
-    //
-    // Collection: difm
-    // Document ID: {difmId}
-    // Fields:
-    // ... (existing fields)
-    //   - isDemo: bool (optional)
-    //
-    // Collection: notifications
-    // Document ID: {notificationId}
-    // Fields:
-    //   - userId: string (optional)
-    //   - shopId: string (optional)
-    //   - type: string (required, 'red-ball' | 'parts' | 'training' | 'system')
-    //   - title: string (required)
-    //   - message: string (required)
-    //   - isRead: bool (required)
-    //   - timestamp: timestamp (required)
-    //   - metadata: map (optional)
-    //   - isDemo: bool (optional)
-    //
-    // Collection: presence
-    // Document ID: {userId}
-    // Fields:
-    //   - userId: string (required)
-    //   - userName: string (required)
-    //   - location: string (required)
-    //   - activeAt: timestamp (required)
-    //   - shopId: string (required)
-    //   - amuId: string (required)
+    // All collections: demo/mock content is rendered from
+    // src/mockData.ts in-memory; it does not round-trip through
+    // Firestore, so these rules intentionally do NOT grant any
+    // unauthenticated access via an `isDemo` flag (that would let
+    // a malicious client mark real documents demo to bypass ACLs).
     // ===============================================================
 
     // Helper Functions
@@ -86,9 +18,9 @@ service cloud.firestore {
 
     function isValidNotification(data) {
       return data.keys().hasAll(['type', 'title', 'message', 'isRead', 'timestamp']) &&
-             data.type in ['red-ball', 'parts', 'training', 'system'] &&
-             data.title is string && data.title.size() > 0 &&
-             data.message is string && data.message.size() > 0 &&
+             data.type in ['red-ball', 'parts', 'training', 'system', 'supply-risk', 'g081-expiry'] &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.message is string && data.message.size() > 0 && data.message.size() < 2000 &&
              data.isRead is bool &&
              data.timestamp is timestamp &&
              (!('userId' in data) || data.userId is string) &&
@@ -100,7 +32,7 @@ service cloud.firestore {
       return data.keys().hasAll(['userId', 'userName', 'location', 'activeAt', 'shopId', 'amuId']) &&
              data.userId is string &&
              data.userName is string &&
-             data.location is string &&
+             data.location is string && data.location.size() < 100 &&
              data.activeAt is timestamp &&
              data.shopId is string &&
              data.amuId is string &&
@@ -115,16 +47,20 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
+    function isActiveUser() {
+      return isAuthenticated() && getUserData().status == 'active';
+    }
+
     function isNCOIC() {
-      return isAuthenticated() && getUserData().role == 'ncoic' && getUserData().status == 'active';
+      return isActiveUser() && getUserData().role == 'ncoic';
     }
 
     function isTechnician() {
-      return isAuthenticated() && getUserData().role == 'technician' && getUserData().status == 'active';
+      return isActiveUser() && getUserData().role == 'technician';
     }
 
     function isLeadership() {
-      return isAuthenticated() && getUserData().role == 'leadership' && getUserData().status == 'active';
+      return isActiveUser() && getUserData().role == 'leadership';
     }
 
     function isAdmin() {
@@ -132,69 +68,88 @@ service cloud.firestore {
     }
 
     function isSameShop(amuId, shopId) {
-      return isAuthenticated() && getUserData().amuId == amuId && getUserData().shopId == shopId && getUserData().status == 'active';
+      return isActiveUser() && getUserData().amuId == amuId && getUserData().shopId == shopId;
     }
 
-    function isDemo(data) {
-      return data.isDemo == true;
+    // Who may assign a given role to another user?
+    // NCOIC: technician or pending only (cannot grant peer/lead roles).
+    // Leadership: technician, ncoic, leadership, pending.
+    // Admin: anything the schema accepts.
+    function canAssignRole(targetRole) {
+      return isAdmin() ||
+             (isLeadership() && targetRole in ['technician', 'ncoic', 'leadership', 'pending']) ||
+             (isNCOIC() && targetRole in ['technician', 'pending']);
     }
 
     function isValidUser(data) {
       return data.keys().hasAll(['uid', 'name', 'man_number', 'shopId', 'amuId', 'role', 'email', 'status']) &&
              data.uid is string &&
              data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
-             data.man_number is string &&
+             data.man_number is string && data.man_number.size() < 20 &&
              data.shopId is string &&
              data.amuId is string &&
              data.role in ['leadership', 'ncoic', 'technician', 'pending'] &&
              data.status in ['active', 'pending', 'rejected'] &&
-             data.email is string;
+             data.email is string && data.email.size() < 254 &&
+             (!('skill_tags' in data) || (data.skill_tags is list && data.skill_tags.size() < 50));
     }
 
     function isValidLog(data) {
       return data.keys().hasAll(['tail_number', 'discrepancy', 'repair', 'shopId', 'amuId', 'technician_name', 'man_number', 'timestamp']) &&
-             data.tail_number is string && data.tail_number.size() > 0 &&
+             data.keys().hasOnly(['tail_number', 'discrepancy', 'repair', 'doc_number', 'shopId', 'amuId', 'technician_name', 'man_number', 'personnel', 'timestamp', 'jcn', 'isRedBall', 'shift', 'g081_photo', 'g081_status', 'g081_verified_by', 'g081_verified_at', 'isArchived', 'archivedAt', 'lastEditedBy', 'lastEditedAt', 'isDemo']) &&
+             data.tail_number is string && data.tail_number.size() > 0 && data.tail_number.size() < 32 &&
              data.discrepancy is string && data.discrepancy.size() > 0 && data.discrepancy.size() < 5000 &&
              data.repair is string && data.repair.size() > 0 && data.repair.size() < 5000 &&
              data.shopId is string &&
              data.amuId is string &&
-             data.technician_name is string &&
-             data.man_number is string &&
+             data.technician_name is string && data.technician_name.size() < 100 &&
+             data.man_number is string && data.man_number.size() < 20 &&
              data.timestamp is timestamp &&
              (!('jcn' in data) || data.jcn is string || data.jcn == null) &&
-             (!('personnel' in data) || data.personnel is list) &&
+             (!('doc_number' in data) || data.doc_number is string || data.doc_number == null) &&
+             (!('personnel' in data) || (data.personnel is list && data.personnel.size() < 50)) &&
              (!('isRedBall' in data) || data.isRedBall is bool) &&
              (!('shift' in data) || data.shift in ['Days', 'Swings', 'Nights', 'Weekend Duty']) &&
-             (!('g081_photo' in data) || data.g081_photo is string || data.g081_photo == null) &&
+             // g081_photo is a base64 string; cap at ~150KB to keep docs under the
+             // 1MB Firestore limit and deter unbounded blob uploads. Larger
+             // attachments should live in Storage with a URL reference instead.
+             (!('g081_photo' in data) || data.g081_photo == null || (data.g081_photo is string && data.g081_photo.size() < 150000)) &&
              (!('g081_status' in data) || data.g081_status in ['pending', 'verified'] || data.g081_status == null) &&
              (!('g081_verified_by' in data) || data.g081_verified_by is string || data.g081_verified_by == null) &&
              (!('g081_verified_at' in data) || data.g081_verified_at is timestamp || data.g081_verified_at == null) &&
+             (!('isArchived' in data) || data.isArchived is bool) &&
+             (!('archivedAt' in data) || data.archivedAt is timestamp || data.archivedAt == null) &&
              (!('lastEditedBy' in data) || data.lastEditedBy is string) &&
-             (!('lastEditedAt' in data) || data.lastEditedAt is timestamp);
+             (!('lastEditedAt' in data) || data.lastEditedAt is timestamp) &&
+             (!('isDemo' in data) || data.isDemo is bool);
     }
 
     function isValidTraining(data) {
       return data.keys().hasAll(['man_number', 'course_name', 'due_date', 'shopId', 'amuId', 'status']) &&
-             data.man_number is string &&
-             data.course_name is string &&
-             data.due_date is string &&
+             data.man_number is string && data.man_number.size() < 20 &&
+             data.course_name is string && data.course_name.size() < 200 &&
+             data.due_date is string && data.due_date.size() < 32 &&
              data.shopId is string &&
              data.amuId is string &&
-             data.status in ['current', 'expiring', 'expired'];
+             data.status in ['current', 'expiring', 'expired'] &&
+             (!('course_code' in data) || data.course_code is string) &&
+             (!('skill_tags' in data) || (data.skill_tags is list && data.skill_tags.size() < 20)) &&
+             (!('isDemo' in data) || data.isDemo is bool);
     }
 
     function isValidDIFM(data) {
       return data.keys().hasAll(['tail_number', 'discrepancy', 'status', 'shopId', 'amuId', 'technician_name', 'timestamp']) &&
-             data.tail_number is string && data.tail_number.size() > 0 &&
+             data.tail_number is string && data.tail_number.size() > 0 && data.tail_number.size() < 32 &&
              data.discrepancy is string && data.discrepancy.size() > 0 && data.discrepancy.size() < 5000 &&
              data.status in ['due-in', 'awaiting-parts', 'in-repair', 'complete'] &&
              data.shopId is string &&
              data.amuId is string &&
-             data.technician_name is string &&
+             data.technician_name is string && data.technician_name.size() < 100 &&
              data.timestamp is timestamp &&
-             (!('pipeline_status' in data) || data.pipeline_status in ['ordered', 'en-route', 'received']) &&
+             (!('pipeline_status' in data) || data.pipeline_status in ['ordered', 'en-route', 'received', 'bench-check', 'installed']) &&
              (!('doc_number' in data) || data.doc_number is string) &&
-             (!('nsn' in data) || data.nsn is string);
+             (!('nsn' in data) || data.nsn is string) &&
+             (!('isDemo' in data) || data.isDemo is bool);
     }
 
     // ===============================================================
@@ -202,54 +157,129 @@ service cloud.firestore {
     // ===============================================================
 
     match /users/{uid} {
-      allow read: if isDemo(resource.data) || (isAuthenticated() && (request.auth.uid == uid || resource.data.man_number == getUserData().man_number || isSameShop(resource.data.amuId, resource.data.shopId) || isNCOIC() || isLeadership() || isAdmin()));
-      allow create: if isDemo(request.resource.data) || (isAuthenticated() && (
-        isAdmin() || 
-        (isValidUser(request.resource.data) && request.auth.uid == uid && request.resource.data.role == 'pending' && request.resource.data.status == 'pending')
-      ));
-      allow update: if isDemo(resource.data) || (isAuthenticated() && (
-        (request.auth.uid == uid && isValidUser(request.resource.data) && request.resource.data.role == resource.data.role && request.resource.data.status == resource.data.status) ||
-        (isNCOIC() && isValidUser(request.resource.data)) ||
-        (isLeadership() && isValidUser(request.resource.data)) ||
-        isAdmin()
-      ));
+      allow read: if isActiveUser() && (
+        request.auth.uid == uid ||
+        resource.data.man_number == getUserData().man_number ||
+        isSameShop(resource.data.amuId, resource.data.shopId) ||
+        isNCOIC() || isLeadership() || isAdmin()
+      );
+      // Sign-up: user may create ONLY their own pending profile.
+      allow create: if isAuthenticated() && (
+        isAdmin() ||
+        (isValidUser(request.resource.data) &&
+         request.auth.uid == uid &&
+         request.resource.data.role == 'pending' &&
+         request.resource.data.status == 'pending')
+      );
+      allow update: if isActiveUser() && isValidUser(request.resource.data) && (
+        // Self-update: role and status must not change.
+        (request.auth.uid == uid &&
+         request.resource.data.role == resource.data.role &&
+         request.resource.data.status == resource.data.status) ||
+        // Admin: anything.
+        isAdmin() ||
+        // Leadership or NCOIC approving/managing: role must be within their grant tier.
+        ((isLeadership() || isNCOIC()) && canAssignRole(request.resource.data.role))
+      );
     }
 
     match /logs/{logId} {
-      allow read: if isDemo(resource.data) || (isAuthenticated() && (isSameShop(resource.data.amuId, resource.data.shopId) || isLeadership() || isAdmin()));
-      allow create: if isDemo(request.resource.data) || (isAuthenticated() && isValidLog(request.resource.data) && (isAdmin() || isSameShop(request.resource.data.amuId, request.resource.data.shopId)));
-      allow update: if isDemo(resource.data) || (isAuthenticated() && isValidLog(request.resource.data) && (isSameShop(resource.data.amuId, resource.data.shopId) || isLeadership() || isAdmin()));
-      allow delete: if isDemo(resource.data) || (isAuthenticated() && ((isSameShop(resource.data.amuId, resource.data.shopId) && isNCOIC()) || isLeadership() || isAdmin()));
+      allow read: if isActiveUser() && (
+        isSameShop(resource.data.amuId, resource.data.shopId) || isLeadership() || isAdmin()
+      );
+      allow create: if isActiveUser() && isValidLog(request.resource.data) && (
+        isAdmin() || isSameShop(request.resource.data.amuId, request.resource.data.shopId)
+      );
+      allow update: if isActiveUser() && isValidLog(request.resource.data) && (
+        isSameShop(resource.data.amuId, resource.data.shopId) || isLeadership() || isAdmin()
+      );
+      allow delete: if isActiveUser() && (
+        (isSameShop(resource.data.amuId, resource.data.shopId) && isNCOIC()) ||
+        isLeadership() || isAdmin()
+      );
     }
 
     match /training/{trainingId} {
-      allow read: if isDemo(resource.data) || (isAuthenticated() && (resource.data.man_number == getUserData().man_number || isSameShop(resource.data.amuId, resource.data.shopId) || isLeadership() || isAdmin()));
-      allow write: if isDemo(request.resource.data) || (isAuthenticated() && (isAdmin() || isLeadership() || (isNCOIC() && isSameShop(request.resource.data.amuId, request.resource.data.shopId))) && isValidTraining(request.resource.data));
+      allow read: if isActiveUser() && (
+        resource.data.man_number == getUserData().man_number ||
+        isSameShop(resource.data.amuId, resource.data.shopId) ||
+        isLeadership() || isAdmin()
+      );
+      allow write: if isActiveUser() && isValidTraining(request.resource.data) && (
+        isAdmin() || isLeadership() ||
+        (isNCOIC() && isSameShop(request.resource.data.amuId, request.resource.data.shopId))
+      );
     }
 
     match /difm/{difmId} {
-      allow read: if isDemo(resource.data) || (isAuthenticated() && (isSameShop(resource.data.amuId, resource.data.shopId) || isLeadership() || isAdmin()));
-      allow create: if isDemo(request.resource.data) || (isAuthenticated() && isValidDIFM(request.resource.data) && (isAdmin() || isSameShop(request.resource.data.amuId, request.resource.data.shopId)));
-      allow update: if isDemo(resource.data) || (isAuthenticated() && isValidDIFM(request.resource.data) && (isSameShop(resource.data.amuId, resource.data.shopId) || isLeadership() || isAdmin()));
-      allow delete: if isDemo(resource.data) || (isAuthenticated() && ((isSameShop(resource.data.amuId, resource.data.shopId) && isNCOIC()) || isLeadership() || isAdmin()));
+      allow read: if isActiveUser() && (
+        isSameShop(resource.data.amuId, resource.data.shopId) || isLeadership() || isAdmin()
+      );
+      allow create: if isActiveUser() && isValidDIFM(request.resource.data) && (
+        isAdmin() || isSameShop(request.resource.data.amuId, request.resource.data.shopId)
+      );
+      allow update: if isActiveUser() && isValidDIFM(request.resource.data) && (
+        isSameShop(resource.data.amuId, resource.data.shopId) || isLeadership() || isAdmin()
+      );
+      allow delete: if isActiveUser() && (
+        (isSameShop(resource.data.amuId, resource.data.shopId) && isNCOIC()) ||
+        isLeadership() || isAdmin()
+      );
     }
 
     match /notifications/{notificationId} {
-      allow read: if isDemo(resource.data) || (isAuthenticated() && (
-        resource.data.userId == request.auth.uid || 
+      allow read: if isActiveUser() && (
+        resource.data.userId == request.auth.uid ||
         resource.data.shopId == getUserData().shopId ||
         isLeadership() || isAdmin()
-      ));
-      allow create: if (isAuthenticated() && isValidNotification(request.resource.data)) || isDemo(request.resource.data);
-      allow update: if (isAuthenticated() && (
-        (resource.data.userId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead'])) ||
+      );
+      allow create: if isActiveUser() && isValidNotification(request.resource.data);
+      allow update: if isActiveUser() && (
+        (resource.data.userId == request.auth.uid &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead'])) ||
         isAdmin() || isLeadership()
-      )) || isDemo(resource.data);
+      );
     }
 
     match /presence/{userId} {
-      allow read: if isDemo(resource.data) || (isAuthenticated() && (getUserData().amuId == resource.data.amuId && getUserData().shopId == resource.data.shopId || isLeadership() || isAdmin()));
-      allow write: if isDemo(request.resource.data) || (isAuthenticated() && request.auth.uid == userId && isValidPresence(request.resource.data));
+      allow read: if isActiveUser() && (
+        (getUserData().amuId == resource.data.amuId && getUserData().shopId == resource.data.shopId) ||
+        isLeadership() || isAdmin()
+      );
+      allow write: if isActiveUser() && request.auth.uid == userId && isValidPresence(request.resource.data);
+    }
+
+    // Per-user training notification dedup keys. Doc ID is
+    // `{userId}_{trainingId}_{yyyy-MM-dd}` — no cross-user reads allowed.
+    match /training_notifications_dedup/{dedupId} {
+      allow read: if isActiveUser() && resource.data.userId == request.auth.uid;
+      allow create: if isActiveUser() &&
+        request.resource.data.keys().hasOnly(['userId', 'trainingId', 'logId', 'sentAt']) &&
+        request.resource.data.userId == request.auth.uid &&
+        (!('trainingId' in request.resource.data) || request.resource.data.trainingId is string) &&
+        (!('logId' in request.resource.data) || request.resource.data.logId is string) &&
+        request.resource.data.sentAt is timestamp;
+      // Intentionally no update/delete — records are write-once, short-lived
+      // markers. Stale ones can be TTL-swept server-side later.
+    }
+
+    // Shift-handoff collection (see /handoff route). A tech creates one doc per
+    // shift with open items; the incoming shift marks items acknowledged.
+    match /handoffs/{handoffId} {
+      allow read: if isActiveUser() && (
+        isSameShop(resource.data.amuId, resource.data.shopId) || isLeadership() || isAdmin()
+      );
+      allow create: if isActiveUser() &&
+        request.resource.data.keys().hasAll(['shopId', 'amuId', 'fromShift', 'toShift', 'createdBy', 'createdAt', 'items']) &&
+        request.resource.data.shopId is string &&
+        request.resource.data.amuId is string &&
+        request.resource.data.fromShift in ['Days', 'Swings', 'Nights', 'Weekend Duty'] &&
+        request.resource.data.toShift in ['Days', 'Swings', 'Nights', 'Weekend Duty'] &&
+        request.resource.data.items is list &&
+        request.resource.data.items.size() < 100 &&
+        isSameShop(request.resource.data.amuId, request.resource.data.shopId);
+      allow update: if isActiveUser() &&
+        isSameShop(resource.data.amuId, resource.data.shopId);
     }
   }
 }
