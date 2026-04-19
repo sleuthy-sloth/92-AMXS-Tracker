@@ -1,13 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Users, 
-  Search, 
-  X, 
-  Wrench, 
-  LogOut, 
-  BarChart3, 
-  ShieldAlert, 
-  Send 
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  Users,
+  Search,
+  X,
+  Wrench,
+  LogOut,
+  BarChart3
 } from 'lucide-react';
 import { collection, query, where, onSnapshot, updateDoc, doc } from 'firebase/firestore';
 import { format } from 'date-fns';
@@ -20,26 +18,44 @@ import { cn, tsToDate } from '../lib/utils';
 
 export const Personnel: React.FC = () => {
   const { user, profile, isDemoMode } = useAuth();
-  const [personnel, setPersonnel] = useState<UserProfile[]>([]);
+  const [firestorePersonnel, setFirestorePersonnel] = useState<UserProfile[]>([]);
   const [selectedPerson, setSelectedPerson] = useState<UserProfile | null>(null);
-  const [personTraining, setPersonTraining] = useState<TrainingRecord[]>([]);
-  const [personLogs, setPersonLogs] = useState<MaintenanceLog[]>([]);
-  
+  const [firestoreTraining, setFirestoreTraining] = useState<TrainingRecord[]>([]);
+  const [firestoreLogs, setFirestoreLogs] = useState<MaintenanceLog[]>([]);
+
   const [isEditingPerson, setIsEditingPerson] = useState(false);
   const [editForm, setEditForm] = useState<Partial<UserProfile>>({});
 
-  useEffect(() => {
-    if (!profile) return;
-
+  const personnel = useMemo<UserProfile[]>(() => {
+    if (!profile) return [];
     if (isDemoMode) {
-      const filteredMockPersonnel = MOCK_PERSONNEL.filter(p => {
+      return MOCK_PERSONNEL.filter(p => {
         if (profile.amuId !== 'ALL' && p.amuId !== profile.amuId) return false;
         if (profile.shopId !== 'ALL' && p.shopId !== profile.shopId) return false;
         return true;
       });
-      setPersonnel(filteredMockPersonnel);
-      return;
     }
+    return firestorePersonnel;
+  }, [profile, isDemoMode, firestorePersonnel]);
+
+  const personTraining = useMemo<TrainingRecord[]>(() => {
+    if (!selectedPerson) return [];
+    if (isDemoMode) {
+      return MOCK_TRAINING.filter(t => t.man_number === selectedPerson.man_number);
+    }
+    return firestoreTraining;
+  }, [selectedPerson, isDemoMode, firestoreTraining]);
+
+  const personLogs = useMemo<MaintenanceLog[]>(() => {
+    if (!selectedPerson) return [];
+    if (isDemoMode) {
+      return MOCK_LOGS.filter(l => l.man_number === selectedPerson.man_number);
+    }
+    return firestoreLogs;
+  }, [selectedPerson, isDemoMode, firestoreLogs]);
+
+  useEffect(() => {
+    if (!profile || isDemoMode) return;
 
     let q;
     if (profile.amuId === 'ALL' || profile.shopId === 'ALL' || profile.role === 'leadership') {
@@ -64,29 +80,20 @@ export const Personnel: React.FC = () => {
     }
     
     const unsub = onSnapshot(q, (snap) => {
-      setPersonnel(snap.docs.map(d => d.data() as UserProfile));
+      setFirestorePersonnel(snap.docs.map(d => d.data() as UserProfile));
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'users'));
     return unsub;
   }, [profile, isDemoMode]);
 
   useEffect(() => {
-    if (!selectedPerson || !profile) return;
-
-    if (isDemoMode) {
-      const filteredTraining = MOCK_TRAINING.filter(t => t.man_number === selectedPerson.man_number);
-      setPersonTraining(filteredTraining);
-      
-      const filteredLogs = MOCK_LOGS.filter(l => l.man_number === selectedPerson.man_number);
-      setPersonLogs(filteredLogs);
-      return;
-    }
+    if (!selectedPerson || !profile || isDemoMode) return;
 
     const qTraining = query(
       collection(db, 'training'),
       where('man_number', '==', selectedPerson.man_number)
     );
     const unsubTraining = onSnapshot(qTraining, (snap) => {
-      setPersonTraining(snap.docs.map(d => ({ id: d.id, ...d.data() } as TrainingRecord)));
+      setFirestoreTraining(snap.docs.map(d => ({ id: d.id, ...d.data() } as TrainingRecord)));
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'training'));
 
     const qLogs = query(
@@ -94,7 +101,7 @@ export const Personnel: React.FC = () => {
       where('man_number', '==', selectedPerson.man_number)
     );
     const unsubLogs = onSnapshot(qLogs, (snap) => {
-      setPersonLogs(snap.docs.map(d => ({ id: d.id, ...d.data() } as MaintenanceLog)));
+      setFirestoreLogs(snap.docs.map(d => ({ id: d.id, ...d.data() } as MaintenanceLog)));
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'logs'));
 
     return () => {

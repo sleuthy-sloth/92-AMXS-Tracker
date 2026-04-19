@@ -155,19 +155,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           )}
 
+          {isAdminRole && (
+          <>
           <div className="relative">
             <p className="text-[11px] uppercase tracking-widest text-white/60 mb-2 font-bold">{profile?.role === 'leadership' ? 'Oversight AMU' : 'Assigned AMU'}</p>
-            <button 
+            <button
               onClick={() => setIsAMUDropdownOpen(!isAMUDropdownOpen)}
               className="w-full flex items-center justify-between bg-white/5 border border-white/10 px-3 py-2 text-white hover:bg-white/10 transition-colors"
             >
               <span className="font-bold">{profile?.amuId}</span>
               <ChevronDown className={cn("w-3 h-3 transition-transform", isAMUDropdownOpen && "rotate-180")} />
             </button>
-            
+
             <AnimatePresence>
               {isAMUDropdownOpen && (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 10 }}
@@ -230,6 +232,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
               )}
             </AnimatePresence>
           </div>
+          </>
+          )}
         </div>
       )}
 
