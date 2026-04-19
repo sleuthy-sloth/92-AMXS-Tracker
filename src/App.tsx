@@ -24,7 +24,6 @@ import { Onboarding } from './pages/Onboarding';
 import { Handoff } from './pages/Handoff';
 import { Workload } from './pages/Workload';
 import { Diagnostics } from './pages/Diagnostics';
-import { SkillMatrix } from './pages/SkillMatrix';
 
 // Components
 import { MaintenanceAssistant } from './components/MaintenanceAssistant';
@@ -68,8 +67,9 @@ const AppContent: React.FC = () => {
         <Route path="/personnel" element={<Personnel />} />
         <Route path="/support" element={<Support />} />
         <Route path="/handoff" element={<Handoff />} />
-        <Route path="/diagnostics" element={<Diagnostics />} />
-        <Route path="/skills" element={<SkillMatrix />} />
+        {(profile?.role === 'ncoic' || profile?.role === 'leadership') && (
+          <Route path="/diagnostics" element={<Diagnostics />} />
+        )}
         {(profile?.role === 'ncoic' || profile?.role === 'leadership') && (
           <Route path="/workload" element={<Workload />} />
         )}
