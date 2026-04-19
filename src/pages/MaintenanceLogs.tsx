@@ -21,7 +21,7 @@ import {
   Send, 
   Trash2 
 } from 'lucide-react';
-import { serverTimestamp, collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, doc, getDocs, deleteDoc, limit } from 'firebase/firestore';
+import { serverTimestamp, collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, doc, deleteDoc, limit } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
@@ -39,8 +39,12 @@ import {
 
 export const MaintenanceLogs: React.FC = () => {
   const { user, profile, isDemoMode } = useAuth();
-  const [logs, setLogs] = useState<MaintenanceLog[]>([]);
-  const [difm, setDifm] = useState<DIFMLog[]>([]);
+  const [firestoreLogs, setFirestoreLogs] = useState<MaintenanceLog[]>([]);
+  const [firestoreDifm, setFirestoreDifm] = useState<DIFMLog[]>([]);
+  // Demo-mode only: entries produced client-side via bulk scan. Kept in
+  // a dedicated slot so they can be merged into the derived `logs` list
+  // without interfering with the MOCK_LOGS source.
+  const [demoSeededLogs, setDemoSeededLogs] = useState<MaintenanceLog[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     tail_number: '',
@@ -60,7 +64,6 @@ export const MaintenanceLogs: React.FC = () => {
   const scanInputRef = useRef<HTMLInputElement>(null);
   const g081InputRef = useRef<HTMLInputElement>(null);
   const bulkScanInputRef = useRef<HTMLInputElement>(null);
-  const [isBulkScanning, setIsBulkScanning] = useState(false);
   
   // New features state
   const [searchQuery, setSearchQuery] = useState('');
@@ -76,36 +79,41 @@ export const MaintenanceLogs: React.FC = () => {
   // mutating the shared MOCK_LOGS module.
   const [demoArchiveOverrides, setDemoArchiveOverrides] = useState<Record<string, boolean>>({});
 
-  useEffect(() => {
-    if (!profile) return;
-
-    if (isDemoMode) {
-      const isLeadership = profile.role === 'leadership';
-      const filteredMockLogs = MOCK_LOGS
-        .filter(log => {
-          if (isLeadership && profile.amuId === 'ALL' && profile.shopId === 'ALL') return true;
-          if (profile.amuId !== 'ALL' && log.amuId !== profile.amuId) return false;
-          if (profile.shopId !== 'ALL' && log.shopId !== profile.shopId) return false;
-          return true;
-        })
-        .map(log => {
-          const override = log.id && log.id in demoArchiveOverrides
-            ? demoArchiveOverrides[log.id]
-            : Boolean(log.isArchived);
-          return { ...log, isArchived: override };
-        })
-        .filter(log => Boolean(log.isArchived) === isArchiveView);
-      setLogs(filteredMockLogs);
-
-      const filteredMockDifm = MOCK_DIFM.filter(d => {
+  const logs = useMemo<MaintenanceLog[]>(() => {
+    if (!profile) return [];
+    if (!isDemoMode) return firestoreLogs;
+    const isLeadership = profile.role === 'leadership';
+    const filteredMockLogs = MOCK_LOGS
+      .filter(log => {
         if (isLeadership && profile.amuId === 'ALL' && profile.shopId === 'ALL') return true;
-        if (profile.amuId !== 'ALL' && d.amuId !== profile.amuId) return false;
-        if (profile.shopId !== 'ALL' && d.shopId !== profile.shopId) return false;
+        if (profile.amuId !== 'ALL' && log.amuId !== profile.amuId) return false;
+        if (profile.shopId !== 'ALL' && log.shopId !== profile.shopId) return false;
         return true;
-      });
-      setDifm(filteredMockDifm);
-      return;
-    }
+      })
+      .map(log => {
+        const override = log.id && log.id in demoArchiveOverrides
+          ? demoArchiveOverrides[log.id]
+          : Boolean(log.isArchived);
+        return { ...log, isArchived: override };
+      })
+      .filter(log => Boolean(log.isArchived) === isArchiveView);
+    return [...demoSeededLogs, ...filteredMockLogs];
+  }, [profile, isDemoMode, isArchiveView, firestoreLogs, demoArchiveOverrides, demoSeededLogs]);
+
+  const difm = useMemo<DIFMLog[]>(() => {
+    if (!profile) return [];
+    if (!isDemoMode) return firestoreDifm;
+    const isLeadership = profile.role === 'leadership';
+    return MOCK_DIFM.filter(d => {
+      if (isLeadership && profile.amuId === 'ALL' && profile.shopId === 'ALL') return true;
+      if (profile.amuId !== 'ALL' && d.amuId !== profile.amuId) return false;
+      if (profile.shopId !== 'ALL' && d.shopId !== profile.shopId) return false;
+      return true;
+    });
+  }, [profile, isDemoMode, firestoreDifm]);
+
+  useEffect(() => {
+    if (!profile || isDemoMode) return;
 
     const logConstraints: any[] = [where('isDemo', '==', false), orderBy('timestamp', 'desc')];
     if (profile.amuId !== 'ALL') logConstraints.push(where('amuId', '==', profile.amuId));
@@ -115,7 +123,7 @@ export const MaintenanceLogs: React.FC = () => {
     const qLogs = query(collection(db, 'logs'), ...logConstraintsWithArchive);
     
     const unsubLogs = onSnapshot(qLogs, (snap) => {
-      setLogs(snap.docs.map(d => ({ id: d.id, ...d.data() } as MaintenanceLog)));
+      setFirestoreLogs(snap.docs.map(d => ({ id: d.id, ...d.data() } as MaintenanceLog)));
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'logs'));
 
     let qDifm;
@@ -125,14 +133,14 @@ export const MaintenanceLogs: React.FC = () => {
     qDifm = query(collection(db, 'difm'), ...difmConstraints, limit(500));
 
     const unsubDifm = onSnapshot(qDifm, (snap) => {
-      setDifm(snap.docs.map(d => ({ id: d.id, ...d.data() } as DIFMLog)));
+      setFirestoreDifm(snap.docs.map(d => ({ id: d.id, ...d.data() } as DIFMLog)));
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'difm'));
 
     return () => {
       unsubLogs();
       unsubDifm();
     };
-  }, [profile, isDemoMode, isArchiveView, demoArchiveOverrides]);
+  }, [profile, isDemoMode, isArchiveView]);
 
   const handleScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -179,7 +187,6 @@ export const MaintenanceLogs: React.FC = () => {
       return;
     }
 
-    setIsBulkScanning(true);
     try {
       const reader = new FileReader();
       const base64Promise = new Promise<string>((resolve) => {
@@ -217,7 +224,7 @@ export const MaintenanceLogs: React.FC = () => {
             id: `bulk-mock-${Date.now()}-${i}`,
             ...b
           } as MaintenanceLog));
-          setLogs(prev => [...mockEntries, ...prev]);
+          setDemoSeededLogs(prev => [...mockEntries, ...prev]);
           alert(`Successfully imported ${results.length} entries.`);
         } else {
           const settled = await Promise.allSettled(
@@ -243,7 +250,6 @@ export const MaintenanceLogs: React.FC = () => {
       console.error("Bulk scanning failed:", error);
       handleFirestoreError(error, OperationType.CREATE, 'logs/bulk');
     } finally {
-      setIsBulkScanning(false);
       if (e.target) e.target.value = '';
     }
   };
