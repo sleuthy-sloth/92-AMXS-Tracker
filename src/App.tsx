@@ -11,9 +11,7 @@ import { AppLayout } from './components/layout/AppLayout';
 
 // Pages
 import { Dashboard } from './pages/Dashboard';
-import { MaintenanceLogs } from './pages/MaintenanceLogs';
-import { G081Gallery } from './pages/G081Gallery';
-import { DIFMLogs } from './pages/DIFMLogs';
+import { Operations } from './pages/Operations';
 import { TrainingTracker } from './pages/TrainingTracker';
 import { Personnel } from './pages/Personnel';
 import { Support } from './pages/Support';
@@ -60,9 +58,10 @@ const AppContent: React.FC = () => {
     <AppLayout>
       <Routes>
         <Route path="/" element={<Dashboard />} />
-        <Route path="/maintenance" element={<MaintenanceLogs />} />
-        <Route path="/difm" element={<DIFMLogs />} />
-        <Route path="/g081" element={<G081Gallery />} />
+        <Route path="/ops/*" element={<Operations />} />
+        <Route path="/maintenance" element={<Navigate to="/ops/maintenance" replace />} />
+        <Route path="/difm" element={<Navigate to="/ops/difm" replace />} />
+        <Route path="/g081" element={<Navigate to="/ops/g081" replace />} />
         <Route path="/training" element={<TrainingTracker />} />
         <Route path="/personnel" element={<Personnel />} />
         <Route path="/support" element={<Support />} />
