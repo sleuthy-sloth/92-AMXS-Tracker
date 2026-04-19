@@ -5,9 +5,10 @@ import { db, handleFirestoreError, OperationType } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useScanStatus } from '../contexts/AIScanStatusContext';
 import { MaintenanceLog } from '../types';
-import { getAI, isGeminiConfigured } from '../lib/gemini';
-import { safeParse, DiagnosticsSchema, DiagnosticFindingParsed } from '../lib/aiSchemas';
-import { withRetry, classifyError, AIRetryError } from '../lib/aiRetry';
+import { isGeminiConfigured } from '../lib/gemini';
+import { DiagnosticsSchema, DiagnosticFindingParsed } from '../lib/aiSchemas';
+import { generateJSONWithFallback, isOpenRouterConfigured } from '../lib/aiProvider';
+import { classifyError, AIRetryError } from '../lib/aiRetry';
 import { cn } from '../lib/utils';
 
 const MAX_LOGS = 60;
@@ -51,8 +52,8 @@ export const Diagnostics: React.FC = () => {
   }, [logs]);
 
   const analyze = async () => {
-    if (!profile || !isGeminiConfigured()) {
-      setError('Gemini API not configured.');
+    if (!profile || (!isGeminiConfigured() && !isOpenRouterConfigured())) {
+      setError('No AI provider configured.');
       return;
     }
     if (byTail.length === 0) {
@@ -74,34 +75,29 @@ export const Diagnostics: React.FC = () => {
         )
         .join('\n');
 
-      const response = await withRetry(() => getAI().models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: [
-          {
-            role: 'user',
-            parts: [
-              {
-                text: `SYSTEM: 92nd AMXS predictive maintenance analyst.
+      const { data: parsed, source } = await generateJSONWithFallback({
+        schema: DiagnosticsSchema,
+        context: 'Diagnostics',
+        temperature: 0.15,
+        prompt: `SYSTEM: 92nd AMXS predictive maintenance analyst.
 DATA (Shop ${profile.shopId}, AMU ${profile.amuId}):
 ${summary}
 
 TASK: Identify recurring-component failure patterns per tail. Focus on repeat or related discrepancies that suggest an impending component failure.
 CONSTRAINTS: Ground every finding in the data provided. Do not invent tails or components. Max 5 findings.
 OUTPUT JSON: [{"tail_number","component","risk":"high|medium|low","pattern","recommendation"}]`,
-              },
-            ],
-          },
-        ],
-        config: { responseMimeType: 'application/json', temperature: 0.15 },
-      }));
-      const parsed = safeParse(DiagnosticsSchema, response.text, 'Diagnostics');
+      });
       if (!parsed) {
         setError('AI returned an unparseable response. Try again in a moment.');
         setFindings([]);
-        reportError('diagnostics', { kind: 'parse', message: 'Gemini response failed schema validation', retryable: false });
+        reportError(
+          'diagnostics',
+          { kind: 'parse', message: 'AI response failed schema validation', retryable: false },
+          source,
+        );
       } else {
         setFindings(parsed);
-        reportSuccess('diagnostics');
+        reportSuccess('diagnostics', source);
       }
     } catch (err) {
       console.error('Diagnostics failed', err);
@@ -124,7 +120,7 @@ OUTPUT JSON: [{"tail_number","component","risk":"high|medium|low","pattern","rec
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8" data-tour="page-root">
       <header className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 bg-primary/10 text-primary flex items-center justify-center">
