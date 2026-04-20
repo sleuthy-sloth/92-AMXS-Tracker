@@ -262,6 +262,14 @@ service cloud.firestore {
       // markers. Stale ones can be TTL-swept server-side later.
     }
 
+    // AI response cache. Scoped by shop/AMU via the doc ID; any active
+    // user may read/write so cached analyses are shared across the squadron
+    // rather than per-session. Docs are small (tens of KB) and overwritten
+    // on each scan, so no size/shape validation beyond auth gating.
+    match /ai_cache/{cacheId} {
+      allow read, write: if isActiveUser();
+    }
+
     // Shift-handoff collection (see /handoff route). A tech creates one doc per
     // shift with open items; the incoming shift marks items acknowledged.
     match /handoffs/{handoffId} {
