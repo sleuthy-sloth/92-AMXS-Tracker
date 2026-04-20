@@ -11,7 +11,7 @@ export async function parseTrainingReport(base64Data: string, mimeType: string):
       : mimeType;
 
     const response = await aiClient.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-1.5-flash-latest",
       contents: [
         {
           parts: [
