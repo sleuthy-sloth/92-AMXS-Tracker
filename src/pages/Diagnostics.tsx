@@ -100,6 +100,7 @@ TASK: Identify recurring-component failure patterns per tail. Focus on repeat or
 CONSTRAINTS: Ground every finding in the data provided. Do not invent tails or components. Max 5 findings.
 OUTPUT JSON: [{"tail_number","component","risk":"high|medium|low","pattern","recommendation"}]`,
       });
+
       if (!parsed) {
         setError('AI returned an unparseable response. Try again in a moment.');
         setFindings([]);
