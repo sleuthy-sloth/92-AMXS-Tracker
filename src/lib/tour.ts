@@ -10,10 +10,34 @@ export type TourStep = DriveStep & {
   route?: string;
 };
 
+export interface BuildTourOptions {
+  /** Drop sidebar-anchored steps and use popover-only nav guidance instead. */
+  isMobile?: boolean;
+}
+
 const isLeadership = (role: UserRole) => role === 'leadership';
 const isAdminRole = (role: UserRole) => role === 'ncoic' || role === 'leadership';
 
-export function buildTourSteps(role: UserRole): TourStep[] {
+export function buildTourSteps(role: UserRole, opts: BuildTourOptions = {}): TourStep[] {
+  const navStep: TourStep = opts.isMobile
+    ? {
+        route: '/',
+        popover: {
+          title: 'Navigation',
+          description:
+            'Tap the menu icon (☰) at the top-left any time to open the navigation drawer: Operations, Training, Personnel, Handoff, Support — plus an Admin section for NCOIC / Leadership.',
+        },
+      }
+    : {
+        route: '/',
+        element: '[data-tour="sidebar-nav"]',
+        popover: {
+          title: 'Navigation',
+          description:
+            'The sidebar groups the platform into Operations, Training, Personnel, Handoff, Support — plus an Admin drawer (NCOIC / Leadership only) for Diagnostics, Workload, and Onboarding.',
+        },
+      };
+
   const steps: TourStep[] = [
     {
       popover: {
@@ -22,15 +46,7 @@ export function buildTourSteps(role: UserRole): TourStep[] {
           "You're in demo mode. Nothing you change here touches live Firestore data — it's all in-memory mock records you can poke at safely. Let's walk the major surfaces.",
       },
     },
-    {
-      route: '/',
-      element: '[data-tour="sidebar-nav"]',
-      popover: {
-        title: 'Navigation',
-        description:
-          'The sidebar groups the platform into Operations, Training, Personnel, Handoff, Support — plus an Admin drawer (NCOIC / Leadership only) for Diagnostics, Workload, and Onboarding.',
-      },
-    },
+    navStep,
     {
       route: '/',
       element: '[data-tour="dashboard-matrix"]',
@@ -112,7 +128,7 @@ export function buildTourSteps(role: UserRole): TourStep[] {
       popover: {
         title: 'Predictive Diagnostics',
         description:
-          'Pick a tail with repeat entries and Gemini reports recurring-component failure patterns with high/medium/low risk. Findings are grounded in the data you provide — no hallucinated tails.',
+          'Pick a tail with repeat entries — Gemini surfaces recurring-component failure patterns with high/medium/low risk and ties each finding back to the specific log IDs you can open and verify.',
       },
     });
   }
