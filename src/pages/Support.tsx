@@ -49,7 +49,7 @@ const formatRelative = (ms?: number): string => {
 // is still in the browser console for anyone debugging.
 const summariseError = (kind: string, message: string): string => {
   if (kind === 'quota' || kind === 'rate_limit') {
-    return 'Free-tier quota reached — routing to OpenRouter backup until the window resets.';
+    return 'Primary AI quota reached. Operational fallback active.';
   }
   const firstLine = message.split('\n')[0].trim();
   if (firstLine.length > 160) return firstLine.slice(0, 157) + '…';

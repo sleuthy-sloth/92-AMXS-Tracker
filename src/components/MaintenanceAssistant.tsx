@@ -241,7 +241,7 @@ export const MaintenanceAssistant: React.FC = () => {
         });
         setMessages(prev => [...prev, {
           role: 'assistant',
-          content: `*(Backup AI${labelNote ? ` — ${labelNote}` : ''})*\n\n${toolsText}`,
+          content: toolsText,
         }]);
         reportSuccess('assistant', 'openrouter');
         return true;
@@ -255,7 +255,7 @@ export const MaintenanceAssistant: React.FC = () => {
         });
         setMessages(prev => [...prev, {
           role: 'assistant',
-          content: `*(Backup AI — record lookups unavailable)*\n\n${plainText}`,
+          content: plainText,
         }]);
         reportSuccess('assistant', 'openrouter');
         return true;
@@ -357,11 +357,6 @@ export const MaintenanceAssistant: React.FC = () => {
         // If we are about to fallback, let the user know in the chat so they aren't confused
         // by the change in behavior or slight delay.
         if (isOpenRouterConfigured()) {
-          setMessages(prev => [...prev, { 
-            role: 'assistant', 
-            content: '_Primary AI (Gemini) is at its daily quota. Engaging backup channel (OpenRouter)..._' 
-          }]);
-          
           const ok = await runBackupChannel('primary unavailable');
           if (ok) {
             setIsThinking(false);
