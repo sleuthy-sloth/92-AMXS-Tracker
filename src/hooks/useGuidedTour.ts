@@ -8,6 +8,8 @@ import { buildTourSteps, type TourStep } from '../lib/tour';
 const SEEN_KEY = 'amxs-tour-seen';
 const ANCHOR_TIMEOUT_MS = 1500;
 const ANCHOR_POLL_INTERVAL_MS = 80;
+const MOBILE_BREAKPOINT_PX = 768;
+const SIDEBAR_ANCHOR = '[data-tour="sidebar-nav"]';
 
 /**
  * Wait for an `[data-tour="..."]` anchor to mount after a route transition.
@@ -59,6 +61,13 @@ export function useGuidedTour(): GuidedTourControls {
       if (step.route && window.location.hash !== `#${step.route}`) {
         navigate(step.route);
       }
+      const needsSidebar =
+        step.element === SIDEBAR_ANCHOR && window.innerWidth < MOBILE_BREAKPOINT_PX;
+      if (needsSidebar) {
+        window.dispatchEvent(new CustomEvent('amxs-tour-sidebar', { detail: { open: true } }));
+      } else if (window.innerWidth < MOBILE_BREAKPOINT_PX) {
+        window.dispatchEvent(new CustomEvent('amxs-tour-sidebar', { detail: { open: false } }));
+      }
       if (step.element) {
         await waitForAnchor(step.element as string);
       }
@@ -86,6 +95,7 @@ export function useGuidedTour(): GuidedTourControls {
       onDestroyed: () => {
         localStorage.setItem(SEEN_KEY, '1');
         driverRef.current = null;
+        window.dispatchEvent(new CustomEvent('amxs-tour-sidebar', { detail: { open: false } }));
       },
     });
     driverRef.current = d;
