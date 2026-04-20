@@ -6,7 +6,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useScanStatus } from '../../contexts/AIScanStatusContext';
 import { TrendAlertsSchema } from '../../lib/aiSchemas';
 import { generateJSONWithFallback } from '../../lib/aiProvider';
-import { getCachedAIResult, setCachedAIResult, generateDataHash } from '../../lib/aiCache';
 import { classifyError, AIRetryError } from '../../lib/aiRetry';
 import { cn } from '../../lib/utils';
 
@@ -30,7 +29,6 @@ export const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[]; training: Trai
         if (!profile) return;
         setLoading(true);
         reportStart('intelligence-feed');
-        
         try {
           const recentLogs = logs
             .slice(0, 15)
@@ -56,21 +54,6 @@ export const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[]; training: Trai
             return;
           }
 
-          const currentHash = generateDataHash([...recentLogs, ...imminentTraining]);
-          const cacheKey = `${profile.amuId}_${profile.shopId}`;
-          
-          // Check cache (1 hour max age)
-          const cached = await getCachedAIResult<IntelAlert[]>('intelligence', cacheKey, 3600000);
-          
-          if (cached) {
-            // We should still check if data has changed significantly even if cache is fresh?
-            // For now, if cache is fresh < 1hr we just use it to save quota.
-            setAlerts(cached);
-            setLoading(false);
-            reportSuccess('intelligence-feed', 'gemini'); // Hack: just say gemini since we don't store source
-            return;
-          }
-
           const { data, source } = await generateJSONWithFallback({
             schema: TrendAlertsSchema,
             context: 'IntelligenceFeed',
@@ -87,25 +70,26 @@ export const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[]; training: Trai
               OUTPUT: JSON array [ { "type": "critical" | "warning" | "info", "title": string, "description": string } ]`,
           });
 
-          const finalAlerts = (!data || data.length === 0) 
-            ? [{
+          if (!data || data.length === 0) {
+            setAlerts([
+              {
                 id: 'nominal',
-                type: 'info' as const,
+                type: 'info',
                 title: 'System Nominal',
-                description: 'No significant readiness trends or critical alerts identified from recent data blocks.',
+                description:
+                  'No significant readiness trends or critical alerts identified from recent data blocks.',
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              }]
-            : data.map((a, i) => ({
+              },
+            ]);
+          } else {
+            setAlerts(
+              data.map((a, i) => ({
                 ...a,
                 id: `intel-${i}`,
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              }));
-
-          setAlerts(finalAlerts);
-          
-          // Save to cache
-          await setCachedAIResult('intelligence', cacheKey, finalAlerts, currentHash);
-          
+              }))
+            );
+          }
           reportSuccess('intelligence-feed', source);
         } catch (err) {
           console.error('Intelligence Feed Error:', err);

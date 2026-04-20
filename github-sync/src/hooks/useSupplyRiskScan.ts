@@ -21,7 +21,6 @@ import { tsToMillis } from '../lib/utils';
 import { isGeminiConfigured } from '../lib/gemini';
 import { SupplyRiskListSchema } from '../lib/aiSchemas';
 import { generateJSONWithFallback, isOpenRouterConfigured } from '../lib/aiProvider';
-import { getCachedAIResult, setCachedAIResult, generateDataHash } from '../lib/aiCache';
 import { classifyError, AIRetryError } from '../lib/aiRetry';
 
 const WINDOW_DAYS = 7;
@@ -63,40 +62,23 @@ export const useSupplyRiskScan = () => {
           .map((l) => `${l.id}|${l.tail_number}: ${l.discrepancy}`)
           .join('\n');
 
-        const currentHash = generateDataHash([summary]);
-        const cacheKey = `${profile.amuId}_${profile.shopId}`;
-        
-        // Use a longer cache for supply risk (4 hours)
-        const cached = await getCachedAIResult<any[]>('supply-risk', cacheKey, 14400000);
-        
-        let parsed: any[] | null = cached || null;
-        let finalSource = 'gemini' as const;
+        const { data: parsed, source } = await generateJSONWithFallback({
+          schema: SupplyRiskListSchema,
+          context: 'SupplyRiskScan',
+          prompt: `SYSTEM: 92nd AMXS supply-chain risk classifier.
+DATA (open discrepancies, id|tail: text):
+${summary}
 
-        if (!cached) {
-          const { data, source } = await generateJSONWithFallback({
-            schema: SupplyRiskListSchema,
-            context: 'SupplyRiskScan',
-            prompt: `SYSTEM: 92nd AMXS supply-chain risk classifier.
-  DATA (open discrepancies, id|tail: text):
-  ${summary}
-  
-  TASK: For each entry that is LIKELY to require supply parts (NSN, kit, LRU), output one finding. Skip entries that are operator adjustments or soft-fault resets.
-  CONSTRAINT: Use only ids present in DATA. Do not invent.
-  OUTPUT JSON: [{"logId","tail_number","risk":"high|medium|low","likely_parts":[string],"rationale"}]`,
-          });
-          parsed = data;
-          finalSource = (source as any);
-          
-          if (data) {
-            await setCachedAIResult('supply-risk', cacheKey, data, currentHash);
-          }
-        }
+TASK: For each entry that is LIKELY to require supply parts (NSN, kit, LRU), output one finding. Skip entries that are operator adjustments or soft-fault resets.
+CONSTRAINT: Use only ids present in DATA. Do not invent.
+OUTPUT JSON: [{"logId","tail_number","risk":"high|medium|low","likely_parts":[string],"rationale"}]`,
+        });
 
         if (!parsed) {
           reportError(
             'supply-risk',
             { kind: 'parse', message: 'AI response failed schema validation', retryable: false },
-            (finalSource as any),
+            source,
           );
           return;
         }
@@ -125,7 +107,7 @@ export const useSupplyRiskScan = () => {
             sentAt: serverTimestamp(),
           });
         }
-        reportSuccess('supply-risk', finalSource as any);
+        reportSuccess('supply-risk', source);
       } catch (err) {
         console.error('Supply risk scan failed', err);
         const classified = err instanceof AIRetryError ? err.classified : classifyError(err);
