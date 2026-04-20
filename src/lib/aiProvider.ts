@@ -33,6 +33,10 @@ export interface GenerateJSONResult<T> {
 
 const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
 const DEFAULT_OPENROUTER_MODEL = 'meta-llama/llama-3.2-3b-instruct:free';
+// Tool calling on free tier is hit-and-miss; mistral-nemo is the most
+// reliable free model OpenRouter exposes that supports OpenAI tool-call
+// schema.
+const DEFAULT_OPENROUTER_TOOLS_MODEL = 'mistralai/mistral-nemo:free';
 const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
 
 export function isOpenRouterConfigured(): boolean {
@@ -68,12 +72,29 @@ async function callGemini<T>(opts: GenerateJSONOptions<T>): Promise<T | null> {
   return safeParse(opts.schema, response.text, opts.context);
 }
 
+interface OpenRouterToolCall {
+  id: string;
+  type: 'function';
+  function: { name: string; arguments: string };
+}
 interface OpenRouterChoice {
-  message?: { content?: string };
+  message?: {
+    role?: string;
+    content?: string | null;
+    tool_calls?: OpenRouterToolCall[];
+  };
+  finish_reason?: string;
 }
 interface OpenRouterResponse {
   choices?: OpenRouterChoice[];
   error?: { message?: string; code?: number };
+}
+
+export interface OpenRouterToolSchema {
+  name: string;
+  description: string;
+  /** JSON schema for the tool's parameters. */
+  parameters: Record<string, unknown>;
 }
 
 async function callOpenRouter<T>(opts: GenerateJSONOptions<T>): Promise<T | null> {
@@ -201,4 +222,159 @@ export async function generateTextWithOpenRouter(params: {
     },
     { signal: params.signal },
   );
+}
+
+/**
+ * Run a tool-calling conversation against OpenRouter. Used when Gemini's
+ * function-calling is unavailable (quota / rate-limit / 5xx) but we still
+ * want live record lookups. Handles the full round-trip internally:
+ * initial call → execute tool calls via the caller-supplied executor →
+ * second call with tool results → final text answer.
+ *
+ * Throws on bad tool-call JSON, unknown tool names, or empty final
+ * content — caller is expected to catch and fall through to a plain-text
+ * completion so the user still gets an answer.
+ */
+export async function runOpenRouterWithTools(params: {
+  systemPrompt: string;
+  userPrompt: string;
+  tools: OpenRouterToolSchema[];
+  executeToolCall: (name: string, args: Record<string, unknown>) => Promise<unknown>;
+  signal?: AbortSignal;
+  model?: string;
+  temperature?: number;
+}): Promise<string> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) throw new Error('OPENROUTER_API_KEY is not configured');
+
+  const model = params.model ?? DEFAULT_OPENROUTER_TOOLS_MODEL;
+  const temperature = params.temperature ?? 0;
+  const toolsPayload = params.tools.map((t) => ({
+    type: 'function' as const,
+    function: {
+      name: t.name,
+      description: t.description,
+      parameters: t.parameters,
+    },
+  }));
+
+  const firstResponse = await withRetry(
+    async (signal) => {
+      const res = await fetch(OPENROUTER_ENDPOINT, {
+        method: 'POST',
+        signal,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          temperature,
+          tools: toolsPayload,
+          tool_choice: 'auto',
+          messages: [
+            { role: 'system', content: params.systemPrompt },
+            { role: 'user', content: params.userPrompt },
+          ],
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        throw Object.assign(new Error(`OpenRouter ${res.status}: ${body || res.statusText}`), {
+          status: res.status,
+        });
+      }
+      const json = (await res.json()) as OpenRouterResponse;
+      if (json.error) {
+        throw Object.assign(new Error(json.error.message ?? 'OpenRouter error'), {
+          status: json.error.code,
+        });
+      }
+      return json;
+    },
+    { signal: params.signal },
+  );
+
+  const assistantMessage = firstResponse.choices?.[0]?.message;
+  const toolCalls = assistantMessage?.tool_calls ?? [];
+
+  if (toolCalls.length === 0) {
+    const text = assistantMessage?.content;
+    if (typeof text !== 'string' || !text.trim()) {
+      throw new Error('OpenRouter returned neither tool calls nor text');
+    }
+    return text;
+  }
+
+  // Execute each tool call. Any parse / unknown-name failure throws and
+  // the caller falls back to plain-text completion.
+  const toolResults: Array<{ tool_call_id: string; name: string; content: string }> = [];
+  for (const call of toolCalls) {
+    let parsedArgs: Record<string, unknown>;
+    try {
+      parsedArgs = call.function.arguments
+        ? (JSON.parse(call.function.arguments) as Record<string, unknown>)
+        : {};
+    } catch {
+      throw new Error(`OpenRouter returned malformed tool arguments for ${call.function.name}`);
+    }
+    const result = await params.executeToolCall(call.function.name, parsedArgs);
+    toolResults.push({
+      tool_call_id: call.id,
+      name: call.function.name,
+      content: JSON.stringify(result ?? null),
+    });
+  }
+
+  const finalText = await withRetry(
+    async (signal) => {
+      const res = await fetch(OPENROUTER_ENDPOINT, {
+        method: 'POST',
+        signal,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          temperature,
+          messages: [
+            { role: 'system', content: params.systemPrompt },
+            { role: 'user', content: params.userPrompt },
+            {
+              role: 'assistant',
+              content: assistantMessage?.content ?? '',
+              tool_calls: toolCalls,
+            },
+            ...toolResults.map((r) => ({
+              role: 'tool' as const,
+              tool_call_id: r.tool_call_id,
+              name: r.name,
+              content: r.content,
+            })),
+          ],
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        throw Object.assign(new Error(`OpenRouter ${res.status}: ${body || res.statusText}`), {
+          status: res.status,
+        });
+      }
+      const json = (await res.json()) as OpenRouterResponse;
+      if (json.error) {
+        throw Object.assign(new Error(json.error.message ?? 'OpenRouter error'), {
+          status: json.error.code,
+        });
+      }
+      const content = json.choices?.[0]?.message?.content;
+      if (typeof content !== 'string' || !content.trim()) {
+        throw new Error('OpenRouter returned empty final content');
+      }
+      return content;
+    },
+    { signal: params.signal },
+  );
+
+  return finalText;
 }
