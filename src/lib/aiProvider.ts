@@ -144,3 +144,61 @@ export async function generateJSONWithFallback<T>(
   const data = await callOpenRouter(opts);
   return { data, source: 'openrouter' };
 }
+
+/**
+ * Plain-text completion via OpenRouter — no Zod schema, no tools. Used by
+ * the Maintenance Assistant's catch path when Gemini function-calling is
+ * unavailable (quota / rate-limit / 5xx). Loses the ability to fetch live
+ * records, but answers conceptual questions from the model's own knowledge.
+ */
+export async function generateTextWithOpenRouter(params: {
+  systemPrompt: string;
+  userPrompt: string;
+  signal?: AbortSignal;
+  model?: string;
+  temperature?: number;
+}): Promise<string> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) throw new Error('OPENROUTER_API_KEY is not configured');
+
+  return withRetry(
+    async (signal) => {
+      const res = await fetch(OPENROUTER_ENDPOINT, {
+        method: 'POST',
+        signal,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: params.model ?? DEFAULT_OPENROUTER_MODEL,
+          temperature: params.temperature ?? 0.2,
+          messages: [
+            { role: 'system', content: params.systemPrompt },
+            { role: 'user', content: params.userPrompt },
+          ],
+        }),
+      });
+
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        throw Object.assign(new Error(`OpenRouter ${res.status}: ${body || res.statusText}`), {
+          status: res.status,
+        });
+      }
+
+      const json = (await res.json()) as OpenRouterResponse;
+      if (json.error) {
+        throw Object.assign(new Error(json.error.message ?? 'OpenRouter error'), {
+          status: json.error.code,
+        });
+      }
+      const raw = json.choices?.[0]?.message?.content;
+      if (typeof raw !== 'string' || !raw.trim()) {
+        throw new Error('OpenRouter returned empty content');
+      }
+      return raw;
+    },
+    { signal: params.signal },
+  );
+}
