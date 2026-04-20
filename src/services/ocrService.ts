@@ -15,7 +15,7 @@ export type ScannedLog = ScannedLogParsed;
 export const scanMaintenanceForm = async (base64Image: string): Promise<ScannedLog | null> => {
   try {
     const response = await getAI().models.generateContent({
-      model: "gemini-2.0-flash",
+      model: "gemini-flash-latest",
       contents: [{
         role: "user",
         parts: [
@@ -56,7 +56,7 @@ export const scanMaintenanceForm = async (base64Image: string): Promise<ScannedL
 export const scanLogBook = async (base64Image: string): Promise<ScannedLogBookParsed | null> => {
   try {
     const response = await getAI().models.generateContent({
-      model: "gemini-2.0-flash",
+      model: "gemini-flash-latest",
       contents: [{
         role: "user",
         parts: [
@@ -99,7 +99,7 @@ export const scanLogBook = async (base64Image: string): Promise<ScannedLogBookPa
 export const parseTrainingReport = async (base64Data: string, mimeType: string = "application/pdf"): Promise<TrainingReportParsed> => {
   try {
     const response = await getAI().models.generateContent({
-      model: "gemini-2.0-flash",
+      model: "gemini-flash-latest",
       contents: [{
         role: "user",
         parts: [
