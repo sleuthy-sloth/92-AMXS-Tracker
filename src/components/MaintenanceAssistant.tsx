@@ -15,6 +15,7 @@ import { MOCK_LOGS, MOCK_DIFM, MOCK_TRAINING } from '../mockData';
 import { cn } from '../lib/utils';
 import { getAI, isGeminiConfigured } from '../lib/gemini';
 import { withRetry, classifyError, AIRetryError } from '../lib/aiRetry';
+import { generateTextWithOpenRouter, isOpenRouterConfigured, shouldFallback } from '../lib/aiProvider';
 
 const chatStorageKey = (uid?: string) => (uid ? `amxs-ai-chat:${uid}` : null);
 
@@ -256,11 +257,39 @@ export const MaintenanceAssistant: React.FC = () => {
     } catch (err) {
       console.error("AI Assistant Error:", err);
       const classified = err instanceof AIRetryError ? err.classified : classifyError(err);
+
+      // OpenRouter fallback for conceptual answers. We lose function-calling
+      // (no live record lookups), but beats a raw SYSTEM ERROR on a 429.
+      if (shouldFallback(err) && isOpenRouterConfigured()) {
+        try {
+          const fallbackText = await generateTextWithOpenRouter({
+            systemPrompt:
+              'You are the 92nd AMXS Maintenance Assistant backup channel. ' +
+              'The primary AI is at its daily quota, so live record lookups ' +
+              '(logs, DIFM, training) are temporarily unavailable. Answer ' +
+              'the maintainer\'s question from your own knowledge — ' +
+              'procedures, concepts, how-to guidance — and clearly note if ' +
+              'they\'re asking for specific records that they should retry ' +
+              'once the primary is back online. Be concise and practical.',
+            userPrompt: userMsg,
+          });
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: `*(Backup AI — record lookups unavailable until primary quota resets)*\n\n${fallbackText}`,
+          }]);
+          reportSuccess('assistant', 'openrouter');
+          return;
+        } catch (fallbackErr) {
+          console.error('AI Assistant fallback also failed:', fallbackErr);
+        }
+      }
+
       reportError('assistant', classified);
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: `SYSTEM ERROR (${classified.kind}): ${classified.message}`
-      }]);
+      const friendly =
+        classified.kind === 'quota' || classified.kind === 'rate_limit'
+          ? 'AI assistant is at its daily free-tier limit. Try again after the quota resets, or check the Logs / Training pages directly.'
+          : `Assistant unavailable: ${classified.message}`;
+      setMessages(prev => [...prev, { role: 'assistant', content: friendly }]);
     } finally {
       setIsThinking(false);
     }
