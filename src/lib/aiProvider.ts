@@ -31,7 +31,7 @@ export interface GenerateJSONResult<T> {
   source: AIProvider;
 }
 
-const DEFAULT_GEMINI_MODEL = 'gemini-2.0-flash';
+const DEFAULT_GEMINI_MODEL = 'gemini-flash-latest';
 const DEFAULT_OPENROUTER_MODEL = 'mistralai/mistral-7b-instruct:free';
 // Tool calling on free tier is hit-and-miss; mistral-nemo is the most
 // reliable free model OpenRouter exposes that supports OpenAI tool-call
