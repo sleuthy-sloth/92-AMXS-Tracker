@@ -41,6 +41,7 @@ export const MaintenanceLogs: React.FC = () => {
   const { user, profile, isDemoMode } = useAuth();
   const [firestoreLogs, setFirestoreLogs] = useState<MaintenanceLog[]>([]);
   const [firestoreDifm, setFirestoreDifm] = useState<DIFMLog[]>([]);
+  const [snapshotError, setSnapshotError] = useState<string | null>(null);
   // Demo-mode only: entries produced client-side via bulk scan. Kept in
   // a dedicated slot so they can be merged into the derived `logs` list
   // without interfering with the MOCK_LOGS source.
@@ -124,7 +125,13 @@ export const MaintenanceLogs: React.FC = () => {
     
     const unsubLogs = onSnapshot(qLogs, (snap) => {
       setFirestoreLogs(snap.docs.map(d => ({ id: d.id, ...d.data() } as MaintenanceLog)));
-    }, (error) => handleFirestoreError(error, OperationType.LIST, 'logs'));
+      setSnapshotError(null);
+    }, (error) => {
+      const code = (error as { code?: string })?.code;
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('Firestore Error:', { error: message, code, operationType: OperationType.LIST, path: 'logs' });
+      setSnapshotError(code ? `${code}: ${message}` : message);
+    });
 
     let qDifm;
     const difmConstraints: any[] = [where('isDemo', '==', false)];
@@ -134,7 +141,12 @@ export const MaintenanceLogs: React.FC = () => {
 
     const unsubDifm = onSnapshot(qDifm, (snap) => {
       setFirestoreDifm(snap.docs.map(d => ({ id: d.id, ...d.data() } as DIFMLog)));
-    }, (error) => handleFirestoreError(error, OperationType.LIST, 'difm'));
+    }, (error) => {
+      const code = (error as { code?: string })?.code;
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('Firestore Error:', { error: message, code, operationType: OperationType.LIST, path: 'difm' });
+      setSnapshotError(code ? `${code}: ${message}` : message);
+    });
 
     return () => {
       unsubLogs();
@@ -341,6 +353,13 @@ export const MaintenanceLogs: React.FC = () => {
           ...(formData.g081Photo ? { g081_status: 'pending' as const } : {}),
         };
         const docRef = await addDoc(collection(db, 'logs'), newLog);
+        console.info('[logs] created', {
+          id: docRef.id,
+          amuId: newLog.amuId,
+          shopId: newLog.shopId,
+          isDemo: newLog.isDemo,
+          man_number: newLog.man_number,
+        });
 
         if (formData.isRedBall && !isDemoMode) {
           await createNotification({
@@ -434,6 +453,20 @@ export const MaintenanceLogs: React.FC = () => {
 
   return (
     <div className="space-y-10">
+      {snapshotError && !isDemoMode && (
+        <div className="border-2 border-red-500 bg-red-50 p-4 flex items-start gap-3">
+          <ShieldAlert className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="font-black text-[11px] tracking-widest uppercase text-red-700">
+              Log Feed Unavailable
+            </p>
+            <p className="text-xs text-red-900 mt-1 font-mono break-all">{snapshotError}</p>
+            <p className="text-[11px] text-red-800 mt-2">
+              Newly-submitted logs may not appear. If this references a missing index, open the Firebase Console link in the developer console to create it.
+            </p>
+          </div>
+        </div>
+      )}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
         <div className="flex items-center gap-6">
           <div className="w-16 h-16 flex items-center justify-center">
