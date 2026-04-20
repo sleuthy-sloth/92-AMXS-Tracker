@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Users, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Users, TrendingUp, TrendingDown, Minus, ShieldAlert } from 'lucide-react';
 import { collection, onSnapshot, query, where, orderBy, limit } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../firebase';
+import { db, OperationType } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { MaintenanceLog, UserProfile } from '../types';
 import { tsToMillis } from '../lib/utils';
@@ -24,6 +24,7 @@ export const Workload: React.FC = () => {
   const { profile } = useAuth();
   const [logs, setLogs] = useState<MaintenanceLog[]>([]);
   const [people, setPeople] = useState<UserProfile[]>([]);
+  const [snapshotError, setSnapshotError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!profile) return;
@@ -40,8 +41,16 @@ export const Workload: React.FC = () => {
     );
     const unsubL = onSnapshot(
       qLogs,
-      (snap) => setLogs(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as MaintenanceLog)),
-      (err) => handleFirestoreError(err, OperationType.LIST, 'logs')
+      (snap) => {
+        setLogs(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as MaintenanceLog));
+        setSnapshotError(null);
+      },
+      (err) => {
+        const code = (err as { code?: string })?.code;
+        const message = err instanceof Error ? err.message : String(err);
+        console.error('Firestore Error:', { error: message, code, operationType: OperationType.LIST, path: 'logs' });
+        setSnapshotError(code ? `${code}: ${message}` : message);
+      }
     );
 
     const qUsers = query(
@@ -53,7 +62,12 @@ export const Workload: React.FC = () => {
     const unsubU = onSnapshot(
       qUsers,
       (snap) => setPeople(snap.docs.map((d) => ({ uid: d.id, ...d.data() }) as UserProfile)),
-      (err) => handleFirestoreError(err, OperationType.LIST, 'users')
+      (err) => {
+        const code = (err as { code?: string })?.code;
+        const message = err instanceof Error ? err.message : String(err);
+        console.error('Firestore Error:', { error: message, code, operationType: OperationType.LIST, path: 'users' });
+        setSnapshotError(code ? `${code}: ${message}` : message);
+      }
     );
 
     return () => {
@@ -122,6 +136,17 @@ export const Workload: React.FC = () => {
 
   return (
     <div className="space-y-8" data-tour="page-root">
+      {snapshotError && (
+        <div className="border-2 border-red-500 bg-red-50 p-4 flex items-start gap-3">
+          <ShieldAlert className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="font-black text-[11px] tracking-widest uppercase text-red-700">
+              Workload Feed Unavailable
+            </p>
+            <p className="text-xs text-red-900 mt-1 font-mono break-all">{snapshotError}</p>
+          </div>
+        </div>
+      )}
       <header className="flex items-center gap-4">
         <div className="w-12 h-12 bg-primary/10 text-primary flex items-center justify-center">
           <Users className="w-6 h-6" />
