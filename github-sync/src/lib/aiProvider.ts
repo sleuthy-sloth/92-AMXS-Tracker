@@ -19,7 +19,7 @@ export interface GenerateJSONOptions<T> {
   schema: z.ZodSchema<T>;
   context: string;
   signal?: AbortSignal;
-  /** Per-call model override. Defaults: gemini-1.5-flash / llama-3.2-3b:free. */
+  /** Per-call model override. Defaults: gemini-2.5-flash / llama-3.2-3b:free. */
   geminiModel?: string;
   openRouterModel?: string;
   /** Lower = more deterministic. Forwarded to both providers. */
@@ -31,7 +31,7 @@ export interface GenerateJSONResult<T> {
   source: AIProvider;
 }
 
-const DEFAULT_GEMINI_MODEL = 'gemini-1.5-flash';
+const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
 const DEFAULT_OPENROUTER_MODEL = 'meta-llama/llama-3.2-3b-instruct:free';
 // Tool calling on free tier is hit-and-miss; mistral-nemo is the most
 // reliable free model OpenRouter exposes that supports OpenAI tool-call

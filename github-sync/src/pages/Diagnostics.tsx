@@ -8,7 +8,6 @@ import { MaintenanceLog } from '../types';
 import { isGeminiConfigured } from '../lib/gemini';
 import { DiagnosticsSchema, DiagnosticFindingParsed } from '../lib/aiSchemas';
 import { generateJSONWithFallback, isOpenRouterConfigured } from '../lib/aiProvider';
-import { getCachedAIResult, setCachedAIResult, generateDataHash } from '../lib/aiCache';
 import { classifyError, AIRetryError } from '../lib/aiRetry';
 import { cn } from '../lib/utils';
 
@@ -76,18 +75,6 @@ export const Diagnostics: React.FC = () => {
         )
         .join('\n');
 
-      const currentHash = generateDataHash([summary]);
-      const cacheKey = `${profile.amuId}_${profile.shopId}`;
-      
-      // Check cache (1 hour)
-      const cached = await getCachedAIResult<DiagnosticFindingParsed[]>('diagnostics', cacheKey, 3600000);
-      if (cached) {
-        setFindings(cached);
-        reportSuccess('diagnostics', 'gemini');
-        setLoading(false);
-        return;
-      }
-
       const { data: parsed, source } = await generateJSONWithFallback({
         schema: DiagnosticsSchema,
         context: 'Diagnostics',
@@ -110,7 +97,6 @@ OUTPUT JSON: [{"tail_number","component","risk":"high|medium|low","pattern","rec
         );
       } else {
         setFindings(parsed);
-        await setCachedAIResult('diagnostics', cacheKey, parsed, currentHash);
         reportSuccess('diagnostics', source);
       }
     } catch (err) {
