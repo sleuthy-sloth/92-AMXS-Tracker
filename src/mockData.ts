@@ -1,5 +1,6 @@
 import { UserProfile, MaintenanceLog, TrainingRecord, AMUType, ShiftType, DIFMLog, SHOPS, ShopType } from './types';
 import { addDays, subDays, format } from 'date-fns';
+import { Timestamp } from 'firebase/firestore';
 
 export { SHOPS };
 export type { ShopType };
@@ -154,7 +155,7 @@ AMUS.forEach(amu => {
             amuId: amu,
             technician_name: user.name,
             man_number: manNumber,
-            timestamp: { toDate: () => subDays(new Date(), daysAgo) } as any,
+            timestamp: { toDate: () => subDays(new Date(), daysAgo) } as unknown as Timestamp,
             isRedBall: Math.random() > 0.8,
             shift: SHIFTS[Math.floor(Math.random() * SHIFTS.length)],
             isDemo: true
@@ -176,7 +177,7 @@ AMUS.forEach(amu => {
               shopId: shop,
               amuId: amu,
               technician_name: user.name,
-              timestamp: { toDate: () => subDays(new Date(), Math.floor(Math.random() * 7)) } as any,
+              timestamp: { toDate: () => subDays(new Date(), Math.floor(Math.random() * 7)) } as unknown as Timestamp,
               isDemo: true
             });
           }

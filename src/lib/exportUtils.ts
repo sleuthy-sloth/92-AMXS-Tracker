@@ -144,7 +144,7 @@ export const exportTurnoverToPDF = (
   });
 
   // Section 2: DIFM / Parts Logistics
-  const finalY = (doc as any).lastAutoTable.finalY || 100;
+  const finalY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 100;
   doc.setFontSize(14);
   doc.text('LOGISTICS / DIFM TRACKING', 14, finalY + 15);
 
@@ -165,7 +165,7 @@ export const exportTurnoverToPDF = (
   });
 
   // Section 3: Shift Notes Area
-  const nextY = (doc as any).lastAutoTable.finalY || 200;
+  const nextY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 200;
   doc.setFontSize(14);
   doc.text('HAND-OFF NOTES', 14, nextY + 15);
   doc.rect(14, nextY + 20, 182, 40);

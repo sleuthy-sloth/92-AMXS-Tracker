@@ -47,8 +47,13 @@ export const scanMaintenanceForm = async (base64Image: string): Promise<ScannedL
     });
 
     return safeParse(ScannedLogSchema, response.text, "scanMaintenanceForm");
-  } catch (error) {
-    console.error("OCR Error:", error);
+  } catch (err) {
+    console.error("OCR Error:", err);
+    if (err instanceof Error) {
+      if (err.message.includes("429") || err.message.toLowerCase().includes("quota")) {
+        throw new Error("AI image scanning is temporarily unavailable due to upstream rate limits. Please try again later.");
+      }
+    }
     return null;
   }
 };
@@ -90,8 +95,13 @@ export const scanLogBook = async (base64Image: string): Promise<ScannedLogBookPa
     });
 
     return safeParse(ScannedLogBookSchema, response.text, "scanLogBook");
-  } catch (error) {
-    console.error("Log Book OCR Error:", error);
+  } catch (err) {
+    console.error("Log Book OCR Error:", err);
+    if (err instanceof Error) {
+      if (err.message.includes("429") || err.message.toLowerCase().includes("quota")) {
+        throw new Error("AI image scanning is temporarily unavailable due to upstream rate limits. Please try again later.");
+      }
+    }
     return null;
   }
 };

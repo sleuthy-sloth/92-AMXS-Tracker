@@ -8,7 +8,7 @@ import {
   ChevronLeft,
   Info
 } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextInstance';
 
 export const Login: React.FC = () => {
   const { signIn, signInEmail, signUpEmail, resetPassword, bypassLogin } = useAuth();
@@ -30,16 +30,20 @@ export const Login: React.FC = () => {
         setMessage('Password reset email sent. Please check your inbox.');
         setIsResetMode(false);
       } else if (isSignUp) {
+        if (!email.trim().toLowerCase().endsWith('@us.af.mil')) {
+          throw new Error('Registration requires a valid @us.af.mil email address.');
+        }
         await signUpEmail(email, password);
       } else {
         await signInEmail(email, password);
       }
-    } catch (err: any) {
-      let msg = err.message || 'Authentication failed';
-      if (err.code === 'auth/invalid-credential') msg = 'Invalid credentials provided.';
-      if (err.code === 'auth/user-not-found') msg = 'User account not found.';
-      if (err.code === 'auth/wrong-password') msg = 'Incorrect password.';
-      if (err.code === 'auth/email-already-in-use') msg = 'This email is already registered.';
+    } catch (err: unknown) {
+      let msg = err instanceof Error ? err.message : 'Authentication failed';
+      const code = (err as { code?: string })?.code;
+      if (code === 'auth/invalid-credential') msg = 'Invalid credentials provided.';
+      if (code === 'auth/user-not-found') msg = 'User account not found.';
+      if (code === 'auth/wrong-password') msg = 'Incorrect password.';
+      if (code === 'auth/email-already-in-use') msg = 'This email is already registered.';
       setError(msg);
     }
   };
@@ -115,7 +119,7 @@ export const Login: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <label className="tech-label">System Email / Username</label>
+                <label className="tech-label">System Email / Username (Must be @us.af.mil)</label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
                   <input 
@@ -123,7 +127,7 @@ export const Login: React.FC = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="sleek-input pl-12 w-full" 
-                    placeholder="admin or user@email.com" 
+                    placeholder="user@us.af.mil" 
                   />
                 </div>
               </div>
