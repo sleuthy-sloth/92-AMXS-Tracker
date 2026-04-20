@@ -52,6 +52,71 @@ export function shouldFallback(err: unknown): boolean {
   );
 }
 
+// ─── Gemini cooldown circuit breaker ──────────────────────────────────
+// Once Gemini reports quota / rate-limit, don't bother hitting it again
+// until the retry window Google advertises has passed. Skips the
+// ~7s of retry backoff we'd otherwise burn on every subsequent call.
+const COOLDOWN_STORAGE_KEY = 'amxs-gemini-cooldown-until';
+const COOLDOWN_MIN_MS = 10_000;
+const COOLDOWN_MAX_MS = 10 * 60_000;
+const COOLDOWN_DEFAULT_MS = 60_000;
+
+let geminiCooldownUntil = 0;
+
+function parseRetryDelayMs(message: string): number {
+  const inline = message.match(/retry in\s+([\d.]+)\s*s/i);
+  if (inline) return Math.ceil(Number(inline[1]) * 1000);
+  const retryField = message.match(/"retryDelay"\s*:\s*"(\d+)\s*s"/i);
+  if (retryField) return Number(retryField[1]) * 1000;
+  return 0;
+}
+
+export function markGeminiExhausted(err: unknown): void {
+  const classified = err instanceof AIRetryError ? err.classified : classifyError(err);
+  if (classified.kind !== 'quota' && classified.kind !== 'rate_limit') return;
+  const parsed = parseRetryDelayMs(classified.message);
+  const cooldownMs = Math.min(
+    Math.max(parsed || COOLDOWN_DEFAULT_MS, COOLDOWN_MIN_MS),
+    COOLDOWN_MAX_MS,
+  );
+  geminiCooldownUntil = Date.now() + cooldownMs;
+  try {
+    sessionStorage.setItem(COOLDOWN_STORAGE_KEY, String(geminiCooldownUntil));
+  } catch {
+    // sessionStorage unavailable — in-memory cooldown is still effective
+  }
+  console.warn(
+    `[AI] Gemini ${classified.kind} — skipping Gemini for ${(cooldownMs / 1000).toFixed(0)}s`,
+  );
+}
+
+export function isGeminiOnCooldown(): boolean {
+  if (geminiCooldownUntil && Date.now() < geminiCooldownUntil) return true;
+  try {
+    const raw = sessionStorage.getItem(COOLDOWN_STORAGE_KEY);
+    if (!raw) return false;
+    const stored = Number(raw);
+    if (Number.isFinite(stored) && Date.now() < stored) {
+      geminiCooldownUntil = stored;
+      return true;
+    }
+    sessionStorage.removeItem(COOLDOWN_STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+  return false;
+}
+
+export function geminiCooldownRemainingMs(): number {
+  return Math.max(0, geminiCooldownUntil - Date.now());
+}
+
+/** Test-only: clear the cooldown so suites don't leak state across tests. */
+export function __resetGeminiCooldownForTests(): void {
+  geminiCooldownUntil = 0;
+  try { sessionStorage.removeItem(COOLDOWN_STORAGE_KEY); } catch { /* ignore */ }
+}
+
 async function callGemini<T>(opts: GenerateJSONOptions<T>): Promise<T | null> {
   const response: GenerateContentResponse = await withRetry(
     (signal) => {
@@ -151,11 +216,16 @@ export async function generateJSONWithFallback<T>(
     throw new Error('No AI provider configured (set GEMINI_API_KEY or OPENROUTER_API_KEY).');
   }
 
-  if (isGeminiConfigured()) {
+  // If Gemini is mid-cooldown from a prior quota hit, skip it. Avoids the
+  // ~7s of retry backoff on every subsequent call until the window clears.
+  const skipGemini = isOpenRouterConfigured() && isGeminiOnCooldown();
+
+  if (isGeminiConfigured() && !skipGemini) {
     try {
       const data = await callGemini(opts);
       return { data, source: 'gemini' };
     } catch (err) {
+      markGeminiExhausted(err);
       if (!shouldFallback(err) || !isOpenRouterConfigured()) throw err;
       const kind = err instanceof AIRetryError ? err.classified.kind : 'unknown';
       console.warn(`[AI] ${opts.context}: Gemini ${kind} — falling back to OpenRouter`);

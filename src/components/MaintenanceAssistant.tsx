@@ -17,7 +17,9 @@ import { getAI, isGeminiConfigured } from '../lib/gemini';
 import { withRetry, classifyError, AIRetryError } from '../lib/aiRetry';
 import {
   generateTextWithOpenRouter,
+  isGeminiOnCooldown,
   isOpenRouterConfigured,
+  markGeminiExhausted,
   runOpenRouterWithTools,
   shouldFallback,
   type OpenRouterToolSchema,
@@ -217,7 +219,65 @@ export const MaintenanceAssistant: React.FC = () => {
       return snap.docs.map(d => ({ id: d.id, ...d.data() }));
     };
 
+    // Backup-channel runner — OpenRouter with tools first, plain text if
+    // the free-tier model bungles tool-calling. Returns true on success.
+    const runBackupChannel = async (labelNote: string): Promise<boolean> => {
+      if (!isOpenRouterConfigured()) return false;
+      const backupSystemPrompt =
+        'You are the 92nd AMXS Maintenance Assistant backup channel. ' +
+        'The primary AI (Gemini) is at its daily quota. You have access ' +
+        'to tools for querying maintenance logs, DIFM inventory, and ' +
+        'training compliance — use them when the maintainer asks for ' +
+        'concrete records. Answer conceptual/how-to questions from your ' +
+        'own knowledge. Be concise, practical, and military-technical ' +
+        'when relevant. Bold RED BALLS and EXPIRED training. Use ' +
+        'markdown tables for record-style data.';
+      try {
+        const toolsText = await runOpenRouterWithTools({
+          systemPrompt: backupSystemPrompt,
+          userPrompt: userMsg,
+          tools: openRouterTools,
+          executeToolCall,
+        });
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `*(Backup AI${labelNote ? ` — ${labelNote}` : ''})*\n\n${toolsText}`,
+        }]);
+        reportSuccess('assistant', 'openrouter');
+        return true;
+      } catch (toolsErr) {
+        console.warn('OpenRouter tool-calling failed, trying plain text:', toolsErr);
+      }
+      try {
+        const plainText = await generateTextWithOpenRouter({
+          systemPrompt: backupSystemPrompt + ' Tools are temporarily unavailable — answer from your own knowledge only.',
+          userPrompt: userMsg,
+        });
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `*(Backup AI — record lookups unavailable)*\n\n${plainText}`,
+        }]);
+        reportSuccess('assistant', 'openrouter');
+        return true;
+      } catch (textErr) {
+        console.error('OpenRouter plain-text fallback failed:', textErr);
+        return false;
+      }
+    };
+
     reportStart('assistant');
+
+    // If Gemini is in cooldown from a recent quota hit, skip it and go
+    // straight to OpenRouter — no point burning 7s of retry backoff.
+    if (isGeminiOnCooldown() && isOpenRouterConfigured()) {
+      const ok = await runBackupChannel('primary quota cooling down');
+      if (ok) {
+        setIsThinking(false);
+        return;
+      }
+      // Backup also failed — fall through to Gemini attempt as a last resort.
+    }
+
     try {
       const ai = getAI();
       const response = await withRetry(() => ai.models.generateContent({
@@ -291,60 +351,20 @@ export const MaintenanceAssistant: React.FC = () => {
     } catch (err) {
       console.error("AI Assistant Error:", err);
       const classified = err instanceof AIRetryError ? err.classified : classifyError(err);
+      markGeminiExhausted(err);
 
-      // OpenRouter fallback. First attempt the full tool-calling pipeline
-      // so live record lookups still work. If the free-tier model bungles
-      // the tool call (malformed JSON args, unknown tool, empty final
-      // content), fall through to a plain-text completion so the user
-      // still gets something useful instead of a stack trace.
-      if (shouldFallback(err) && isOpenRouterConfigured()) {
-        const backupSystemPrompt =
-          'You are the 92nd AMXS Maintenance Assistant backup channel. ' +
-          'The primary AI (Gemini) is at its daily quota. You have access ' +
-          'to tools for querying maintenance logs, DIFM inventory, and ' +
-          'training compliance — use them when the maintainer asks for ' +
-          'concrete records. Answer conceptual/how-to questions from your ' +
-          'own knowledge. Be concise, practical, and military-technical ' +
-          'when relevant. Bold RED BALLS and EXPIRED training. Use ' +
-          'markdown tables for record-style data.';
-
-        try {
-          const fallbackText = await runOpenRouterWithTools({
-            systemPrompt: backupSystemPrompt,
-            userPrompt: userMsg,
-            tools: openRouterTools,
-            executeToolCall,
-          });
-          setMessages(prev => [...prev, {
-            role: 'assistant',
-            content: `*(Backup AI)*\n\n${fallbackText}`,
-          }]);
-          reportSuccess('assistant', 'openrouter');
+      if (shouldFallback(err)) {
+        const ok = await runBackupChannel('primary unavailable');
+        if (ok) {
+          setIsThinking(false);
           return;
-        } catch (toolsErr) {
-          console.warn('OpenRouter tool-calling fallback failed, trying plain text:', toolsErr);
-        }
-
-        try {
-          const plainText = await generateTextWithOpenRouter({
-            systemPrompt: backupSystemPrompt + ' Tools are temporarily unavailable — answer from your own knowledge only.',
-            userPrompt: userMsg,
-          });
-          setMessages(prev => [...prev, {
-            role: 'assistant',
-            content: `*(Backup AI — record lookups unavailable)*\n\n${plainText}`,
-          }]);
-          reportSuccess('assistant', 'openrouter');
-          return;
-        } catch (textErr) {
-          console.error('AI Assistant plain-text fallback also failed:', textErr);
         }
       }
 
       reportError('assistant', classified);
       const friendly =
         classified.kind === 'quota' || classified.kind === 'rate_limit'
-          ? 'AI assistant is at its daily free-tier limit. Try again after the quota resets, or check the Logs / Training pages directly.'
+          ? 'AI assistant is at its daily free-tier limit and the backup channel is also unreachable. Try again after the quota resets, or check the Logs / Training pages directly.'
           : `Assistant unavailable: ${classified.message}`;
       setMessages(prev => [...prev, { role: 'assistant', content: friendly }]);
     } finally {
