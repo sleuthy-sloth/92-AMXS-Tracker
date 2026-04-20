@@ -11,8 +11,8 @@ import {
 } from 'firebase/firestore';
 import { format, subDays } from 'date-fns';
 import { db } from '../firebase';
-import { useAuth } from '../contexts/AuthContext';
-import { useScanStatus } from '../contexts/AIScanStatusContext';
+import { useAuth } from '../contexts/AuthContextInstance';
+import { useScanStatus } from '../contexts/AIScanStatusInstance';
 import { createNotification } from '../services/notificationService';
 import { MaintenanceLog } from '../types';
 import { tsToMillis } from '../lib/utils';

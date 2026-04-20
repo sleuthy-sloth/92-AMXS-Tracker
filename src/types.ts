@@ -49,6 +49,9 @@ export interface MaintenanceLog {
   g081_verified_at?: FirestoreTime;
   isArchived?: boolean;
   archivedAt?: FirestoreTime;
+  editingBy?: string | null;
+  editingByName?: string | null;
+  editingSince?: FirestoreTime | null;
 }
 
 export interface TrainingRecord {

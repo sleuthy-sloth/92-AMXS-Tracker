@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ClipboardList, Plus, Send, CheckCircle2, Clock } from 'lucide-react';
+import { ClipboardList, Plus, Send, CheckCircle2, Clock, Trash2 } from 'lucide-react';
 import {
   collection,
   addDoc,
   query,
+  deleteDoc,
   where,
   orderBy,
   onSnapshot,
@@ -13,7 +14,7 @@ import {
   limit,
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextInstance';
 import { ShiftType } from '../types';
 import { format } from 'date-fns';
 import { tsToDate } from '../lib/utils';
@@ -119,6 +120,31 @@ export const Handoff: React.FC = () => {
     }
   };
 
+  const deleteHandoff = async (handoffId: string) => {
+    if (!profile) return;
+    if (!window.confirm('Delete this entire handoff block? This cannot be undone.')) return;
+    try {
+      await deleteDoc(doc(db, 'handoffs', handoffId));
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, `handoffs/${handoffId}`);
+    }
+  };
+
+  const deleteHandoffItem = async (handoff: HandoffDoc, itemId: string) => {
+    if (!profile) return;
+    if (!window.confirm('Delete this handoff item?')) return;
+    try {
+      const updated = handoff.items.filter((i) => i.id !== itemId);
+      if (updated.length === 0) {
+        await deleteDoc(doc(db, 'handoffs', handoff.id));
+      } else {
+        await updateDoc(doc(db, 'handoffs', handoff.id), { items: updated });
+      }
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `handoffs/${handoff.id}`);
+    }
+  };
+
   const openCount = useMemo(
     () => handoffs.reduce((n, h) => n + h.items.filter((i) => !i.acknowledged).length, 0),
     [handoffs]
@@ -202,9 +228,10 @@ export const Handoff: React.FC = () => {
         ) : (
           handoffs.map((h) => {
             const open = h.items.filter((i) => !i.acknowledged);
+            const canEdit = profile?.role === 'leadership' || profile?.role === 'ncoic' || profile?.uid === h.createdBy;
             return (
-              <div key={h.id} className="bg-white border border-outline">
-                <header className="p-4 flex justify-between items-center border-b border-outline bg-slate-50">
+              <div key={h.id} className="bg-white border border-outline group">
+                <header className="p-4 flex justify-between items-center border-b border-outline bg-slate-50 relative">
                   <div>
                     <h4 className="text-sm font-black uppercase tracking-tight">
                       {h.fromShift} → {h.toShift}
@@ -214,19 +241,30 @@ export const Handoff: React.FC = () => {
                       {h.createdAt ? format(tsToDate(h.createdAt), 'MMM dd HH:mm') : 'pending'}
                     </p>
                   </div>
-                  <span
-                    className={
-                      open.length === 0
-                        ? 'badge bg-emerald-100 text-emerald-700'
-                        : 'badge bg-amber-100 text-amber-700'
-                    }
-                  >
-                    {open.length === 0 ? 'CLEARED' : `${open.length} OPEN`}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    {canEdit && (
+                      <button
+                        onClick={() => deleteHandoff(h.id)}
+                        className="text-slate-300 hover:text-safety-orange transition-colors opacity-0 group-hover:opacity-100"
+                        title="Delete entire handoff"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                    <span
+                      className={
+                        open.length === 0
+                          ? 'badge bg-emerald-100 text-emerald-700'
+                          : 'badge bg-amber-100 text-amber-700'
+                      }
+                    >
+                      {open.length === 0 ? 'CLEARED' : `${open.length} OPEN`}
+                    </span>
+                  </div>
                 </header>
                 <ul className="divide-y divide-outline">
                   {h.items.map((item) => (
-                    <li key={item.id} className="p-4 flex items-start gap-3">
+                    <li key={item.id} className="p-4 flex items-start gap-3 group/item hover:bg-slate-50/50 transition-colors">
                       {item.acknowledged ? (
                         <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                       ) : (
@@ -242,15 +280,26 @@ export const Handoff: React.FC = () => {
                           </p>
                         )}
                       </div>
-                      {!item.acknowledged && (
-                        <button
-                          onClick={() => acknowledge(h, item.id)}
-                          className="tech-label text-[10px] text-primary hover:underline"
-                        >
-                          <Plus className="inline w-3 h-3 mr-1 rotate-45" />
-                          ACK
-                        </button>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {canEdit && (
+                          <button
+                            onClick={() => deleteHandoffItem(h, item.id)}
+                            className="text-slate-300 hover:text-safety-orange transition-colors opacity-0 group-hover/item:opacity-100 p-1"
+                            title="Delete item"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {!item.acknowledged && (
+                          <button
+                            onClick={() => acknowledge(h, item.id)}
+                            className="tech-label text-[10px] text-primary hover:underline p-1"
+                          >
+                            <Plus className="inline w-3 h-3 mr-1 rotate-45" />
+                            ACK
+                          </button>
+                        )}
+                      </div>
                     </li>
                   ))}
                 </ul>

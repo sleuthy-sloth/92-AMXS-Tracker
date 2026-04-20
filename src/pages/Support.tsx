@@ -10,8 +10,9 @@ import {
   Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { useAuth } from '../contexts/AuthContext';
-import { useScanStatus, ScanKind, ScanState } from '../contexts/AIScanStatusContext';
+import { useAuth } from '../contexts/AuthContextInstance';
+import { useScanStatus } from '../contexts/AIScanStatusInstance';
+import { ScanKind, ScanState } from '../contexts/AIScanStatusTypes';
 import { cn } from '../lib/utils';
 
 const SCAN_LABELS: Record<ScanKind, string> = {
@@ -158,8 +159,9 @@ export const Support: React.FC = () => {
       await updateUserPassword(passData.new);
       setPassStatus({ type: 'success', msg: 'Password updated successfully' });
       setPassData({ new: '', confirm: '' });
-    } catch (err: any) {
-      setPassStatus({ type: 'error', msg: err.message || 'Update failed' });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setPassStatus({ type: 'error', msg: msg || 'Update failed' });
     } finally {
       setIsUpdating(false);
     }

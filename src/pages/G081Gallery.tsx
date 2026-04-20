@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { MaintenanceLog } from '../types';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextInstance';
 import { Search, Loader2, Camera, Eye, CheckCircle2, ShieldCheck, Check, X, Trash2, Archive, History } from 'lucide-react';
 import { cn, tsToDate } from '../lib/utils';
 
@@ -25,6 +25,7 @@ export const G081Gallery: React.FC = () => {
   useEffect(() => {
     if (!profile || isDemoMode) return;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const constraints: any[] = [
       orderBy('timestamp', 'desc'),
       limit(100)
@@ -39,7 +40,7 @@ export const G081Gallery: React.FC = () => {
     const q = query(collection(db, 'logs'), ...constraints);
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const allLogs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      const allLogs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MaintenanceLog));
       setFirestoreLogs(allLogs.filter(log => log.g081_photo));
       setFirestoreLoading(false);
     }, (error) => {

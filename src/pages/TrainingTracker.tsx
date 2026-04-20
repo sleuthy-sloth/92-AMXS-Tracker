@@ -17,7 +17,7 @@ import { parseISO, isBefore, addDays } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { TrainingRecord, UserProfile } from '../types';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextInstance';
 import { MOCK_TRAINING, MOCK_PERSONNEL } from '../mockData';
 import { cn } from '../lib/utils';
 import { parseTrainingReport } from '../services/ocrService';
@@ -71,7 +71,8 @@ export const TrainingTracker: React.FC = () => {
 
     let qTraining;
     if (profile.amuId === 'ALL' || profile.shopId === 'ALL' || profile.role === 'leadership') {
-      let queryRef = collection(db, 'training');
+      const queryRef = collection(db, 'training');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const constraints: any[] = [where('isDemo', '==', false)];
 
       if (profile.amuId !== 'ALL' && profile.amuId !== 'NONE') {
@@ -105,7 +106,8 @@ export const TrainingTracker: React.FC = () => {
 
     let qPersonnel;
     if (profile.amuId === 'ALL' || profile.shopId === 'ALL' || profile.role === 'leadership') {
-      let queryRef = collection(db, 'users');
+      const queryRef = collection(db, 'users');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const constraints: any[] = [where('isDemo', '==', false)];
       
       if (profile.amuId !== 'ALL' && profile.amuId !== 'NONE') {

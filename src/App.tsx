@@ -5,7 +5,8 @@ import {
   Route, 
   Navigate
 } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthProvider } from './contexts/AuthContext';
+import { useAuth } from './contexts/AuthContextInstance';
 import { AIScanStatusProvider } from './contexts/AIScanStatusContext';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { AppLayout } from './components/layout/AppLayout';

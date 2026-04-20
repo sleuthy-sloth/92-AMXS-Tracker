@@ -9,8 +9,8 @@ import {
 import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
 import { db } from '../firebase';
-import { useAuth } from '../contexts/AuthContext';
-import { useScanStatus } from '../contexts/AIScanStatusContext';
+import { useAuth } from '../contexts/AuthContextInstance';
+import { useScanStatus } from '../contexts/AIScanStatusInstance';
 import { MOCK_LOGS, MOCK_DIFM, MOCK_TRAINING } from '../mockData';
 import { cn } from '../lib/utils';
 import { getAI, isGeminiConfigured } from '../lib/gemini';
@@ -221,7 +221,7 @@ export const MaintenanceAssistant: React.FC = () => {
 
     // Backup-channel runner — OpenRouter with tools first, plain text if
     // the free-tier model bungles tool-calling. Returns true on success.
-    const runBackupChannel = async (labelNote: string): Promise<boolean> => {
+    const runBackupChannel = async (): Promise<boolean> => {
       if (!isOpenRouterConfigured()) return false;
       const backupSystemPrompt =
         'You are the 92nd AMXS Maintenance Assistant backup channel. ' +
@@ -270,7 +270,7 @@ export const MaintenanceAssistant: React.FC = () => {
     // If Gemini is in cooldown from a recent quota hit, skip it and go
     // straight to OpenRouter — no point burning 7s of retry backoff.
     if (isGeminiOnCooldown() && isOpenRouterConfigured()) {
-      const ok = await runBackupChannel('primary quota cooling down');
+      const ok = await runBackupChannel();
       if (ok) {
         setIsThinking(false);
         return;
@@ -357,7 +357,7 @@ export const MaintenanceAssistant: React.FC = () => {
         // If we are about to fallback, let the user know in the chat so they aren't confused
         // by the change in behavior or slight delay.
         if (isOpenRouterConfigured()) {
-          const ok = await runBackupChannel('primary unavailable');
+          const ok = await runBackupChannel();
           if (ok) {
             setIsThinking(false);
             return;
