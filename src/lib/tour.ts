@@ -51,36 +51,18 @@ export function buildTourSteps(role: UserRole, opts: BuildTourOptions = {}): Tou
       route: '/',
       element: '[data-tour="dashboard-matrix"]',
       popover: {
-        title: 'Readiness Matrix',
+        title: 'Dashboard',
         description:
-          'Top-of-page snapshot: open discrepancies, red-ball counts, expiring training, and shop personnel. This is the production-super morning-brief view.',
-      },
-    },
-    {
-      route: '/',
-      element: '[data-tour="intelligence-feed"]',
-      popover: {
-        title: 'AI Intelligence Feed',
-        description:
-          'Gemini analyzes the last 15 logs + 10 upcoming training expirations and surfaces 1–3 ranked alerts. If Gemini is throttled, the same scan reroutes to OpenRouter automatically.',
+          'Your morning-brief view: readiness matrix at the top (open discrepancies, red balls, expiring training, personnel), followed by the AI Intelligence Feed that ranks 1–3 alerts from recent logs and training data.',
       },
     },
     {
       route: '/ops/maintenance',
       element: '[data-tour="logs-ocr-button"]',
       popover: {
-        title: 'OCR Entry',
+        title: 'Maintenance Logs',
         description:
-          'Snap an AF Form 781A or G081 dashboard photo. Gemini Vision pulls JCN, tail number, and discrepancy text into the form so you only correct, not transcribe.',
-      },
-    },
-    {
-      route: '/ops/maintenance',
-      element: '[data-tour="logs-bulk-scan"]',
-      popover: {
-        title: 'Bulk Logbook Scan',
-        description:
-          'Photograph a Green Log Book page and import 5–10 handwritten entries in one confirmed action. Each row stays editable before you commit.',
+          'Log entries two ways: tap OCR Entry to snap an AF Form 781A and have Gemini extract JCN / tail / discrepancy, or Bulk Scan to import a full logbook page in one pass. Both keep rows editable before you commit.',
       },
     },
     {
