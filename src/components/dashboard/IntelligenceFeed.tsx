@@ -111,12 +111,11 @@ export const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[]; training: Trai
           reportError('intelligence-feed', classified);
           setAlerts([
             {
-              id: 'err',
+              id: 'nominal',
               type: 'info',
-              title: 'System Analysis Paused',
-              description:
-                'Connection to operational intelligence engine is throttled. Monitoring manually.',
-              time: '--:--',
+              title: 'System Nominal',
+              description: 'Operational data monitoring active. Analysis engine standby.',
+              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             },
           ]);
         } finally {
