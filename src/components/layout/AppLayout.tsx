@@ -56,15 +56,6 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     };
   }, [user?.uid, profile?.shopId, isDemoMode]);
 
-  useEffect(() => {
-    const onTourSidebar = (e: Event) => {
-      const detail = (e as CustomEvent<{ open: boolean }>).detail;
-      setIsSidebarOpen(Boolean(detail?.open));
-    };
-    window.addEventListener('amxs-tour-sidebar', onTourSidebar);
-    return () => window.removeEventListener('amxs-tour-sidebar', onTourSidebar);
-  }, []);
-
   return (
     <div className="min-h-screen flex bg-background relative">
       {/* Mobile Backdrop */}
