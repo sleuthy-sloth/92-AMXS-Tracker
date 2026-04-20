@@ -281,7 +281,7 @@ export const MaintenanceAssistant: React.FC = () => {
     try {
       const ai = getAI();
       const response = await withRetry(() => ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-1.5-flash-latest",
         contents: userMsg,
         config: {
           systemInstruction: `You are the 92nd AMXS Maintenance Assistant — a versatile helper for 92nd Air Refueling Squadron maintainers and leadership.
@@ -321,7 +321,7 @@ export const MaintenanceAssistant: React.FC = () => {
 
         // Send tool outputs back to model to get final response
         const finalResponse = await withRetry(() => ai.models.generateContent({
-          model: "gemini-1.5-flash",
+          model: "gemini-1.5-flash-latest",
           contents: [
             { role: 'user', parts: [{ text: userMsg }] },
             { role: 'model', parts: modelParts },
