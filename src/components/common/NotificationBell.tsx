@@ -3,7 +3,7 @@ import { query, collection, where, orderBy, limit, onSnapshot, doc, updateDoc, w
 import { Bell, BellDot, ShieldAlert, Package, Clock, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContextInstance';
 import { db } from '../../firebase';
 import { Notification, NotificationType } from '../../types';
 import { cn, tsToDate } from '../../lib/utils';

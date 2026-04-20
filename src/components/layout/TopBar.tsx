@@ -1,7 +1,7 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
 import { LogOut, LayoutDashboard, Wrench, FileDown, Camera, BarChart3, Users, HelpCircle, UserPlus, Menu, ClipboardList, Stethoscope, Gauge, PlayCircle } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContextInstance';
 import { NotificationBell } from '../common/NotificationBell';
 import { PresenceIndicator } from '../common/PresenceIndicator';
 import { SyncStatus } from '../common/SyncStatus';

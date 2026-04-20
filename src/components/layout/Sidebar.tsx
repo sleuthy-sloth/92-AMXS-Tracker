@@ -16,15 +16,18 @@ import {
   Shield,
   X,
   PlayCircle,
+  UploadCloud,
   LucideIcon
 } from 'lucide-react';
 import { useContext } from 'react';
 import { TourContext } from '../../contexts/TourContext';
 import { motion, AnimatePresence } from 'motion/react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContextInstance';
 import { AMUS, SHOPS, ShopType } from '../../mockData';
 import { AMUType, UserRole } from '../../types';
 import { cn } from '../../lib/utils';
+import { db } from '../../firebase';
+import { collection, onSnapshot, query, limit } from 'firebase/firestore';
 
 interface NavItem {
   name: string;
@@ -75,6 +78,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const isAdminRole = profile?.role === 'ncoic' || profile?.role === 'leadership';
   const isOnAdminRoute = adminItems.some(i => location.pathname === i.path);
   const [isAdminOpen, setIsAdminOpen] = useState(isOnAdminRoute);
+  const [hasPendingWrites, setHasPendingWrites] = useState(false);
+
+  useEffect(() => {
+    if (!profile || isDemoMode) return;
+    // Listen to the logs collection simply to pick up the metadata flag 'hasPendingWrites'
+    const q = query(collection(db, 'logs'), limit(1));
+    const unsubscribe = onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
+      setHasPendingWrites(snapshot.metadata.hasPendingWrites);
+    }, () => {});
+    return unsubscribe;
+  }, [profile, isDemoMode]);
 
   // Route → panel sync: auto-expand the admin section when the active route
   // becomes an admin page (direct URL, nav links, browser back/forward).
@@ -118,6 +132,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <span className="tech-label text-white/30 text-[8px] whitespace-nowrap tracking-[0.3em]">Maintenance Control</span>
               <div className="h-px flex-1 bg-white/10"></div>
             </div>
+            {hasPendingWrites && (
+              <div className="mt-3 flex items-center gap-2 px-2 py-1 bg-safety-orange/10 border border-safety-orange/30 rounded-sm">
+                <UploadCloud className="w-3 h-3 text-safety-orange animate-pulse" />
+                <span className="text-[9px] font-black uppercase text-safety-orange tracking-widest">Pending Sync</span>
+              </div>
+            )}
           </div>
         </div>
       </div>

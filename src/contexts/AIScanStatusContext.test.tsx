@@ -1,6 +1,7 @@
 import { act, render, renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { AIScanStatusProvider, useScanStatus } from './AIScanStatusContext';
+import { AIScanStatusProvider } from './AIScanStatusContext';
+import { useScanStatus } from './AIScanStatusInstance';
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (
   <AIScanStatusProvider>{children}</AIScanStatusProvider>

@@ -1,55 +1,14 @@
-import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import type { ClassifiedError } from '../lib/aiRetry';
 import type { AIProvider } from '../lib/aiProvider';
-
-export type ScanKind =
-  | 'assistant'
-  | 'supply-risk'
-  | 'g081-expiry'
-  | 'training'
-  | 'diagnostics'
-  | 'intelligence-feed';
-
-export type ScanStatus = 'idle' | 'running' | 'success' | 'error';
-
-export interface ScanState {
-  status: ScanStatus;
-  lastRunAt?: number;
-  lastError?: { kind: ClassifiedError['kind']; message: string };
-  /** Which provider answered most recently (sticky across runs that omit it). */
-  lastSource?: AIProvider;
-  runCount: number;
-}
-
-const SCAN_KINDS: ScanKind[] = [
-  'assistant',
-  'supply-risk',
-  'g081-expiry',
-  'training',
-  'diagnostics',
-  'intelligence-feed',
-];
+import { SCAN_KINDS, ScanKind, ScanState } from './AIScanStatusTypes';
+import { AIScanStatusContext } from './AIScanStatusInstance';
 
 const initialState = (): Record<ScanKind, ScanState> =>
   SCAN_KINDS.reduce((acc, kind) => {
     acc[kind] = { status: 'idle', runCount: 0 };
     return acc;
   }, {} as Record<ScanKind, ScanState>);
-
-interface AIScanStatusContextType {
-  statuses: Record<ScanKind, ScanState>;
-  reportStart: (kind: ScanKind) => void;
-  reportSuccess: (kind: ScanKind, source?: AIProvider) => void;
-  reportError: (kind: ScanKind, error: ClassifiedError, source?: AIProvider) => void;
-}
-
-const AIScanStatusContext = createContext<AIScanStatusContextType | undefined>(undefined);
-
-export const useScanStatus = () => {
-  const ctx = useContext(AIScanStatusContext);
-  if (!ctx) throw new Error('useScanStatus must be used within AIScanStatusProvider');
-  return ctx;
-};
 
 export const AIScanStatusProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [statuses, setStatuses] = useState<Record<ScanKind, ScanState>>(initialState);

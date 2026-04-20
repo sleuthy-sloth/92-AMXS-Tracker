@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   GoogleAuthProvider, 
   signInWithPopup, 
@@ -22,33 +22,7 @@ import {
 import { auth, db, handleFirestoreError, OperationType } from '../firebase';
 import { UserProfile, UserRole, AMUType } from '../types';
 import { ShopType, MOCK_LOGS, MOCK_PERSONNEL, MOCK_TRAINING } from '../mockData';
-
-interface AuthContextType {
-  user: User | null;
-  profile: UserProfile | null;
-  loading: boolean;
-  signIn: () => Promise<void>;
-  signInEmail: (email: string, pass: string) => Promise<void>;
-  signUpEmail: (email: string, pass: string) => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
-  updateUserPassword: (newPass: string) => Promise<void>;
-  logout: () => Promise<void>;
-  refreshProfile: () => Promise<void>;
-  bypassLogin: (role?: UserRole) => void;
-  setShop: (shop: ShopType) => void;
-  setAMU: (amu: AMUType) => void;
-  setRole: (role: UserRole) => void;
-  isDemoMode: boolean;
-  toggleDemoMode: () => void;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within AuthProvider');
-  return context;
-};
+import { AuthContext } from './AuthContextInstance';
 
 const seedDatabase = async () => {
   try {
@@ -131,7 +105,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const loginEmail = email === 'admin' ? 'admin@us.af.mil' : email;
       await signInWithEmailAndPassword(auth, loginEmail, pass);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Email sign in error:', error);
       throw error;
     }
@@ -140,6 +114,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signUpEmail = async (email: string, pass: string) => {
     try {
       const regEmail = email === 'admin' ? 'admin@us.af.mil' : email;
+      if (!regEmail.toLowerCase().endsWith('@us.af.mil')) {
+        throw new Error('Registration is restricted to official @us.af.mil email addresses.');
+      }
       await createUserWithEmailAndPassword(auth, regEmail, pass);
     } catch (error) {
       console.error('Email sign up error:', error);

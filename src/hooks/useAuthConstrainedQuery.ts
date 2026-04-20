@@ -8,7 +8,7 @@ import {
   where,
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextInstance';
 
 export interface ConstrainedQueryOptions {
   /** Extra constraints appended after the auth-scope filters. Memoize this! */

@@ -13,8 +13,8 @@ import {
 } from 'firebase/firestore';
 import { format, subDays } from 'date-fns';
 import { db } from '../firebase';
-import { useAuth } from '../contexts/AuthContext';
-import { useScanStatus } from '../contexts/AIScanStatusContext';
+import { useAuth } from '../contexts/AuthContextInstance';
+import { useScanStatus } from '../contexts/AIScanStatusInstance';
 import { createNotification } from '../services/notificationService';
 import { MaintenanceLog } from '../types';
 import { tsToMillis } from '../lib/utils';
@@ -67,10 +67,11 @@ export const useSupplyRiskScan = () => {
         const cacheKey = `${profile.amuId}_${profile.shopId}`;
         
         // Use a longer cache for supply risk (4 hours)
-        const cached = await getCachedAIResult<any[]>('supply-risk', cacheKey, 14400000);
+        type SupplyRiskParsed = { logId: string; tail_number: string; risk: "high" | "medium" | "low"; likely_parts: string[]; rationale: string };
+        const cached = await getCachedAIResult<SupplyRiskParsed[]>('supply-risk', cacheKey, 14400000);
         
-        let parsed: any[] | null = cached || null;
-        let finalSource = 'gemini' as const;
+        let parsed: SupplyRiskParsed[] | null = cached || null;
+        let finalSource: 'gemini' | 'openrouter' = 'gemini';
 
         if (!cached) {
           const { data, source } = await generateJSONWithFallback({
@@ -84,8 +85,8 @@ export const useSupplyRiskScan = () => {
   CONSTRAINT: Use only ids present in DATA. Do not invent.
   OUTPUT JSON: [{"logId","tail_number","risk":"high|medium|low","likely_parts":[string],"rationale"}]`,
           });
-          parsed = data;
-          finalSource = (source as any);
+          parsed = data as SupplyRiskParsed[];
+          finalSource = source as 'gemini' | 'openrouter';
           
           if (data) {
             await setCachedAIResult('supply-risk', cacheKey, data, currentHash);
@@ -96,7 +97,7 @@ export const useSupplyRiskScan = () => {
           reportError(
             'supply-risk',
             { kind: 'parse', message: 'AI response failed schema validation', retryable: false },
-            (finalSource as any),
+            finalSource,
           );
           return;
         }
@@ -125,7 +126,7 @@ export const useSupplyRiskScan = () => {
             sentAt: serverTimestamp(),
           });
         }
-        reportSuccess('supply-risk', finalSource as any);
+        reportSuccess('supply-risk', finalSource);
       } catch (err) {
         console.error('Supply risk scan failed', err);
         const classified = err instanceof AIRetryError ? err.classified : classifyError(err);
