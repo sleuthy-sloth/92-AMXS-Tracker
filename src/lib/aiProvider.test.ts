@@ -24,6 +24,8 @@ const quotaError = () =>
   new AIRetryError({ kind: 'quota', message: 'quota exceeded', retryable: false });
 const authError = () =>
   new AIRetryError({ kind: 'auth', message: 'unauthorized', retryable: false });
+const unavailableError = () =>
+  new AIRetryError({ kind: 'network', message: '503 UNAVAILABLE', retryable: false, status: 503 });
 
 describe('aiProvider.generateJSONWithFallback', () => {
   beforeEach(() => {
@@ -72,6 +74,27 @@ describe('aiProvider.generateJSONWithFallback', () => {
 
     expect(result.source).toBe('openrouter');
     expect(result.data).toEqual([{ id: 9 }]);
+    expect(fetchSpy).toHaveBeenCalledOnce();
+  });
+
+  it('falls back to OpenRouter on Gemini 503 / UNAVAILABLE', async () => {
+    mockGenerateContent.mockRejectedValue(unavailableError());
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({ choices: [{ message: { content: JSON.stringify([{ id: 7 }]) } }] }),
+        { status: 200 }
+      )
+    );
+
+    const { generateJSONWithFallback } = await import('./aiProvider');
+    const result = await generateJSONWithFallback({
+      prompt: 'p',
+      schema: Schema,
+      context: 'test',
+    });
+
+    expect(result.source).toBe('openrouter');
+    expect(result.data).toEqual([{ id: 7 }]);
     expect(fetchSpy).toHaveBeenCalledOnce();
   });
 
