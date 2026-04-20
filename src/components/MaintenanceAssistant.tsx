@@ -354,17 +354,26 @@ export const MaintenanceAssistant: React.FC = () => {
       markGeminiExhausted(err);
 
       if (shouldFallback(err)) {
-        const ok = await runBackupChannel('primary unavailable');
-        if (ok) {
-          setIsThinking(false);
-          return;
+        // If we are about to fallback, let the user know in the chat so they aren't confused
+        // by the change in behavior or slight delay.
+        if (isOpenRouterConfigured()) {
+          setMessages(prev => [...prev, { 
+            role: 'assistant', 
+            content: '_Primary AI (Gemini) is at its daily quota. Engaging backup channel (OpenRouter)..._' 
+          }]);
+          
+          const ok = await runBackupChannel('primary unavailable');
+          if (ok) {
+            setIsThinking(false);
+            return;
+          }
         }
       }
 
       reportError('assistant', classified);
       const friendly =
         classified.kind === 'quota' || classified.kind === 'rate_limit'
-          ? 'AI assistant is at its daily free-tier limit and the backup channel is also unreachable. Try again after the quota resets, or check the Logs / Training pages directly.'
+          ? `Maintenance Terminal: Primary AI (Gemini) is at its daily free-tier limit. ${isOpenRouterConfigured() ? 'The backup channel also failed.' : 'No backup channel (OpenRouter) is configured.'} Please check back after the quota resets or contact the administrator.`
           : `Assistant unavailable: ${classified.message}`;
       setMessages(prev => [...prev, { role: 'assistant', content: friendly }]);
     } finally {
