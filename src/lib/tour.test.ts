@@ -6,7 +6,7 @@ describe('buildTourSteps', () => {
     const steps = buildTourSteps('technician');
     const titles = steps.map((s) => s.popover?.title).filter(Boolean) as string[];
     expect(titles).toContain('Welcome to the 92 AMXS Sandbox');
-    expect(titles).toContain('AI Intelligence Feed');
+    expect(titles).toContain('Dashboard');
     expect(titles).not.toContain('Predictive Diagnostics');
     expect(titles).not.toContain('Workload Distribution');
   });
