@@ -15,6 +15,13 @@ import { MOCK_LOGS, MOCK_DIFM, MOCK_TRAINING } from '../mockData';
 import { cn } from '../lib/utils';
 import { getAI, isGeminiConfigured } from '../lib/gemini';
 import { withRetry, classifyError, AIRetryError } from '../lib/aiRetry';
+import {
+  generateTextWithOpenRouter,
+  isOpenRouterConfigured,
+  runOpenRouterWithTools,
+  shouldFallback,
+  type OpenRouterToolSchema,
+} from '../lib/aiProvider';
 
 const chatStorageKey = (uid?: string) => (uid ? `amxs-ai-chat:${uid}` : null);
 
@@ -63,6 +70,25 @@ export const MaintenanceAssistant: React.FC = () => {
     }
   }, [messages, user?.uid]);
 
+  // Translate a Gemini FunctionDeclaration tree to OpenAI JSON Schema
+  // (what OpenRouter expects). The enum is UPPERCASE in Gemini's SDK
+  // (Type.STRING = 'STRING'), lowercase in JSON Schema ('string').
+  const toOpenAISchema = (node: unknown): Record<string, unknown> => {
+    if (!node || typeof node !== 'object') return {};
+    const n = node as Record<string, unknown>;
+    const out: Record<string, unknown> = { ...n };
+    if (typeof n.type === 'string') out.type = (n.type as string).toLowerCase();
+    if (n.properties && typeof n.properties === 'object') {
+      const props: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(n.properties as Record<string, unknown>)) {
+        props[k] = toOpenAISchema(v);
+      }
+      out.properties = props;
+    }
+    if (n.items) out.items = toOpenAISchema(n.items);
+    return out;
+  };
+
   const maintenanceTools: FunctionDeclaration[] = [
     {
       name: "query_maintenance_logs",
@@ -100,6 +126,12 @@ export const MaintenanceAssistant: React.FC = () => {
     }
   ];
 
+  const openRouterTools: OpenRouterToolSchema[] = maintenanceTools.map(t => ({
+    name: t.name!,
+    description: t.description ?? '',
+    parameters: toOpenAISchema(t.parameters ?? { type: 'OBJECT', properties: {} }),
+  }));
+
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isThinking) return;
@@ -117,6 +149,73 @@ export const MaintenanceAssistant: React.FC = () => {
       setIsThinking(false);
       return;
     }
+
+    // Shared tool executor — invoked by either Gemini's function-call
+    // pipeline or OpenRouter's fallback tools pipeline. Takes the
+    // canonical { name, args } pair and returns a JSON-serializable
+    // result (or an empty array for unknown tools, so the model can
+    // recover gracefully).
+    const executeToolCall = async (name: string, args: Record<string, unknown>): Promise<unknown> => {
+      if (isDemoMode) {
+        if (name === 'query_maintenance_logs') {
+          const a = args as { tail_number?: string; shift?: string; isRedBall?: boolean };
+          return MOCK_LOGS.filter(l => {
+            if (a.tail_number && l.tail_number !== a.tail_number) return false;
+            if (a.shift && l.shift !== a.shift) return false;
+            if (a.isRedBall && !l.isRedBall) return false;
+            return true;
+          }).slice(0, 10);
+        }
+        if (name === 'query_difm_inventory') {
+          const a = args as { status?: string; tail_number?: string };
+          return MOCK_DIFM.filter(d => {
+            if (a.status && d.status !== a.status) return false;
+            if (a.tail_number && d.tail_number !== a.tail_number) return false;
+            return true;
+          }).slice(0, 10);
+        }
+        if (name === 'query_training_compliance') {
+          const a = args as { status?: string; course_code?: string };
+          return MOCK_TRAINING.filter(t => {
+            if (a.status && t.status !== a.status) return false;
+            if (a.course_code && t.course_code !== a.course_code) return false;
+            return true;
+          }).slice(0, 10);
+        }
+        return [];
+      }
+
+      // Real Firestore logic. Mirrors the query shape firestore.rules
+      // permits — scoped to the caller's shop/AMU and to non-demo data.
+      const collectionName =
+        name === 'query_maintenance_logs' ? 'logs' :
+        name === 'query_difm_inventory' ? 'difm' :
+        name === 'query_training_compliance' ? 'training' : null;
+      if (!collectionName) return [];
+
+      let q = query(collection(db, collectionName), where('isDemo', '==', false), limit(20));
+      if (profile?.shopId && profile.shopId !== 'ALL' && profile.shopId !== 'LEADERSHIP') {
+        q = query(q, where('shopId', '==', profile.shopId));
+      }
+      if (profile?.amuId && profile.amuId !== 'ALL' && profile.amuId !== 'NONE') {
+        q = query(q, where('amuId', '==', profile.amuId));
+      }
+      const a = args as {
+        tail_number?: string;
+        status?: string;
+        shift?: string;
+        isRedBall?: boolean;
+        course_code?: string;
+      };
+      if (a.tail_number) q = query(q, where('tail_number', '==', a.tail_number));
+      if (a.status && collectionName !== 'logs') q = query(q, where('status', '==', a.status));
+      if (a.shift && collectionName === 'logs') q = query(q, where('shift', '==', a.shift));
+      if (a.isRedBall && collectionName === 'logs') q = query(q, where('isRedBall', '==', true));
+      if (a.course_code && collectionName === 'training') q = query(q, where('course_code', '==', a.course_code));
+
+      const snap = await getDocs(q);
+      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    };
 
     reportStart('assistant');
     try {
@@ -149,74 +248,10 @@ export const MaintenanceAssistant: React.FC = () => {
       }));
 
       if (response.functionCalls) {
-        const toolOutputs: any[] = [];
-        
+        const toolOutputs: { callId: string; output: unknown }[] = [];
         for (const call of response.functionCalls) {
-          let data: any = [];
-          
-          if (isDemoMode) {
-             if (call.name === "query_maintenance_logs") {
-               const args = call.args as any;
-               data = MOCK_LOGS.filter(l => {
-                 if (args.tail_number && l.tail_number !== args.tail_number) return false;
-                 if (args.shift && l.shift !== args.shift) return false;
-                 if (args.isRedBall && !l.isRedBall) return false;
-                 return true;
-               }).slice(0, 10);
-             } else if (call.name === "query_difm_inventory") {
-               const args = call.args as any;
-               data = MOCK_DIFM.filter(d => {
-                 if (args.status && d.status !== args.status) return false;
-                 if (args.tail_number && d.tail_number !== args.tail_number) return false;
-                 return true;
-               }).slice(0, 10);
-             } else if (call.name === "query_training_compliance") {
-               const args = call.args as any;
-               data = MOCK_TRAINING.filter(t => {
-                 if (args.status && t.status !== args.status) return false;
-                 if (args.course_code && t.course_code !== args.course_code) return false;
-                 return true;
-               }).slice(0, 10);
-             }
-          } else {
-             // Real Firestore logic. Mirrors the query shape that
-             // firestore.rules permits for each collection — scoped to
-             // the caller's shop/AMU and to non-demo data.
-             const collectionName = call.name === "query_maintenance_logs" ? "logs" :
-                                   call.name === "query_difm_inventory" ? "difm" : "training";
-
-             let q = query(collection(db, collectionName), where('isDemo', '==', false), limit(20));
-
-             if (profile?.shopId && profile.shopId !== 'ALL' && profile.shopId !== 'LEADERSHIP') {
-               q = query(q, where('shopId', '==', profile.shopId));
-             }
-             if (profile?.amuId && profile.amuId !== 'ALL' && profile.amuId !== 'NONE') {
-               q = query(q, where('amuId', '==', profile.amuId));
-             }
-
-             const args = call.args as any;
-             if (args.tail_number) q = query(q, where('tail_number', '==', args.tail_number));
-             if (args.status && collectionName !== 'logs') {
-               q = query(q, where('status', '==', args.status));
-             }
-             if (args.shift && collectionName === 'logs') {
-               q = query(q, where('shift', '==', args.shift));
-             }
-             if (args.isRedBall && collectionName === 'logs') {
-               q = query(q, where('isRedBall', '==', true));
-             }
-             if (args.course_code && collectionName === 'training') {
-               q = query(q, where('course_code', '==', args.course_code));
-             }
-
-             const snap = await getDocs(q);
-             data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          }
-
-          toolOutputs.push({
-            callId: call.id,
-            output: data
-          });
+          const data = await executeToolCall(call.name!, (call.args ?? {}) as Record<string, unknown>);
+          toolOutputs.push({ callId: call.id!, output: data });
         }
 
         const modelParts = response.candidates?.[0]?.content?.parts;
@@ -256,11 +291,62 @@ export const MaintenanceAssistant: React.FC = () => {
     } catch (err) {
       console.error("AI Assistant Error:", err);
       const classified = err instanceof AIRetryError ? err.classified : classifyError(err);
+
+      // OpenRouter fallback. First attempt the full tool-calling pipeline
+      // so live record lookups still work. If the free-tier model bungles
+      // the tool call (malformed JSON args, unknown tool, empty final
+      // content), fall through to a plain-text completion so the user
+      // still gets something useful instead of a stack trace.
+      if (shouldFallback(err) && isOpenRouterConfigured()) {
+        const backupSystemPrompt =
+          'You are the 92nd AMXS Maintenance Assistant backup channel. ' +
+          'The primary AI (Gemini) is at its daily quota. You have access ' +
+          'to tools for querying maintenance logs, DIFM inventory, and ' +
+          'training compliance — use them when the maintainer asks for ' +
+          'concrete records. Answer conceptual/how-to questions from your ' +
+          'own knowledge. Be concise, practical, and military-technical ' +
+          'when relevant. Bold RED BALLS and EXPIRED training. Use ' +
+          'markdown tables for record-style data.';
+
+        try {
+          const fallbackText = await runOpenRouterWithTools({
+            systemPrompt: backupSystemPrompt,
+            userPrompt: userMsg,
+            tools: openRouterTools,
+            executeToolCall,
+          });
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: `*(Backup AI)*\n\n${fallbackText}`,
+          }]);
+          reportSuccess('assistant', 'openrouter');
+          return;
+        } catch (toolsErr) {
+          console.warn('OpenRouter tool-calling fallback failed, trying plain text:', toolsErr);
+        }
+
+        try {
+          const plainText = await generateTextWithOpenRouter({
+            systemPrompt: backupSystemPrompt + ' Tools are temporarily unavailable — answer from your own knowledge only.',
+            userPrompt: userMsg,
+          });
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: `*(Backup AI — record lookups unavailable)*\n\n${plainText}`,
+          }]);
+          reportSuccess('assistant', 'openrouter');
+          return;
+        } catch (textErr) {
+          console.error('AI Assistant plain-text fallback also failed:', textErr);
+        }
+      }
+
       reportError('assistant', classified);
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: `SYSTEM ERROR (${classified.kind}): ${classified.message}`
-      }]);
+      const friendly =
+        classified.kind === 'quota' || classified.kind === 'rate_limit'
+          ? 'AI assistant is at its daily free-tier limit. Try again after the quota resets, or check the Logs / Training pages directly.'
+          : `Assistant unavailable: ${classified.message}`;
+      setMessages(prev => [...prev, { role: 'assistant', content: friendly }]);
     } finally {
       setIsThinking(false);
     }
