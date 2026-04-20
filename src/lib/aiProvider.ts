@@ -5,11 +5,12 @@ import { safeParse } from './aiSchemas';
 import { withRetry, AIRetryError, classifyError } from './aiRetry';
 
 // Provider-agnostic JSON generation with automatic Gemini → OpenRouter
-// fallback. Gemini is the primary; OpenRouter is engaged only when
-// Gemini's free tier exhausts its daily quota or trips a 429 rate limit.
-// Other failure kinds (auth, parse, network) rethrow without fallback —
-// they indicate config / data problems that the secondary provider can't
-// magically fix.
+// fallback. Gemini is the primary; OpenRouter is engaged when Gemini
+// reports quota, rate-limit, or upstream unavailability (502/503/504 —
+// classified as `network`). Auth and parse errors rethrow without
+// fallback — they indicate config / data problems the secondary can't
+// magically fix. Caller abort / local offline also classify as network,
+// so we still try OpenRouter once: it fails fast and we rethrow cleanly.
 
 export type AIProvider = 'gemini' | 'openrouter';
 
@@ -40,7 +41,11 @@ export function isOpenRouterConfigured(): boolean {
 
 export function shouldFallback(err: unknown): boolean {
   const classified = err instanceof AIRetryError ? err.classified : classifyError(err);
-  return classified.kind === 'quota' || classified.kind === 'rate_limit';
+  return (
+    classified.kind === 'quota' ||
+    classified.kind === 'rate_limit' ||
+    classified.kind === 'network'
+  );
 }
 
 async function callGemini<T>(opts: GenerateJSONOptions<T>): Promise<T | null> {
@@ -131,7 +136,8 @@ export async function generateJSONWithFallback<T>(
       return { data, source: 'gemini' };
     } catch (err) {
       if (!shouldFallback(err) || !isOpenRouterConfigured()) throw err;
-      console.warn(`[AI] ${opts.context}: Gemini quota/rate-limit — falling back to OpenRouter`);
+      const kind = err instanceof AIRetryError ? err.classified.kind : 'unknown';
+      console.warn(`[AI] ${opts.context}: Gemini ${kind} — falling back to OpenRouter`);
     }
   }
 
