@@ -63,11 +63,9 @@ export const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[]; training: Trai
           const cached = await getCachedAIResult<IntelAlert[]>('intelligence', cacheKey, 3600000);
           
           if (cached) {
-            // We should still check if data has changed significantly even if cache is fresh?
-            // For now, if cache is fresh < 1hr we just use it to save quota.
             setAlerts(cached);
             setLoading(false);
-            reportSuccess('intelligence-feed', 'gemini'); // Hack: just say gemini since we don't store source
+            reportSuccess('intelligence-feed', 'gemini');
             return;
           }
 
