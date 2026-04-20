@@ -10,7 +10,7 @@ import { serverTimestamp, collection, query, where, onSnapshot, addDoc, updateDo
 import { motion, AnimatePresence } from 'motion/react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { DIFMLog } from '../types';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextInstance';
 import { MOCK_DIFM } from '../mockData';
 import { cn } from '../lib/utils';
 import { createNotification } from '../services/notificationService';
@@ -26,8 +26,8 @@ export const DIFMLogs: React.FC = () => {
     discrepancy: '',
     doc_number: '',
     nsn: '',
-    status: 'due-in' as const,
-    pipeline_status: 'ordered' as const
+    status: 'due-in' as DIFMLog['status'],
+    pipeline_status: 'ordered' as DIFMLog['pipeline_status']
   });
   const [loading, setLoading] = useState(false);
 
@@ -49,7 +49,8 @@ export const DIFMLogs: React.FC = () => {
 
     let q;
     if (profile.amuId === 'ALL' || profile.shopId === 'ALL' || profile.role === 'leadership') {
-      let queryRef = collection(db, 'difm');
+      const queryRef = collection(db, 'difm');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const constraints: any[] = [];
       
       // If leadership/ncoic but they chose a specific filter
@@ -72,7 +73,7 @@ export const DIFMLogs: React.FC = () => {
     }
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setFirestoreLogs(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)));
+      setFirestoreLogs(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DIFMLog)));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'difm');
     });
@@ -158,7 +159,7 @@ export const DIFMLogs: React.FC = () => {
       shopId: profile?.shopId || 'AVIONICS',
       amuId: profile?.amuId || 'BLACK',
       technician_name: profile?.name || 'DEMO ADMIN',
-      timestamp: { toDate: () => new Date() } as any,
+      timestamp: serverTimestamp(),
       isDemo: true
     }));
     setDemoSeededLogs(prev => [...newLogs, ...prev]);
@@ -230,7 +231,7 @@ export const DIFMLogs: React.FC = () => {
                   <td className="px-8 py-5">
                     <select 
                       value={log.status}
-                      onChange={(e) => handleUpdate(log.id!, { status: e.target.value as any })}
+                      onChange={(e) => handleUpdate(log.id!, { status: e.target.value as DIFMLog['status'] })}
                       className={cn(
                         "badge cursor-pointer appearance-none text-center min-w-[140px] mx-auto",
                         log.status === 'complete' ? "badge-success" : 
@@ -248,7 +249,7 @@ export const DIFMLogs: React.FC = () => {
                     <div className="flex flex-col gap-2">
                       <select 
                         value={log.pipeline_status || 'ordered'}
-                        onChange={(e) => handleUpdate(log.id!, { pipeline_status: e.target.value as any })}
+                        onChange={(e) => handleUpdate(log.id!, { pipeline_status: e.target.value as DIFMLog['pipeline_status'] })}
                         className="tech-label !text-[9px] bg-white border border-outline px-2 py-1 uppercase font-black"
                       >
                         <option value="ordered">ORDERED</option>
@@ -368,7 +369,7 @@ export const DIFMLogs: React.FC = () => {
                   <label className="tech-label">Initial Track Status</label>
                   <select 
                     value={formData.status}
-                    onChange={(e) => setFormData({...formData, status: e.target.value as any})}
+                    onChange={(e) => setFormData({...formData, status: e.target.value as DIFMLog['status']})}
                     className="sleek-input w-full"
                   >
                     <option value="due-in">Due-In</option>

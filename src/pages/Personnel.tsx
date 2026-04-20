@@ -12,7 +12,7 @@ import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { UserProfile, TrainingRecord, MaintenanceLog, AMUType, ShopType } from '../types';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextInstance';
 import { MOCK_PERSONNEL, MOCK_TRAINING, MOCK_LOGS, AMUS, SHOPS } from '../mockData';
 import { cn, tsToDate } from '../lib/utils';
 
@@ -59,7 +59,8 @@ export const Personnel: React.FC = () => {
 
     let q;
     if (profile.amuId === 'ALL' || profile.shopId === 'ALL' || profile.role === 'leadership') {
-      let queryRef = collection(db, 'users');
+      const queryRef = collection(db, 'users');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const constraints: any[] = [where('status', '==', 'active'), where('isDemo', '==', false)];
       
       if (profile.amuId !== 'ALL' && profile.amuId !== 'NONE') {
@@ -349,7 +350,7 @@ export const Personnel: React.FC = () => {
                         <label className="tech-label !text-[9px]">System Role</label>
                         <select 
                           value={editForm.role || 'technician'} 
-                          onChange={(e) => setEditForm({...editForm, role: e.target.value as any})}
+                          onChange={(e) => setEditForm({...editForm, role: e.target.value as UserProfile['role']})}
                           className="sleek-input w-full"
                         >
                           <option value="technician">Technician</option>

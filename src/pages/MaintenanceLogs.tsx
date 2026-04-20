@@ -26,7 +26,7 @@ import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { MaintenanceLog, DIFMLog, ShiftType } from '../types';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextInstance';
 import { MOCK_LOGS, MOCK_DIFM, SHIFT_TIMES } from '../mockData';
 import { cn, tsToDate, tsToMillis } from '../lib/utils';
 import { createNotification } from '../services/notificationService';
@@ -116,10 +116,12 @@ export const MaintenanceLogs: React.FC = () => {
   useEffect(() => {
     if (!profile || isDemoMode) return;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const logConstraints: any[] = [where('isDemo', '==', false), orderBy('timestamp', 'desc')];
     if (profile.amuId !== 'ALL') logConstraints.push(where('amuId', '==', profile.amuId));
     if (profile.shopId !== 'ALL' && profile.shopId !== 'LEADERSHIP') logConstraints.push(where('shopId', '==', profile.shopId));
     
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const logConstraintsWithArchive: any[] = [...logConstraints, where('isArchived', '==', isArchiveView), limit(500)];
     const qLogs = query(collection(db, 'logs'), ...logConstraintsWithArchive);
     
@@ -134,6 +136,7 @@ export const MaintenanceLogs: React.FC = () => {
     });
 
     let qDifm;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const difmConstraints: any[] = [where('isDemo', '==', false)];
     if (profile.amuId !== 'ALL') difmConstraints.unshift(where('amuId', '==', profile.amuId));
     if (profile.shopId !== 'ALL' && profile.shopId !== 'LEADERSHIP') difmConstraints.unshift(where('shopId', '==', profile.shopId));
@@ -329,8 +332,10 @@ export const MaintenanceLogs: React.FC = () => {
           personnel: personnelArray,
           shift: formData.shift,
           g081_photo: formData.g081Photo || null,
-          lastEditedBy: profile.name,
-          lastEditedAt: serverTimestamp()
+          lastEditedAt: serverTimestamp(),
+          editingBy: null,
+          editingByName: null,
+          editingSince: null
         });
       } else {
         const newLog: MaintenanceLog = {
@@ -384,7 +389,7 @@ export const MaintenanceLogs: React.FC = () => {
     }
   };
 
-  const handleEditClick = (log: MaintenanceLog) => {
+  const handleEditClick = async (log: MaintenanceLog) => {
     setFormData({
       tail_number: log.tail_number,
       jcn: log.jcn || '',
@@ -400,6 +405,39 @@ export const MaintenanceLogs: React.FC = () => {
     setOriginalLogState(log);
     setSelectedLog(null);
     setIsModalOpen(true);
+    
+    // Set presence flag in DB if not demo mock log
+    if (!isDemoMode && log.id && profile) {
+      try {
+        await updateDoc(doc(db, 'logs', log.id), {
+          editingBy: profile.uid,
+          editingByName: profile.name,
+          editingSince: serverTimestamp()
+        });
+      } catch (err) {
+        console.error("Failed to set presence flag:", err);
+      }
+    }
+  };
+
+  const closeModal = async () => {
+    setIsModalOpen(false);
+    setOriginalLogState(null);
+    setFormData({ tail_number: '', jcn: '', discrepancy: '', repair: '', doc_number: '', personnelInput: '', isRedBall: false, shift: 'Days', g081Photo: '' });
+    
+    // Clear presence
+    if (editingLogId && !isDemoMode && profile) {
+      try {
+        await updateDoc(doc(db, 'logs', editingLogId), {
+          editingBy: null,
+          editingByName: null,
+          editingSince: null
+        });
+      } catch (err) {
+         console.error("Failed to clear presence flag:", err);
+      }
+    }
+    setEditingLogId(null);
   };
 
   const handleDeleteLog = async (logId: string) => {
@@ -752,8 +790,14 @@ export const MaintenanceLogs: React.FC = () => {
                         <p className="tech-label text-[10px] mt-1 text-slate-500 font-bold">+{log.personnel.length} Support</p>
                       )}
                     </td>
-                    <td className="px-8 py-5 max-w-xs">
-                      <p className="serif-header text-xs line-clamp-2 text-slate-600">{log.discrepancy}</p>
+                    <td className="px-8 py-5 max-w-xs relative">
+                      <p className={cn("serif-header text-xs line-clamp-2 text-slate-600", log.editingBy && log.editingBy !== profile?.uid && "opacity-50")}>{log.discrepancy}</p>
+                      {log.editingBy && log.editingBy !== profile?.uid && (
+                        <div className="absolute top-1/2 left-8 -translate-y-1/2 flex items-center gap-2 bg-slate-800 text-white px-2 py-1 shadow-lg pointer-events-none">
+                          <div className="w-1.5 h-1.5 bg-sky-400 rounded-full animate-pulse"></div>
+                          <span className="text-[9px] font-black uppercase tracking-widest leading-none">{log.editingByName || 'Someone'} is editing</span>
+                        </div>
+                      )}
                     </td>
                     <td className="px-8 py-5">
                       {log.g081_photo ? (
@@ -821,15 +865,22 @@ export const MaintenanceLogs: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ delay: idx * 0.05 }}
-                className="p-8 flex flex-col justify-between hover:bg-putty/50 transition-colors cursor-pointer group"
+                className="p-8 flex flex-col justify-between hover:bg-putty/50 transition-colors cursor-pointer group relative overflow-hidden"
                 onClick={() => setSelectedLog(log)}
               >
                 <div>
                   <div className="flex justify-between items-start mb-6">
                     <div>
-                      <p className="tech-label mb-1 text-slate-500">
-                        {log.jcn ? `JCN: ${log.jcn}` : `ID: #${log.id?.slice(0, 6)}`}
-                      </p>
+                      {log.editingBy && log.editingBy !== profile?.uid ? (
+                        <div className="flex items-center gap-1.5 mb-1 text-sky-500">
+                          <div className="w-1.5 h-1.5 bg-sky-500 rounded-full animate-pulse"></div>
+                          <span className="text-[8px] font-black uppercase tracking-widest leading-none">{log.editingByName || 'Someone'} is editing</span>
+                        </div>
+                      ) : (
+                        <p className="tech-label mb-1 text-slate-500">
+                          {log.jcn ? `JCN: ${log.jcn}` : `ID: #${log.id?.slice(0, 6)}`}
+                        </p>
+                      )}
                       <h3 className="text-2xl font-black tracking-tighter uppercase group-hover:text-primary transition-colors text-slate-900">{log.tail_number}</h3>
                     </div>
                     {log.isRedBall && (
@@ -860,7 +911,7 @@ export const MaintenanceLogs: React.FC = () => {
                         {log.shift && <span className="ml-2 opacity-60">[{log.shift} {SHIFT_TIMES[log.shift]}]</span>}
                       </span>
                     </div>
-                    <div className="flex flex-col gap-2">
+                    <div className={cn("flex flex-col gap-2", log.editingBy && log.editingBy !== profile?.uid && "opacity-50")}>
                       <span className="tech-label !text-[9px] text-primary">Discrepancy</span>
                       <p className="serif-header text-sm leading-relaxed line-clamp-3">{log.discrepancy}</p>
                     </div>
@@ -1047,7 +1098,7 @@ export const MaintenanceLogs: React.FC = () => {
                     )}
                     <span className="hidden sm:inline">Scan Form</span>
                   </button>
-                  <button onClick={() => { setIsModalOpen(false); setEditingLogId(null); }} className="p-2 hover:bg-putty transition-colors">
+                  <button onClick={closeModal} className="p-2 hover:bg-putty transition-colors">
                     <X className="w-6 h-6" />
                   </button>
                 </div>

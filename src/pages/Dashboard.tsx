@@ -4,7 +4,7 @@ import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestor
 import { motion } from 'motion/react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { UserProfile, MaintenanceLog, TrainingRecord, DIFMLog } from '../types';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextInstance';
 import { cn, tsToDate } from '../lib/utils';
 import { exportTurnoverToPDF, exportRedBallWeeklyPDF } from '../lib/exportUtils';
 import { MOCK_LOGS, MOCK_PERSONNEL, MOCK_TRAINING, MOCK_DIFM } from '../mockData';
@@ -64,7 +64,8 @@ export const Dashboard: React.FC = () => {
 
     let qLogs;
     if (profile.role === 'leadership' || profile.amuId === 'ALL' || profile.shopId === 'ALL') {
-      let queryRef = collection(db, 'logs');
+      const queryRef = collection(db, 'logs');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const constraints: any[] = [where('isDemo', '==', false), orderBy('timestamp', 'desc')];
       
       if (profile.role === 'leadership') {
@@ -91,7 +92,7 @@ export const Dashboard: React.FC = () => {
     }
     
     const unsubLogs = onSnapshot(qLogs, (snap) => {
-      setFirestoreLogs(snap.docs.map(d => ({ id: d.id, ...d.data() } as any)));
+      setFirestoreLogs(snap.docs.map(d => ({ id: d.id, ...d.data() } as MaintenanceLog)));
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'logs'));
 
     let qPersonnel;
@@ -110,7 +111,7 @@ export const Dashboard: React.FC = () => {
     }
     
     const unsubPersonnel = onSnapshot(qPersonnel, (snap) => {
-      setFirestorePersonnel(snap.docs.map(d => ({ id: d.id, ...d.data() } as any)));
+      setFirestorePersonnel(snap.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile)));
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'users'));
 
     let qTraining;
@@ -129,7 +130,7 @@ export const Dashboard: React.FC = () => {
     }
     
     const unsubTraining = onSnapshot(qTraining, (snap) => {
-      setFirestoreTraining(snap.docs.map(d => ({ id: d.id, ...d.data() } as any)));
+      setFirestoreTraining(snap.docs.map(d => ({ id: d.id, ...d.data() } as TrainingRecord)));
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'training'));
 
     let qDifm;
@@ -145,7 +146,7 @@ export const Dashboard: React.FC = () => {
     }
 
     const unsubDifm = onSnapshot(qDifm, (snap) => {
-      setFirestoreDifm(snap.docs.map(d => ({ id: d.id, ...d.data() } as any)));
+      setFirestoreDifm(snap.docs.map(d => ({ id: d.id, ...d.data() } as DIFMLog)));
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'difm'));
 
     return () => {
@@ -194,14 +195,14 @@ export const Dashboard: React.FC = () => {
         </div>
         <div className="flex gap-4 w-full lg:w-auto">
           <button
-            onClick={() => exportTurnoverToPDF(logs, difm, (profile as any).shopId, (profile as any).amuId, 'Days')}
+            onClick={() => exportTurnoverToPDF(logs, difm, profile.shopId || 'ALL', profile.amuId || 'ALL', 'Days')}
             className="sleek-button flex-1 lg:flex-none bg-sidebar !text-white border border-white/10 hover:bg-slate-800 flex items-center justify-center gap-3 px-8 group"
           >
             <HistoryIcon className="w-4 h-4 text-white group-hover:scale-110 transition-transform" />
             <span className="font-black text-[11px] uppercase tracking-widest">Turnover Report</span>
           </button>
           <button
-            onClick={() => exportRedBallWeeklyPDF(logs, (profile as any).shopId, (profile as any).amuId)}
+            onClick={() => exportRedBallWeeklyPDF(logs, profile.shopId || 'ALL', profile.amuId || 'ALL')}
             className="sleek-button flex-1 lg:flex-none bg-safety-orange text-white hover:bg-orange-600 flex items-center justify-center gap-3 px-8 group"
           >
             <Flame className="w-4 h-4 group-hover:scale-110 transition-transform" />

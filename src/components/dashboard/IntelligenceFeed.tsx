@@ -2,8 +2,8 @@ import React, { useState, useEffect, memo } from 'react';
 import { Activity, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { motion } from 'motion/react';
 import { MaintenanceLog, TrainingRecord } from '../../types';
-import { useAuth } from '../../contexts/AuthContext';
-import { useScanStatus } from '../../contexts/AIScanStatusContext';
+import { useAuth } from '../../contexts/AuthContextInstance';
+import { useScanStatus } from '../../contexts/AIScanStatusInstance';
 import { TrendAlertsSchema } from '../../lib/aiSchemas';
 import { generateJSONWithFallback } from '../../lib/aiProvider';
 import { getCachedAIResult, setCachedAIResult, generateDataHash } from '../../lib/aiCache';
@@ -126,7 +126,7 @@ export const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[]; training: Trai
       generateIntelligence();
       const interval = setInterval(generateIntelligence, 300000);
       return () => clearInterval(interval);
-    }, [profile, logs.length, training.length, reportStart, reportSuccess, reportError]);
+    }, [profile, logs, training, reportStart, reportSuccess, reportError]);
 
     return (
       <div className="visible-grid bg-white border border-outline h-full">

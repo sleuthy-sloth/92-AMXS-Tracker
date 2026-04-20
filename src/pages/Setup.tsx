@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ShieldAlert } from 'lucide-react';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextInstance';
 import { UserProfile, AMUType, ShopType } from '../types';
 import { AMUS, SHOPS } from '../mockData';
 
@@ -43,9 +43,10 @@ export const Setup: React.FC = () => {
       };
       await setDoc(doc(db, 'users', user.uid), profile);
       await refreshProfile();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Setup error:', err);
-      setError(err.message || 'Setup submission failed. Please check your inputs or connectivity.');
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg || 'Setup submission failed. Please check your inputs or connectivity.');
     } finally {
       setLoading(false);
     }
@@ -91,7 +92,7 @@ export const Setup: React.FC = () => {
                   required
                   className="sleek-input w-full"
                   value={formData.amuId}
-                  onChange={e => setFormData({...formData, amuId: e.target.value as any})}
+                  onChange={e => setFormData({...formData, amuId: e.target.value as AMUType})}
                 >
                   <option value="">Select AMU...</option>
                   {AMUS.map(a => <option key={a} value={a}>{a}</option>)}
@@ -103,7 +104,7 @@ export const Setup: React.FC = () => {
                   required
                   className="sleek-input w-full"
                   value={formData.shopId}
-                  onChange={e => setFormData({...formData, shopId: e.target.value as any})}
+                  onChange={e => setFormData({...formData, shopId: e.target.value as ShopType})}
                 >
                   <option value="">Select Shop...</option>
                   {SHOPS.map(s => <option key={s} value={s}>{s}</option>)}

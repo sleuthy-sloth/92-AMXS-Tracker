@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { doc, setDoc, serverTimestamp, query, collection, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextInstance';
 import { UserPresence } from '../types';
 import { tsToDate } from '../lib/utils';
 

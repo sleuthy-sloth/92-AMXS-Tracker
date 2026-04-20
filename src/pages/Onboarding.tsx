@@ -15,7 +15,7 @@ import {
 import { AnimatePresence } from 'motion/react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { UserProfile } from '../types';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextInstance';
 import { OnboardingApprovalForm } from '../components/OnboardingApprovalForm';
 
 export const Onboarding: React.FC = () => {

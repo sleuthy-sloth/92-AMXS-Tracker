@@ -32,11 +32,9 @@ export interface GenerateJSONResult<T> {
 }
 
 const DEFAULT_GEMINI_MODEL = 'gemini-flash-latest';
-const DEFAULT_OPENROUTER_MODEL = 'openrouter/free';
-// Tool calling on free tier is hit-and-miss; mistral-nemo is the most
-// reliable free model OpenRouter exposes that supports OpenAI tool-call
-// schema.
-const DEFAULT_OPENROUTER_TOOLS_MODEL = 'openrouter/free';
+const DEFAULT_OPENROUTER_MODEL = 'google/gemini-2.5-flash:free';
+// Tool calling on free tier is hit-and-miss; google/gemini-2.5-flash:free is reliable.
+const DEFAULT_OPENROUTER_TOOLS_MODEL = 'google/gemini-2.5-flash:free';
 const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
 
 export function isOpenRouterConfigured(): boolean {

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Users, TrendingUp, TrendingDown, Minus, ShieldAlert } from 'lucide-react';
 import { collection, onSnapshot, query, where, orderBy, limit } from 'firebase/firestore';
 import { db, OperationType } from '../firebase';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContextInstance';
 import { MaintenanceLog, UserProfile } from '../types';
 import { tsToMillis } from '../lib/utils';
 import { subDays } from 'date-fns';
