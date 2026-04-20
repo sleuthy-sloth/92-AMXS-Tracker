@@ -44,6 +44,18 @@ const formatRelative = (ms?: number): string => {
   return `${days}d ago`;
 };
 
+// Gemini / OpenRouter errors often come back as multi-line JSON blobs.
+// Collapse them to a one-line summary for the status panel — full detail
+// is still in the browser console for anyone debugging.
+const summariseError = (kind: string, message: string): string => {
+  if (kind === 'quota' || kind === 'rate_limit') {
+    return 'Free-tier quota reached — routing to OpenRouter backup until the window resets.';
+  }
+  const firstLine = message.split('\n')[0].trim();
+  if (firstLine.length > 160) return firstLine.slice(0, 157) + '…';
+  return firstLine;
+};
+
 const dotColor = (state: ScanState): string => {
   if (state.status === 'running') return 'bg-sky-500 animate-pulse';
   if (state.status === 'error') {
@@ -98,7 +110,8 @@ const AIStatusPanel: React.FC<{ showDetails: boolean }> = ({ showDetails }) => {
                 </div>
                 {showDetails && state.lastError && (
                   <p className="text-[10px] text-red-600 mt-1 break-words">
-                    <span className="font-bold uppercase">{state.lastError.kind}:</span> {state.lastError.message}
+                    <span className="font-bold uppercase">{state.lastError.kind}:</span>{' '}
+                    {summariseError(state.lastError.kind, state.lastError.message)}
                   </p>
                 )}
                 {showDetails && state.status === 'running' && (

@@ -28,10 +28,12 @@ const unavailableError = () =>
   new AIRetryError({ kind: 'network', message: '503 UNAVAILABLE', retryable: false, status: 503 });
 
 describe('aiProvider.generateJSONWithFallback', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     mockGenerateContent.mockReset();
     vi.restoreAllMocks();
     setKeys('test-gemini', 'test-openrouter');
+    const { __resetGeminiCooldownForTests } = await import('./aiProvider');
+    __resetGeminiCooldownForTests();
   });
 
   afterEach(() => {
@@ -125,6 +127,32 @@ describe('aiProvider.generateJSONWithFallback', () => {
     await expect(
       generateJSONWithFallback({ prompt: 'p', schema: Schema, context: 'test' })
     ).rejects.toThrow(/No AI provider configured/);
+  });
+
+  it('skips Gemini on the second call after a quota hit (cooldown)', async () => {
+    // First call: Gemini throws quota, OpenRouter answers — cooldown flips on.
+    mockGenerateContent.mockRejectedValueOnce(quotaError());
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async () =>
+      new Response(
+        JSON.stringify({ choices: [{ message: { content: JSON.stringify([{ id: 1 }]) } }] }),
+        { status: 200 }
+      )
+    );
+
+    const { generateJSONWithFallback, isGeminiOnCooldown } = await import('./aiProvider');
+    await generateJSONWithFallback({ prompt: 'p', schema: Schema, context: 'test' });
+    expect(isGeminiOnCooldown()).toBe(true);
+    expect(mockGenerateContent).toHaveBeenCalledTimes(1);
+
+    // Second call: cooldown should keep Gemini out of the loop entirely.
+    const secondResult = await generateJSONWithFallback({
+      prompt: 'p',
+      schema: Schema,
+      context: 'test',
+    });
+    expect(secondResult.source).toBe('openrouter');
+    expect(mockGenerateContent).toHaveBeenCalledTimes(1); // unchanged
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 
   it('returns null data when OpenRouter response fails schema validation', async () => {
