@@ -2,7 +2,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 import { MaintenanceLog, TrainingRecord, DIFMLog } from '../types';
-import { tsToDate } from './utils';
+import { tsToDate, normalizeTailNumber } from './utils';
 
 // xlsx is ~900 KB; keep it out of the initial chunk by importing only when the
 // user actually exports.
@@ -194,7 +194,8 @@ export const exportRedBallWeeklyPDF = (
   const byTail: Record<string, number> = {};
   const byDay: Record<string, number> = {};
   recent.forEach((l) => {
-    byTail[l.tail_number] = (byTail[l.tail_number] ?? 0) + 1;
+    const canonicalTail = normalizeTailNumber(l.tail_number) || l.tail_number;
+    byTail[canonicalTail] = (byTail[canonicalTail] ?? 0) + 1;
     const day = format(tsToDate(l.timestamp), 'EEE yyyy-MM-dd');
     byDay[day] = (byDay[day] ?? 0) + 1;
   });
