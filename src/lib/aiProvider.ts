@@ -33,8 +33,8 @@ export interface GenerateJSONResult<T> {
   source: AIProvider;
 }
 
-const DEFAULT_GEMINI_MODEL = 'gemini-flash-latest';
 const DEFAULT_OPENROUTER_MODEL = 'google/gemini-2.5-flash:free';
+const DEFAULT_OPENROUTER_FALLBACK_MODEL = 'google/gemma-2-27b-it:free';
 // Tool calling on free tier is hit-and-miss; google/gemini-2.5-flash:free is reliable.
 const DEFAULT_OPENROUTER_TOOLS_MODEL = 'google/gemini-2.5-flash:free';
 const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
@@ -135,7 +135,7 @@ async function callGemini<T>(opts: GenerateJSONOptions<T>): Promise<T | null> {
       }
 
       return getAI().models.generateContent({
-        model: opts.geminiModel ?? DEFAULT_GEMINI_MODEL,
+        model: opts.geminiModel ?? 'gemini-1.5-flash-latest',
         contents: [{ role: 'user', parts }],
         config: {
           responseMimeType: 'application/json',
@@ -234,24 +234,39 @@ export async function generateJSONWithFallback<T>(
     throw new Error('No AI provider configured (set GEMINI_API_KEY or OPENROUTER_API_KEY).');
   }
 
-  // If Gemini is mid-cooldown from a prior quota hit, skip it. Avoids the
-  // ~7s of retry backoff on every subsequent call until the window clears.
-  const skipGemini = isOpenRouterConfigured() && isGeminiOnCooldown();
-
-  if (isGeminiConfigured() && !skipGemini) {
+  if (isOpenRouterConfigured()) {
     try {
-      const data = await callGemini(opts);
-      return { data, source: 'gemini' };
+      const data = await callOpenRouter({ ...opts, openRouterModel: opts.openRouterModel ?? DEFAULT_OPENROUTER_MODEL });
+      return { data, source: 'openrouter' };
     } catch (err) {
-      markGeminiExhausted(err);
-      if (!shouldFallback(err) || !isOpenRouterConfigured()) throw err;
       const kind = err instanceof AIRetryError ? err.classified.kind : 'unknown';
-      console.warn(`[AI] ${opts.context}: Gemini ${kind} — falling back to OpenRouter`);
+      console.warn(`[AI] ${opts.context}: OpenRouter primary (${kind}) — attempting Native Gemini fallback`);
+      
+      if (isGeminiConfigured() && !isGeminiOnCooldown()) {
+        try {
+          const data = await callGemini(opts);
+          return { data, source: 'gemini' };
+        } catch (geminiErr) {
+          markGeminiExhausted(geminiErr);
+          console.warn(`[AI] ${opts.context}: Native Gemini fallback failed — attempting OpenRouter Gemma fallback`);
+        }
+      }
+      
+      try {
+        const data = await callOpenRouter({ ...opts, openRouterModel: DEFAULT_OPENROUTER_FALLBACK_MODEL });
+        return { data, source: 'openrouter' };
+      } catch (fallbackErr) {
+        throw fallbackErr;
+      }
     }
   }
 
-  const data = await callOpenRouter(opts);
-  return { data, source: 'openrouter' };
+  if (isGeminiConfigured() && !isGeminiOnCooldown()) {
+    const data = await callGemini(opts);
+    return { data, source: 'gemini' };
+  }
+
+  throw new Error('All configured AI providers failed or are on cooldown.');
 }
 
 /**
