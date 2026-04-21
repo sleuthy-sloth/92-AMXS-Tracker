@@ -1,12 +1,13 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Plus,
   X,
   Sparkles,
   Package as PackageIcon,
-  History as HistoryIcon
+  History as HistoryIcon,
+  Loader2
 } from 'lucide-react';
-import { serverTimestamp, collection, query, where, onSnapshot, addDoc, updateDoc, doc, deleteDoc, limit } from 'firebase/firestore';
+import { serverTimestamp, collection, query, where, onSnapshot, addDoc, updateDoc, doc, deleteDoc, limit, orderBy, QueryConstraint } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { DIFMLog } from '../types';
@@ -21,6 +22,9 @@ export const DIFMLogs: React.FC = () => {
   const [firestoreLogs, setFirestoreLogs] = useState<DIFMLog[]>([]);
   const [demoSeededLogs, setDemoSeededLogs] = useState<DIFMLog[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [logsLimit, setLogsLimit] = useState(25);
+  const loadingRef = useRef<HTMLDivElement>(null);
+
   const [formData, setFormData] = useState({
     tail_number: '',
     discrepancy: '',
@@ -30,6 +34,20 @@ export const DIFMLogs: React.FC = () => {
     pipeline_status: 'ordered' as DIFMLog['pipeline_status']
   });
   const [loading, setLoading] = useState(false);
+
+  const hasMore = useMemo(() => firestoreLogs.length >= logsLimit, [firestoreLogs.length, logsLimit]);
+
+  useEffect(() => {
+    if (!hasMore) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        setLogsLimit(prev => prev + 25);
+      }
+    }, { threshold: 1.0 });
+
+    if (loadingRef.current) observer.observe(loadingRef.current);
+    return () => observer.disconnect();
+  }, [hasMore]);
 
   const logs = useMemo<DIFMLog[]>(() => {
     if (!profile) return [];
@@ -48,29 +66,16 @@ export const DIFMLogs: React.FC = () => {
     if (!profile || isDemoMode) return;
 
     let q;
-    if (profile.amuId === 'ALL' || profile.shopId === 'ALL' || profile.role === 'leadership') {
-      const queryRef = collection(db, 'difm');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const constraints: any[] = [];
-      
-      // If leadership/ncoic but they chose a specific filter
-      if (profile.amuId !== 'ALL' && profile.amuId !== 'NONE') {
-        constraints.push(where('amuId', '==', profile.amuId));
-      }
-      if (profile.shopId !== 'ALL' && profile.shopId !== 'LEADERSHIP') {
-        constraints.push(where('shopId', '==', profile.shopId));
-      }
-
-      constraints.push(limit(500));
-      q = query(queryRef, ...constraints);
-    } else {
-      q = query(
-        collection(db, 'difm'),
-        where('amuId', '==', profile.amuId),
-        where('shopId', '==', profile.shopId),
-        limit(500)
-      );
+    const constraints: QueryConstraint[] = [orderBy('timestamp', 'desc')];
+    
+    if (profile.amuId !== 'ALL' && profile.amuId !== 'NONE') {
+      constraints.push(where('amuId', '==', profile.amuId));
     }
+    if (profile.shopId !== 'ALL' && profile.shopId !== 'LEADERSHIP') {
+        constraints.push(where('shopId', '==', profile.shopId));
+    }
+    constraints.push(limit(logsLimit));
+    q = query(collection(db, 'difm'), ...constraints);
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setFirestoreLogs(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DIFMLog)));
@@ -78,7 +83,8 @@ export const DIFMLogs: React.FC = () => {
       handleFirestoreError(error, OperationType.LIST, 'difm');
     });
     return unsubscribe;
-  }, [profile, isDemoMode]);
+  }, [profile, isDemoMode, logsLimit]);
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -293,6 +299,12 @@ export const DIFMLogs: React.FC = () => {
             </tbody>
           </table>
         </div>
+        {hasMore && (
+          <div ref={loadingRef} className="py-10 flex flex-col items-center justify-center gap-4 border-t border-outline/30 bg-slate-50/50">
+            <Loader2 className="w-6 h-6 text-primary animate-spin" />
+            <span className="tech-label text-[10px] opacity-40 uppercase tracking-[0.3em]">Loading historical entries...</span>
+          </div>
+        )}
       </div>
 
       <AnimatePresence>
