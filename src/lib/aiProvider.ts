@@ -124,7 +124,7 @@ async function callGemini<T>(opts: GenerateJSONOptions<T>): Promise<T | null> {
       // honor cancellation via withRetry's outer abort handling.
       void signal;
       
-      const parts: any[] = [{ text: opts.prompt }];
+      const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [{ text: opts.prompt }];
       if (opts.imageBase64) {
         parts.unshift({
           inlineData: {

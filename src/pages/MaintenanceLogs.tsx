@@ -21,7 +21,7 @@ import {
   Send, 
   Trash2 
 } from 'lucide-react';
-import { serverTimestamp, collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, doc, deleteDoc, limit } from 'firebase/firestore';
+import { serverTimestamp, collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, doc, deleteDoc, limit, QueryConstraint } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
@@ -113,16 +113,50 @@ export const MaintenanceLogs: React.FC = () => {
     });
   }, [profile, isDemoMode, firestoreDifm]);
 
+  const [logsLimit, setLogsLimit] = useState(25);
+  const [difmLimit, setDifmLimit] = useState(25);
+  const loadingRef = useRef<HTMLDivElement>(null);
+  const difmLoadingRef = useRef<HTMLDivElement>(null);
+
+  const hasMoreLogs = useMemo(() => firestoreLogs.length >= logsLimit, [firestoreLogs.length, logsLimit]);
+  const hasMoreDifm = useMemo(() => firestoreDifm.length >= difmLimit, [firestoreDifm.length, difmLimit]);
+
+  // Observer for lazy loading logs
+  useEffect(() => {
+    if (!hasMoreLogs) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        setLogsLimit(prev => prev + 25);
+      }
+    }, { threshold: 1.0 });
+
+    if (loadingRef.current) observer.observe(loadingRef.current);
+    return () => observer.disconnect();
+  }, [hasMoreLogs]);
+
+  // Observer for lazy loading DIFM
+  useEffect(() => {
+    if (!hasMoreDifm) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        setDifmLimit(prev => prev + 25);
+      }
+    }, { threshold: 1.0 });
+
+    if (difmLoadingRef.current) observer.observe(difmLoadingRef.current);
+    return () => observer.disconnect();
+  }, [hasMoreDifm]);
+
   useEffect(() => {
     if (!profile || isDemoMode) return;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const logConstraints: any[] = [where('isDemo', '==', false), orderBy('timestamp', 'desc')];
+    const logConstraints: QueryConstraint[] = [where('isDemo', '==', false), orderBy('timestamp', 'desc')];
     if (profile.amuId !== 'ALL') logConstraints.push(where('amuId', '==', profile.amuId));
     if (profile.shopId !== 'ALL' && profile.shopId !== 'LEADERSHIP') logConstraints.push(where('shopId', '==', profile.shopId));
     
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const logConstraintsWithArchive: any[] = [...logConstraints, where('isArchived', '==', isArchiveView), limit(500)];
+    const logConstraintsWithArchive: QueryConstraint[] = [...logConstraints, where('isArchived', '==', isArchiveView), limit(logsLimit)];
     const qLogs = query(collection(db, 'logs'), ...logConstraintsWithArchive);
     
     const unsubLogs = onSnapshot(qLogs, (snap) => {
@@ -136,11 +170,10 @@ export const MaintenanceLogs: React.FC = () => {
     });
 
     let qDifm;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const difmConstraints: any[] = [where('isDemo', '==', false)];
+    const difmConstraints: QueryConstraint[] = [where('isDemo', '==', false)];
     if (profile.amuId !== 'ALL') difmConstraints.unshift(where('amuId', '==', profile.amuId));
     if (profile.shopId !== 'ALL' && profile.shopId !== 'LEADERSHIP') difmConstraints.unshift(where('shopId', '==', profile.shopId));
-    qDifm = query(collection(db, 'difm'), ...difmConstraints, limit(500));
+    qDifm = query(collection(db, 'difm'), ...difmConstraints, limit(difmLimit));
 
     const unsubDifm = onSnapshot(qDifm, (snap) => {
       setFirestoreDifm(snap.docs.map(d => ({ id: d.id, ...d.data() } as DIFMLog)));
@@ -155,7 +188,8 @@ export const MaintenanceLogs: React.FC = () => {
       unsubLogs();
       unsubDifm();
     };
-  }, [profile, isDemoMode, isArchiveView]);
+  }, [profile, isDemoMode, isArchiveView, logsLimit, difmLimit]);
+
 
   const handleScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -853,6 +887,12 @@ export const MaintenanceLogs: React.FC = () => {
                 ))}
               </tbody>
             </table>
+            {hasMoreLogs && (
+              <div ref={loadingRef} className="py-10 flex flex-col items-center justify-center gap-4 border-t border-outline/30 bg-slate-50/50">
+                <Loader2 className="w-6 h-6 text-primary animate-spin" />
+                <span className="tech-label text-[10px] opacity-40 uppercase tracking-[0.3em]">Loading historical entries...</span>
+              </div>
+            )}
           </div>
         </div>
       ) : (
@@ -924,6 +964,15 @@ export const MaintenanceLogs: React.FC = () => {
               </motion.div>
             ))}
           </AnimatePresence>
+          {hasMoreLogs && (
+            <div ref={loadingRef} className="col-span-1 md:col-span-2 lg:col-span-3 py-16 flex flex-col items-center justify-center gap-4 bg-slate-50/50">
+              <Loader2 className="w-8 h-8 text-primary animate-spin" />
+              <div className="text-center">
+                <span className="tech-label text-[10px] block opacity-40 uppercase tracking-[0.4em] mb-1">Retrieving Records</span>
+                <span className="text-[10px] font-mono text-slate-400">OFFSET: {logsLimit}</span>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
