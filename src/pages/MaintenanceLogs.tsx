@@ -25,9 +25,9 @@ import { serverTimestamp, collection, query, where, orderBy, onSnapshot, addDoc,
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
-import { MaintenanceLog, DIFMLog, ShiftType } from '../types';
+import { MaintenanceLog, DIFMLog, ShiftType, UserProfile } from '../types';
 import { useAuth } from '../contexts/AuthContextInstance';
-import { MOCK_LOGS, MOCK_DIFM, SHIFT_TIMES } from '../mockData';
+import { MOCK_LOGS, MOCK_DIFM, MOCK_PERSONNEL, SHIFT_TIMES } from '../mockData';
 import { cn, tsToDate, tsToMillis, tailMatchesSearch } from '../lib/utils';
 import { createNotification } from '../services/notificationService';
 import { scanMaintenanceForm, scanLogBook } from '../services/ocrService';
@@ -75,6 +75,9 @@ export const MaintenanceLogs: React.FC = () => {
   const [selectedLog, setSelectedLog] = useState<MaintenanceLog | null>(null);
   const [isArchiveView, setIsArchiveView] = useState(false);
   const [originalLogState, setOriginalLogState] = useState<MaintenanceLog | null>(null);
+  const [personnelRoster, setPersonnelRoster] = useState<UserProfile[]>([]);
+  const [personnelInputFocused, setPersonnelInputFocused] = useState(false);
+
   // Demo-mode only: session-level archive overrides keyed by mock log id,
   // so Archive/Restore clicks persist across list re-renders without
   // mutating the shared MOCK_LOGS module.
@@ -120,6 +123,32 @@ export const MaintenanceLogs: React.FC = () => {
 
   const hasMoreLogs = useMemo(() => firestoreLogs.length >= logsLimit, [firestoreLogs.length, logsLimit]);
   const hasMoreDifm = useMemo(() => firestoreDifm.length >= difmLimit, [firestoreDifm.length, difmLimit]);
+
+  useEffect(() => {
+    if (!profile) return;
+    if (isDemoMode) {
+      setPersonnelRoster(MOCK_PERSONNEL);
+      return;
+    }
+
+    const rosterConstraints: QueryConstraint[] = [
+      where('status', '==', 'active'),
+      where('isDemo', '==', false)
+    ];
+    if (profile.amuId !== 'ALL' && profile.amuId !== 'NONE') {
+      rosterConstraints.push(where('amuId', '==', profile.amuId));
+    }
+    if (profile.shopId !== 'ALL' && profile.shopId !== 'LEADERSHIP') {
+      rosterConstraints.push(where('shopId', '==', profile.shopId));
+    }
+
+    const qRoster = query(collection(db, 'users'), ...rosterConstraints);
+    const unsub = onSnapshot(qRoster, (snap) => {
+      setPersonnelRoster(snap.docs.map(d => d.data() as UserProfile));
+    }, (err) => console.error("Failed fetching roster", err));
+
+    return () => unsub();
+  }, [profile, isDemoMode]);
 
   // Observer for lazy loading logs
   useEffect(() => {
@@ -1177,14 +1206,49 @@ export const MaintenanceLogs: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 relative">
                   <label className="tech-label !text-[9px]">Additional Personnel (Comma Separated)</label>
                   <input 
                     className="sleek-input w-full"
                     placeholder="E.G. Smith J, Doe A"
                     value={formData.personnelInput}
+                    onFocus={() => setPersonnelInputFocused(true)}
+                    // We delay blur slightly so clicking a dropdown item fires before it hides
+                    onBlur={() => setTimeout(() => setPersonnelInputFocused(false), 200)} 
                     onChange={e => setFormData({...formData, personnelInput: e.target.value})}
                   />
+                  {personnelInputFocused && formData.personnelInput.split(',').pop()?.trim() && personnelRoster.length > 0 && (
+                    <div className="absolute top-full left-0 w-full mt-1 bg-white border border-outline shadow-xl z-50 max-h-48 overflow-y-auto">
+                      {(() => {
+                        const parts = formData.personnelInput.split(',');
+                        const currentTerm = parts[parts.length - 1].trim().toLowerCase();
+                        if (currentTerm.length < 1) return null;
+                        
+                        const matches = personnelRoster.filter(p => p.name.toLowerCase().includes(currentTerm) && !parts.some(existing => existing.trim() === p.name));
+                        if (matches.length === 0) return <div className="p-3 text-xs text-slate-500 italic">No matches...</div>;
+                        
+                        return matches.map(p => (
+                          <button
+                            key={p.uid}
+                            type="button"
+                            onMouseDown={(e) => {
+                              // Prevent onBlur from firing before click registers
+                              e.preventDefault();
+                              const newParts = [...parts];
+                              newParts.pop(); // Remove partial
+                              newParts.push(` ${p.name}`); // Add full name
+                              setFormData({ ...formData, personnelInput: newParts.join(', ') + ', ' });
+                              setPersonnelInputFocused(false);
+                            }}
+                            className="w-full text-left p-3 hover:bg-putty border-b border-slate-100 last:border-0 flex justify-between items-center"
+                          >
+                            <span className="font-bold text-sm text-slate-800">{p.name}</span>
+                            <span className="text-[10px] text-slate-400 font-mono tracking-widest">{p.man_number}</span>
+                          </button>
+                        ));
+                      })()}
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-8">
