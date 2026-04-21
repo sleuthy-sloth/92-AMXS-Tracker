@@ -34,7 +34,7 @@ export interface GenerateJSONResult<T> {
 }
 
 const DEFAULT_OPENROUTER_MODEL = 'google/gemini-2.5-flash:free';
-const DEFAULT_OPENROUTER_FALLBACK_MODEL = 'google/gemma-2-27b-it:free';
+const DEFAULT_OPENROUTER_FALLBACK_MODEL = 'google/gemma-4-31b-it:free';
 // Tool calling on free tier is hit-and-miss; google/gemini-2.5-flash:free is reliable.
 const DEFAULT_OPENROUTER_TOOLS_MODEL = 'google/gemini-2.5-flash:free';
 const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
@@ -240,30 +240,25 @@ export async function generateJSONWithFallback<T>(
       return { data, source: 'openrouter' };
     } catch (err) {
       const kind = err instanceof AIRetryError ? err.classified.kind : 'unknown';
-      console.warn(`[AI] ${opts.context}: OpenRouter primary (${kind}) — attempting Native Gemini fallback`);
-      
-      if (isGeminiConfigured() && !isGeminiOnCooldown()) {
-        try {
-          const data = await callGemini(opts);
-          return { data, source: 'gemini' };
-        } catch (geminiErr) {
-          markGeminiExhausted(geminiErr);
-          console.warn(`[AI] ${opts.context}: Native Gemini fallback failed — attempting OpenRouter Gemma fallback`);
-        }
-      }
+      console.warn(`[AI] ${opts.context}: OpenRouter primary (${kind}) — attempting OpenRouter Gemma fallback`);
       
       try {
         const data = await callOpenRouter({ ...opts, openRouterModel: DEFAULT_OPENROUTER_FALLBACK_MODEL });
         return { data, source: 'openrouter' };
       } catch (fallbackErr) {
-        throw fallbackErr;
+        console.warn(`[AI] ${opts.context}: OpenRouter Gemma fallback failed — attempting Native Gemini fallback`);
       }
     }
   }
 
   if (isGeminiConfigured() && !isGeminiOnCooldown()) {
-    const data = await callGemini(opts);
-    return { data, source: 'gemini' };
+    try {
+      const data = await callGemini(opts);
+      return { data, source: 'gemini' };
+    } catch (geminiErr) {
+      markGeminiExhausted(geminiErr);
+      throw geminiErr;
+    }
   }
 
   throw new Error('All configured AI providers failed or are on cooldown.');
