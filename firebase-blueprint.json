@@ -93,6 +93,17 @@
         "shopId": { "type": "string" }
       },
       "required": ["userId", "userName", "location", "activeAt", "shopId"]
+    },
+    "AICache": {
+      "title": "AI Cache Entry",
+      "description": "Cached result of an expensive LLM operation",
+      "type": "object",
+      "properties": {
+        "data": { "type": "object", "description": "The cached JSON representation of the AI inference" },
+        "hash": { "type": "string", "description": "Hash of the input variables used to generate the cache" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Server timestamp of creation" }
+      },
+      "required": ["data", "timestamp", "hash"]
     }
   },
   "firestore": {
@@ -119,6 +130,10 @@
     "/presence/{userId}": {
       "schema": "Presence",
       "description": "Real-time user presence"
+    },
+    "/ai_cache/{cacheId}": {
+      "schema": "AICache",
+      "description": "Caches results of heavy LLM calls"
     }
   }
 }
