@@ -117,22 +117,36 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <X className="w-6 h-6" />
       </button>
 
-      <div className="branding px-8 py-12">
-        <div className="flex items-start gap-4">
-          <div className="flex flex-col">
-            <div className="flex items-baseline gap-1">
-              <span className="font-black text-5xl tracking-tighter leading-none text-white">92</span>
-              <div className="flex flex-col">
-                <span className="text-primary font-black text-xs uppercase tracking-widest leading-none">nd</span>
-                <span className="text-white font-black text-lg tracking-tighter uppercase leading-none">AMXS</span>
+      <div className="branding px-8 py-10">
+        <div className="flex flex-col gap-6">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 bg-white/10 rounded-full p-2 flex items-center justify-center relative overflow-hidden group">
+              <div className="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 transition-opacity blur-xl"></div>
+              <img 
+                src="https://media.defense.gov/2022/Sep/29/2003087437/-1/-1/0/220929-F-AFHRA-020.JPG" 
+                alt="92nd AMXS Logo" 
+                className="w-full h-full object-contain relative z-10 brightness-110 drop-shadow-[0_0_15px_rgba(255,103,31,0.4)]"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+            <div className="flex flex-col">
+              <div className="flex items-baseline gap-1">
+                <span className="font-black text-4xl tracking-tighter leading-none text-white">92</span>
+                <div className="flex flex-col">
+                  <span className="text-primary font-black text-[10px] uppercase tracking-widest leading-none">nd</span>
+                  <span className="text-white font-black text-base tracking-tighter uppercase leading-none">AMXS</span>
+                </div>
               </div>
             </div>
-            <div className="mt-4 flex items-center gap-3">
-              <div className="h-px flex-1 bg-white/10"></div>
-              <span className="tech-label text-white/30 text-[8px] whitespace-nowrap tracking-[0.3em]">Maintenance Control</span>
-              <div className="h-px flex-1 bg-white/10"></div>
-            </div>
-            {hasPendingWrites && (
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-white/10"></div>
+            <span className="tech-label text-white/30 text-[8px] whitespace-nowrap tracking-[0.3em]">Maintenance Control</span>
+            <div className="h-px flex-1 bg-white/10"></div>
+          </div>
+
+          {hasPendingWrites && (
               <div className="mt-3 flex items-center gap-2 px-2 py-1 bg-safety-orange/10 border border-safety-orange/30 rounded-sm">
                 <UploadCloud className="w-3 h-3 text-safety-orange animate-pulse" />
                 <span className="text-[9px] font-black uppercase text-safety-orange tracking-widest">Pending Sync</span>
@@ -140,7 +154,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
             )}
           </div>
         </div>
-      </div>
 
       {(isDemoMode || profile?.role === 'ncoic' || profile?.role === 'leadership') && (
         <div className="px-8 pb-8 space-y-6 border-b border-white/10">
