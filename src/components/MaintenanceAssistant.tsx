@@ -12,7 +12,7 @@ import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContextInstance';
 import { useScanStatus } from '../contexts/AIScanStatusInstance';
 import { MOCK_LOGS, MOCK_DIFM, MOCK_TRAINING } from '../mockData';
-import { cn } from '../lib/utils';
+import { cn, tailMatchesSearch } from '../lib/utils';
 import { getAI, isGeminiConfigured } from '../lib/gemini';
 import { withRetry, classifyError, AIRetryError } from '../lib/aiRetry';
 import {
@@ -195,7 +195,7 @@ export const MaintenanceAssistant: React.FC = () => {
         name === 'query_training_compliance' ? 'training' : null;
       if (!collectionName) return [];
 
-      let q = query(collection(db, collectionName), where('isDemo', '==', false), limit(20));
+      let q = query(collection(db, collectionName), where('isDemo', '==', false), limit(100));
       if (profile?.shopId && profile.shopId !== 'ALL' && profile.shopId !== 'LEADERSHIP') {
         q = query(q, where('shopId', '==', profile.shopId));
       }
@@ -209,14 +209,19 @@ export const MaintenanceAssistant: React.FC = () => {
         isRedBall?: boolean;
         course_code?: string;
       };
-      if (a.tail_number) q = query(q, where('tail_number', '==', a.tail_number));
+      
       if (a.status && collectionName !== 'logs') q = query(q, where('status', '==', a.status));
       if (a.shift && collectionName === 'logs') q = query(q, where('shift', '==', a.shift));
       if (a.isRedBall && collectionName === 'logs') q = query(q, where('isRedBall', '==', true));
       if (a.course_code && collectionName === 'training') q = query(q, where('course_code', '==', a.course_code));
 
       const snap = await getDocs(q);
-      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const results = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      return results.filter(d => {
+        if (a.tail_number && !tailMatchesSearch((d as any).tail_number, a.tail_number)) return false;
+        return true;
+      }).slice(0, 20);
     };
 
     // Backup-channel runner — OpenRouter with tools first, plain text if
