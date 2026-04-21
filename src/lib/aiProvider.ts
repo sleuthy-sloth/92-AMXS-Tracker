@@ -24,6 +24,8 @@ export interface GenerateJSONOptions<T> {
   openRouterModel?: string;
   /** Lower = more deterministic. Forwarded to both providers. */
   temperature?: number;
+  /** Optional base64 encoded JPEG image data (without data:image/jpeg;base64, prefix) */
+  imageBase64?: string;
 }
 
 export interface GenerateJSONResult<T> {
@@ -121,9 +123,20 @@ async function callGemini<T>(opts: GenerateJSONOptions<T>): Promise<T | null> {
       // Gemini SDK ignores AbortSignal at the request level today; we still
       // honor cancellation via withRetry's outer abort handling.
       void signal;
+      
+      const parts: any[] = [{ text: opts.prompt }];
+      if (opts.imageBase64) {
+        parts.unshift({
+          inlineData: {
+            mimeType: 'image/jpeg',
+            data: opts.imageBase64
+          }
+        });
+      }
+
       return getAI().models.generateContent({
         model: opts.geminiModel ?? DEFAULT_GEMINI_MODEL,
-        contents: [{ role: 'user', parts: [{ text: opts.prompt }] }],
+        contents: [{ role: 'user', parts }],
         config: {
           responseMimeType: 'application/json',
           temperature: opts.temperature ?? 0.1,
@@ -166,6 +179,13 @@ async function callOpenRouter<T>(opts: GenerateJSONOptions<T>): Promise<T | null
 
   return withRetry(
     async (signal) => {
+      const userContent = opts.imageBase64
+        ? [
+            { type: 'text', text: opts.prompt },
+            { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${opts.imageBase64}` } }
+          ]
+        : opts.prompt;
+
       const res = await fetch(OPENROUTER_ENDPOINT, {
         method: 'POST',
         signal,
@@ -182,7 +202,7 @@ async function callOpenRouter<T>(opts: GenerateJSONOptions<T>): Promise<T | null
               role: 'system',
               content: 'Respond with a single JSON value matching the requested shape. Do not wrap it in markdown fences or commentary.',
             },
-            { role: 'user', content: opts.prompt },
+            { role: 'user', content: userContent },
           ],
         }),
       });
