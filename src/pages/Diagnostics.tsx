@@ -10,7 +10,7 @@ import { DiagnosticsSchema, DiagnosticFindingParsed } from '../lib/aiSchemas';
 import { generateJSONWithFallback, isOpenRouterConfigured } from '../lib/aiProvider';
 import { getCachedAIResult, setCachedAIResult, generateDataHash } from '../lib/aiCache';
 import { classifyError, AIRetryError } from '../lib/aiRetry';
-import { cn } from '../lib/utils';
+import { cn, normalizeTailNumber } from '../lib/utils';
 
 const MAX_LOGS = 60;
 
@@ -43,9 +43,10 @@ export const Diagnostics: React.FC = () => {
   const byTail = useMemo(() => {
     const m = new Map<string, MaintenanceLog[]>();
     logs.forEach((l) => {
-      const arr = m.get(l.tail_number) ?? [];
+      const canonicalTail = normalizeTailNumber(l.tail_number) || l.tail_number;
+      const arr = m.get(canonicalTail) ?? [];
       arr.push(l);
-      m.set(l.tail_number, arr);
+      m.set(canonicalTail, arr);
     });
     return Array.from(m.entries())
       .filter(([, v]) => v.length >= 2)

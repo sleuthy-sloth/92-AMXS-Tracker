@@ -16,7 +16,7 @@ export type ScannedLog = ScannedLogParsed;
 export const scanMaintenanceForm = async (base64Image: string): Promise<ScannedLog | null> => {
   try {
     const { data } = await generateJSONWithFallback({
-      prompt: "You are an expert Air Force Maintenance forms clerk. Analyze this image of an AF Form 781A, 781K, or similar aircraft maintenance form. Extract the aircraft tail number, the main discrepancy reported, the repair action taken (if any), the Job Control Number (JCN), and any visible document number. Ensure the tail number is formatted professionally like 'AF-92-001'. If fields are missing, provide an empty string.",
+      prompt: "You are an expert Air Force Maintenance forms clerk. Analyze this image of an AF Form 781A, 781K, or similar aircraft maintenance form. Extract the aircraft tail number, the main discrepancy reported, the repair action taken (if any), the Job Control Number (JCN), and any visible document number. Extract the tail number exactly as written (e.g. '12-1234' or '0192'). Do not force 'AF-' prefixes. If fields are missing, provide an empty string.",
       schema: ScannedLogSchema,
       context: 'scanMaintenanceForm',
       imageBase64: base64Image
@@ -36,7 +36,7 @@ export const scanMaintenanceForm = async (base64Image: string): Promise<ScannedL
 export const scanLogBook = async (base64Image: string): Promise<ScannedLogBookParsed | null> => {
   try {
     const { data } = await generateJSONWithFallback({
-      prompt: "Analyze this image of a handwritten Air Force Green Log Book or maintenance logbook sheet. Extract a list of maintenance entries. For each entry, find the tail number, the discrepancy, the Job Control Number (JCN) if available, and any repair action noted. Return a JSON array of objects. Ensure tail numbers are professionally formatted like 'AF-92-001'.",
+      prompt: "Analyze this image of a handwritten Air Force Green Log Book or maintenance logbook sheet. Extract a list of maintenance entries. For each entry, find the tail number, the discrepancy, the Job Control Number (JCN) if available, and any repair action noted. Return a JSON array of objects. Extract the tail number exactly as written (e.g. '12-1234'). Do not force 'AF-' prefixes.",
       schema: ScannedLogBookSchema,
       context: 'scanLogBook',
       imageBase64: base64Image
