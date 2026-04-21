@@ -135,7 +135,7 @@ async function callGemini<T>(opts: GenerateJSONOptions<T>): Promise<T | null> {
       }
 
       return getAI().models.generateContent({
-        model: opts.geminiModel ?? 'gemini-1.5-flash-latest',
+        model: opts.geminiModel ?? 'gemini-2.5-flash',
         contents: [{ role: 'user', parts }],
         config: {
           responseMimeType: 'application/json',
@@ -192,6 +192,8 @@ async function callOpenRouter<T>(opts: GenerateJSONOptions<T>): Promise<T | null
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${apiKey}`,
+          'HTTP-Referer': window.location.origin,
+          'X-Title': 'AMXS Maintenance System',
         },
         body: JSON.stringify({
           model: opts.openRouterModel ?? DEFAULT_OPENROUTER_MODEL,
@@ -288,6 +290,8 @@ export async function generateTextWithOpenRouter(params: {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${apiKey}`,
+          'HTTP-Referer': window.location.origin,
+          'X-Title': 'AMXS Maintenance System',
         },
         body: JSON.stringify({
           model: params.model ?? DEFAULT_OPENROUTER_MODEL,
@@ -364,6 +368,8 @@ export async function runOpenRouterWithTools(params: {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${apiKey}`,
+          'HTTP-Referer': window.location.origin,
+          'X-Title': 'AMXS Maintenance System',
         },
         body: JSON.stringify({
           model,
