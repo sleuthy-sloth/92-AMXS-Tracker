@@ -6,7 +6,7 @@ import { db, handleFirestoreError, OperationType } from '../firebase';
 import { MaintenanceLog } from '../types';
 import { useAuth } from '../contexts/AuthContextInstance';
 import { Search, Loader2, Camera, Eye, CheckCircle2, ShieldCheck, Check, X, Trash2, Archive, History } from 'lucide-react';
-import { cn, tsToDate } from '../lib/utils';
+import { cn, tsToDate, tailMatchesSearch } from '../lib/utils';
 
 export const G081Gallery: React.FC = () => {
   const { profile, isDemoMode } = useAuth();
@@ -93,7 +93,7 @@ export const G081Gallery: React.FC = () => {
   };
 
   const filteredLogs = logs.filter(log => 
-    log.tail_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    tailMatchesSearch(log.tail_number, searchQuery) ||
     log.technician_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (log.man_number && log.man_number.includes(searchQuery)) ||
     log.discrepancy.toLowerCase().includes(searchQuery.toLowerCase())

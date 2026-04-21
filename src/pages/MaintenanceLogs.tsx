@@ -28,7 +28,7 @@ import { db, handleFirestoreError, OperationType } from '../firebase';
 import { MaintenanceLog, DIFMLog, ShiftType } from '../types';
 import { useAuth } from '../contexts/AuthContextInstance';
 import { MOCK_LOGS, MOCK_DIFM, SHIFT_TIMES } from '../mockData';
-import { cn, tsToDate, tsToMillis } from '../lib/utils';
+import { cn, tsToDate, tsToMillis, tailMatchesSearch } from '../lib/utils';
 import { createNotification } from '../services/notificationService';
 import { scanMaintenanceForm, scanLogBook } from '../services/ocrService';
 import { 
@@ -505,7 +505,7 @@ export const MaintenanceLogs: React.FC = () => {
     const end = endDate ? new Date(endDate) : null;
     return logs.filter((log) => {
       const matchesSearch =
-        log.tail_number.toLowerCase().includes(q) ||
+        tailMatchesSearch(log.tail_number, searchQuery) ||
         log.technician_name.toLowerCase().includes(q) ||
         log.discrepancy.toLowerCase().includes(q) ||
         (log.man_number && log.man_number.includes(searchQuery)) ||
