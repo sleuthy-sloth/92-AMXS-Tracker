@@ -46,9 +46,7 @@ export function isOpenRouterConfigured(): boolean {
 export function shouldFallback(err: unknown): boolean {
   const classified = err instanceof AIRetryError ? err.classified : classifyError(err);
   return (
-    classified.kind === 'quota' ||
-    classified.kind === 'rate_limit' ||
-    classified.kind === 'network'
+    classified.kind === 'quota' || classified.kind === 'rate_limit' || classified.kind === 'network'
   );
 }
 
@@ -77,7 +75,7 @@ export function markGeminiExhausted(err: unknown): void {
   const parsed = parseRetryDelayMs(classified.message);
   const cooldownMs = Math.min(
     Math.max(parsed || COOLDOWN_DEFAULT_MS, COOLDOWN_MIN_MS),
-    COOLDOWN_MAX_MS,
+    COOLDOWN_MAX_MS
   );
   geminiCooldownUntil = Date.now() + cooldownMs;
   try {
@@ -86,7 +84,7 @@ export function markGeminiExhausted(err: unknown): void {
     // sessionStorage unavailable — in-memory cooldown is still effective
   }
   console.warn(
-    `[AI] Gemini ${classified.kind} — skipping Gemini for ${(cooldownMs / 1000).toFixed(0)}s`,
+    `[AI] Gemini ${classified.kind} — skipping Gemini for ${(cooldownMs / 1000).toFixed(0)}s`
   );
 }
 
@@ -114,7 +112,11 @@ export function geminiCooldownRemainingMs(): number {
 /** Test-only: clear the cooldown so suites don't leak state across tests. */
 export function __resetGeminiCooldownForTests(): void {
   geminiCooldownUntil = 0;
-  try { sessionStorage.removeItem(COOLDOWN_STORAGE_KEY); } catch { /* ignore */ }
+  try {
+    sessionStorage.removeItem(COOLDOWN_STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
 }
 
 async function callGemini<T>(opts: GenerateJSONOptions<T>): Promise<T | null> {
@@ -123,14 +125,16 @@ async function callGemini<T>(opts: GenerateJSONOptions<T>): Promise<T | null> {
       // Gemini SDK ignores AbortSignal at the request level today; we still
       // honor cancellation via withRetry's outer abort handling.
       void signal;
-      
-      const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [{ text: opts.prompt }];
+
+      const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [
+        { text: opts.prompt },
+      ];
       if (opts.imageBase64) {
         parts.unshift({
           inlineData: {
             mimeType: 'image/jpeg',
-            data: opts.imageBase64
-          }
+            data: opts.imageBase64,
+          },
         });
       }
 
@@ -143,7 +147,7 @@ async function callGemini<T>(opts: GenerateJSONOptions<T>): Promise<T | null> {
         },
       });
     },
-    { signal: opts.signal },
+    { signal: opts.signal }
   );
   return safeParse(opts.schema, response.text, opts.context);
 }
@@ -182,7 +186,7 @@ async function callOpenRouter<T>(opts: GenerateJSONOptions<T>): Promise<T | null
       const userContent = opts.imageBase64
         ? [
             { type: 'text', text: opts.prompt },
-            { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${opts.imageBase64}` } }
+            { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${opts.imageBase64}` } },
           ]
         : opts.prompt;
 
@@ -202,7 +206,8 @@ async function callOpenRouter<T>(opts: GenerateJSONOptions<T>): Promise<T | null
           messages: [
             {
               role: 'system',
-              content: 'Respond with a single JSON value matching the requested shape. Do not wrap it in markdown fences or commentary.',
+              content:
+                'Respond with a single JSON value matching the requested shape. Do not wrap it in markdown fences or commentary.',
             },
             { role: 'user', content: userContent },
           ],
@@ -225,32 +230,15 @@ async function callOpenRouter<T>(opts: GenerateJSONOptions<T>): Promise<T | null
       const raw = json.choices?.[0]?.message?.content;
       return safeParse(opts.schema, raw, `${opts.context}/openrouter`);
     },
-    { signal: opts.signal },
+    { signal: opts.signal }
   );
 }
 
 export async function generateJSONWithFallback<T>(
-  opts: GenerateJSONOptions<T>,
+  opts: GenerateJSONOptions<T>
 ): Promise<GenerateJSONResult<T>> {
   if (!isGeminiConfigured() && !isOpenRouterConfigured()) {
     throw new Error('No AI provider configured (set GEMINI_API_KEY or OPENROUTER_API_KEY).');
-  }
-
-  if (isOpenRouterConfigured()) {
-    try {
-      const data = await callOpenRouter({ ...opts, openRouterModel: opts.openRouterModel ?? DEFAULT_OPENROUTER_MODEL });
-      return { data, source: 'openrouter' };
-    } catch (err) {
-      const kind = err instanceof AIRetryError ? err.classified.kind : 'unknown';
-      console.warn(`[AI] ${opts.context}: OpenRouter primary (${kind}) — attempting OpenRouter Gemma fallback`);
-      
-      try {
-        const data = await callOpenRouter({ ...opts, openRouterModel: DEFAULT_OPENROUTER_FALLBACK_MODEL });
-        return { data, source: 'openrouter' };
-      } catch (fallbackErr) {
-        console.warn(`[AI] ${opts.context}: OpenRouter Gemma fallback failed — attempting Native Gemini fallback`);
-      }
-    }
   }
 
   if (isGeminiConfigured() && !isGeminiOnCooldown()) {
@@ -258,8 +246,36 @@ export async function generateJSONWithFallback<T>(
       const data = await callGemini(opts);
       return { data, source: 'gemini' };
     } catch (geminiErr) {
+      if (!shouldFallback(geminiErr)) {
+        throw geminiErr;
+      }
       markGeminiExhausted(geminiErr);
-      throw geminiErr;
+      if (!isOpenRouterConfigured()) {
+        throw geminiErr;
+      }
+      const kind = geminiErr instanceof AIRetryError ? geminiErr.classified.kind : 'unknown';
+      console.warn(`[AI] ${opts.context}: Gemini (${kind}) — attempting OpenRouter fallback`);
+    }
+  }
+
+  if (isOpenRouterConfigured()) {
+    try {
+      const data = await callOpenRouter({
+        ...opts,
+        openRouterModel: opts.openRouterModel ?? DEFAULT_OPENROUTER_MODEL,
+      });
+      return { data, source: 'openrouter' };
+    } catch (err) {
+      const kind = err instanceof AIRetryError ? err.classified.kind : 'unknown';
+      console.warn(
+        `[AI] ${opts.context}: OpenRouter primary (${kind}) — attempting OpenRouter Gemma fallback`
+      );
+
+      const data = await callOpenRouter({
+        ...opts,
+        openRouterModel: DEFAULT_OPENROUTER_FALLBACK_MODEL,
+      });
+      return { data, source: 'openrouter' };
     }
   }
 
@@ -322,7 +338,7 @@ export async function generateTextWithOpenRouter(params: {
       }
       return raw;
     },
-    { signal: params.signal },
+    { signal: params.signal }
   );
 }
 
@@ -396,7 +412,7 @@ export async function runOpenRouterWithTools(params: {
       }
       return json;
     },
-    { signal: params.signal },
+    { signal: params.signal }
   );
 
   const assistantMessage = firstResponse.choices?.[0]?.message;
@@ -477,7 +493,7 @@ export async function runOpenRouterWithTools(params: {
       }
       return content;
     },
-    { signal: params.signal },
+    { signal: params.signal }
   );
 
   return finalText;
