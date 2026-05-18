@@ -91,9 +91,9 @@ describe('AIScanStatusContext', () => {
 
   it('preserves prior lastSource when reportSuccess omits the source', () => {
     const { result } = renderHook(() => useScanStatus(), { wrapper });
-    act(() => result.current.reportSuccess('supply-risk', 'gemini'));
+    act(() => result.current.reportSuccess('supply-risk', 'genai-mil'));
     act(() => result.current.reportSuccess('supply-risk'));
-    expect(result.current.statuses['supply-risk'].lastSource).toBe('gemini');
+    expect(result.current.statuses['supply-risk'].lastSource).toBe('genai-mil');
     expect(result.current.statuses['supply-risk'].runCount).toBe(2);
   });
 

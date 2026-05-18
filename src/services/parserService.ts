@@ -1,60 +1,68 @@
-import { Type } from "@google/genai";
-import { getAI } from "../lib/gemini";
+import { getGenAIMilApiKey } from "../lib/gemini";
 import { safeParse, TrainingReportSchema, type TrainingReportParsed } from "../lib/aiSchemas";
+
+const GENAI_MIL_ENDPOINT = 'https://api.genai.mil/v1/chat/completions';
 
 export async function parseTrainingReport(base64Data: string, mimeType: string): Promise<TrainingReportParsed> {
   try {
-    const aiClient = getAI();
+    const apiKey = getGenAIMilApiKey();
     // Alias .xlsm to .xlsx for compatibility
-    const supportedMimeType = mimeType === 'application/vnd.ms-excel.sheet.macroEnabled.12' 
+    const supportedMimeType = mimeType === 'application/vnd.ms-excel.sheet.macroEnabled.12'
       ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       : mimeType;
 
-    const response = await aiClient.models.generateContent({
-      model: "gemini-flash-latest",
-      contents: [
-        {
-          parts: [
-            {
-              text: `Extract training records from this Excel file. 
-              I need the following fields for each record:
-              - Name (Surname, Initial)
-              - Man #
-              - Due Date (YYYY-MM-DD)
-              - Course Code (The alphanumeric ID for the course, e.g. G081, ADLS)
-              - Course Name
-              
-              Return the data as a JSON array of objects.`
-            },
-            {
-              inlineData: {
-                data: base64Data,
-                mimeType: supportedMimeType
-              }
-            }
-          ]
-        }
-      ],
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              name: { type: Type.STRING },
-              man_number: { type: Type.STRING },
-              due_date: { type: Type.STRING },
-              course_code: { type: Type.STRING },
-              course_name: { type: Type.STRING }
-            },
-            required: ["name", "man_number", "due_date", "course_code", "course_name"]
-          }
-        }
-      }
+    const res = await fetch(GENAI_MIL_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gemini-2.5-flash',
+        temperature: 0.1,
+        response_format: { type: 'json_object' },
+        messages: [
+          {
+            role: 'system',
+            content: 'Extract training records from the provided file and return a JSON object with a "records" array. Each record must have: name (string), man_number (string), due_date (YYYY-MM-DD string), course_code (string), course_name (string). Return only valid JSON.',
+          },
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: 'Extract all training records from this file. Return a JSON object: { "records": [ { "name", "man_number", "due_date", "course_code", "course_name" }, ... ] }',
+              },
+              {
+                type: 'image_url',
+                image_url: { url: `data:${supportedMimeType};base64,${base64Data}` },
+              },
+            ],
+          },
+        ],
+      }),
     });
 
-    const parsed = safeParse(TrainingReportSchema, response.text, "parseTrainingReport");
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      throw new Error(`GenAI.mil ${res.status}: ${body || res.statusText}`);
+    }
+
+    const json = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
+    const raw = json.choices?.[0]?.message?.content;
+
+    // Unwrap { records: [...] } wrapper if present, then validate
+    let parsed: TrainingReportParsed | null = null;
+    if (typeof raw === 'string') {
+      try {
+        const outer = JSON.parse(raw);
+        const array = Array.isArray(outer) ? outer : (outer?.records ?? outer);
+        parsed = safeParse(TrainingReportSchema, JSON.stringify(array), 'parseTrainingReport');
+      } catch {
+        parsed = safeParse(TrainingReportSchema, raw, 'parseTrainingReport');
+      }
+    }
+
     if (!parsed) {
       throw new Error('Training report AI response was empty or malformed.');
     }
