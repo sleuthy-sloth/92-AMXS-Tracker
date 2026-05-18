@@ -5,7 +5,7 @@ import { db, handleFirestoreError, OperationType } from '../firebase';
 import { useAuth } from '../contexts/AuthContextInstance';
 import { useScanStatus } from '../contexts/AIScanStatusInstance';
 import { MaintenanceLog } from '../types';
-import { isGeminiConfigured } from '../lib/gemini';
+import { isGenAIMilConfigured } from '../lib/gemini';
 import { DiagnosticsSchema, DiagnosticFindingParsed } from '../lib/aiSchemas';
 import { generateJSONWithFallback, isOpenRouterConfigured } from '../lib/aiProvider';
 import { getCachedAIResult, setCachedAIResult, generateDataHash } from '../lib/aiCache';
@@ -54,7 +54,7 @@ export const Diagnostics: React.FC = () => {
   }, [logs]);
 
   const analyze = async () => {
-    if (!profile || (!isGeminiConfigured() && !isOpenRouterConfigured())) {
+    if (!profile || (!isGenAIMilConfigured() && !isOpenRouterConfigured())) {
       setError('No AI provider configured.');
       return;
     }
@@ -84,7 +84,7 @@ export const Diagnostics: React.FC = () => {
       const cached = await getCachedAIResult<DiagnosticFindingParsed[]>('diagnostics', cacheKey, 3600000);
       if (cached) {
         setFindings(cached);
-        reportSuccess('diagnostics', 'gemini');
+        reportSuccess('diagnostics', 'genai-mil');
         setLoading(false);
         return;
       }
