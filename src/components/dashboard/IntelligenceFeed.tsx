@@ -65,7 +65,7 @@ export const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[]; training: Trai
           if (cached) {
             setAlerts(cached);
             setLoading(false);
-            reportSuccess('intelligence-feed', 'gemini');
+            reportSuccess('intelligence-feed', 'genai-mil');
             return;
           }
 
