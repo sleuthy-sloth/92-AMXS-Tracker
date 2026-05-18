@@ -31,7 +31,8 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GENAI_MIL_API_KEY: ${{ secrets.GENAI_MIL_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
 
       - name: Copy index.html to 404.html
         run: cp dist/index.html dist/404.html

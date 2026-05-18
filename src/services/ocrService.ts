@@ -1,5 +1,4 @@
-import { Type } from "@google/genai";
-import { getAI } from "../lib/gemini";
+import { getGenAIMilApiKey } from "../lib/gemini";
 import { generateJSONWithFallback } from "../lib/aiProvider";
 import {
   safeParse,
@@ -10,6 +9,8 @@ import {
   type ScannedLogBookParsed,
   type TrainingReportParsed,
 } from "../lib/aiSchemas";
+
+const GENAI_MIL_ENDPOINT = 'https://api.genai.mil/v1/chat/completions';
 
 export type ScannedLog = ScannedLogParsed;
 
@@ -54,51 +55,69 @@ export const scanLogBook = async (base64Image: string): Promise<ScannedLogBookPa
 };
 
 export const parseTrainingReport = async (base64Data: string, mimeType: string = "application/pdf"): Promise<TrainingReportParsed> => {
-  // Using direct getAI call for PDFs because OpenRouter's vision API only supports images
+  // For non-image files (PDF, Excel), send directly to GenAI.mil which supports
+  // multimodal document parsing via its underlying Gemini model.
   if (mimeType !== "image/jpeg" && mimeType !== "image/png" && mimeType !== "image/webp") {
     try {
-      const response = await getAI().models.generateContent({
-        model: "gemini-flash-latest",
-        contents: [{
-          role: "user",
-          parts: [
+      const apiKey = getGenAIMilApiKey();
+      const res = await fetch(GENAI_MIL_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'gemini-2.5-flash',
+          temperature: 0.1,
+          response_format: { type: 'json_object' },
+          messages: [
             {
-              inlineData: {
-                mimeType,
-                data: base64Data
-              }
+              role: 'system',
+              content: 'Extract training records and return valid JSON only.',
             },
             {
-              text: "Analyze this training report (PDF or Image). Extract a list of training records. For each record, find the personnel's man number, the course code, the course name, and the due date. Return a JSON array of objects with keys: man_number, course_code, course_name, due_date. Due date should be in YYYY-MM-DD format."
-            }
-          ]
-        }],
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                man_number: { type: Type.STRING },
-                course_code: { type: Type.STRING },
-                course_name: { type: Type.STRING },
-                due_date: { type: Type.STRING }
-              },
-              required: ["man_number", "course_name", "due_date"]
-            }
-          }
-        }
+              role: 'user',
+              content: [
+                {
+                  type: 'image_url',
+                  image_url: { url: `data:${mimeType};base64,${base64Data}` },
+                },
+                {
+                  type: 'text',
+                  text: 'Analyze this training report. Extract a list of training records. For each record, find the personnel man number, course code, course name, and due date. Return a JSON object: { "records": [ { "man_number", "course_code", "course_name", "due_date" } ] }. Due date should be YYYY-MM-DD format.',
+                },
+              ],
+            },
+          ],
+        }),
       });
-  
-      return safeParse(TrainingReportSchema, response.text, "parseTrainingReport") ?? [];
+
+      if (!res.ok) {
+        throw new Error(`GenAI.mil ${res.status}: ${res.statusText}`);
+      }
+
+      const json = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
+      const raw = json.choices?.[0]?.message?.content;
+
+      let parsed: TrainingReportParsed | null = null;
+      if (typeof raw === 'string') {
+        try {
+          const outer = JSON.parse(raw);
+          const array = Array.isArray(outer) ? outer : (outer?.records ?? outer);
+          parsed = safeParse(TrainingReportSchema, JSON.stringify(array), 'parseTrainingReport');
+        } catch {
+          parsed = safeParse(TrainingReportSchema, raw, 'parseTrainingReport');
+        }
+      }
+
+      return parsed ?? [];
     } catch (error) {
       console.error("Training Report Extraction Error:", error);
       return [];
     }
   }
 
-  // Use fallback for images
+  // Use generateJSONWithFallback for images (supports OpenRouter fallback)
   try {
     const { data } = await generateJSONWithFallback({
       prompt: "Analyze this training report (PDF or Image). Extract a list of training records. For each record, find the personnel's man number, the course code, the course name, and the due date. Return a JSON array of objects with keys: man_number, course_code, course_name, due_date. Due date should be in YYYY-MM-DD format.",
