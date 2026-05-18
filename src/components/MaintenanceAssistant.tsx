@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Type, FunctionDeclaration } from "@google/genai";
 import ReactMarkdown from 'react-markdown';
-import { 
-  Sparkles, 
-  X, 
-  Send 
+import {
+  Sparkles,
+  X,
+  Send
 } from 'lucide-react';
 import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
@@ -13,13 +12,14 @@ import { useAuth } from '../contexts/AuthContextInstance';
 import { useScanStatus } from '../contexts/AIScanStatusInstance';
 import { MOCK_LOGS, MOCK_DIFM, MOCK_TRAINING } from '../mockData';
 import { cn, tailMatchesSearch } from '../lib/utils';
-import { getAI, isGeminiConfigured } from '../lib/gemini';
+import { isGenAIMilConfigured } from '../lib/gemini';
 import { withRetry, classifyError, AIRetryError } from '../lib/aiRetry';
 import {
   generateTextWithOpenRouter,
   isGeminiOnCooldown,
   isOpenRouterConfigured,
   markGeminiExhausted,
+  runGenAIMilWithTools,
   runOpenRouterWithTools,
   shouldFallback,
   type OpenRouterToolSchema,
@@ -42,6 +42,44 @@ const loadPersistedMessages = (uid?: string): ChatMessage[] => {
     return [];
   }
 };
+
+// Tools defined in OpenAI JSON Schema format (lowercase types)
+const maintenanceTools: OpenRouterToolSchema[] = [
+  {
+    name: 'query_maintenance_logs',
+    description: 'Query aircraft maintenance logs for discrepancies, repairs, and tail number history.',
+    parameters: {
+      type: 'object',
+      properties: {
+        tail_number: { type: 'string', description: 'Filter by specific tail number (e.g. 58-0092)' },
+        shift: { type: 'string', enum: ['Days', 'Swings', 'Nights'], description: 'Filter by shift' },
+        isRedBall: { type: 'boolean', description: 'If true, only returns urgent red ball maintenance' },
+      },
+    },
+  },
+  {
+    name: 'query_difm_inventory',
+    description: 'Check status of parts due-in from maintenance (DIFM).',
+    parameters: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', enum: ['due-in', 'awaiting-parts', 'in-repair', 'complete'] },
+        tail_number: { type: 'string' },
+      },
+    },
+  },
+  {
+    name: 'query_training_compliance',
+    description: 'Identify technicians with expiring or overdue training requirements.',
+    parameters: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', enum: ['expiring', 'expired'], description: 'Filter for specific compliance issues' },
+        course_code: { type: 'string', description: 'Filter for a specific training course' },
+      },
+    },
+  },
+];
 
 export const MaintenanceAssistant: React.FC = () => {
   const { user, profile, isDemoMode } = useAuth();
@@ -72,68 +110,6 @@ export const MaintenanceAssistant: React.FC = () => {
     }
   }, [messages, user?.uid]);
 
-  // Translate a Gemini FunctionDeclaration tree to OpenAI JSON Schema
-  // (what OpenRouter expects). The enum is UPPERCASE in Gemini's SDK
-  // (Type.STRING = 'STRING'), lowercase in JSON Schema ('string').
-  const toOpenAISchema = (node: unknown): Record<string, unknown> => {
-    if (!node || typeof node !== 'object') return {};
-    const n = node as Record<string, unknown>;
-    const out: Record<string, unknown> = { ...n };
-    if (typeof n.type === 'string') out.type = (n.type as string).toLowerCase();
-    if (n.properties && typeof n.properties === 'object') {
-      const props: Record<string, unknown> = {};
-      for (const [k, v] of Object.entries(n.properties as Record<string, unknown>)) {
-        props[k] = toOpenAISchema(v);
-      }
-      out.properties = props;
-    }
-    if (n.items) out.items = toOpenAISchema(n.items);
-    return out;
-  };
-
-  const maintenanceTools: FunctionDeclaration[] = [
-    {
-      name: "query_maintenance_logs",
-      description: "Query aircraft maintenance logs for discrepancies, repairs, and tail number history.",
-      parameters: {
-        type: Type.OBJECT,
-        properties: {
-          tail_number: { type: Type.STRING, description: "Filter by specific tail number (e.g. 58-0092)" },
-          shift: { type: Type.STRING, enum: ['Days', 'Swings', 'Nights'], description: "Filter by shift" },
-          isRedBall: { type: Type.BOOLEAN, description: "If true, only returns urgent red ball maintenance" }
-        }
-      }
-    },
-    {
-      name: "query_difm_inventory",
-      description: "Check status of parts due-in from maintenance (DIFM).",
-      parameters: {
-        type: Type.OBJECT,
-        properties: {
-          status: { type: Type.STRING, enum: ['due-in', 'awaiting-parts', 'in-repair', 'complete'] },
-          tail_number: { type: Type.STRING }
-        }
-      }
-    },
-    {
-      name: "query_training_compliance",
-      description: "Identify technicians with expiring or overdue training requirements.",
-      parameters: {
-        type: Type.OBJECT,
-        properties: {
-          status: { type: Type.STRING, enum: ['expiring', 'expired'], description: "Filter for specific compliance issues" },
-          course_code: { type: Type.STRING, description: "Filter for a specific training course" }
-        }
-      }
-    }
-  ];
-
-  const openRouterTools: OpenRouterToolSchema[] = maintenanceTools.map(t => ({
-    name: t.name!,
-    description: t.description ?? '',
-    parameters: toOpenAISchema(t.parameters ?? { type: 'OBJECT', properties: {} }),
-  }));
-
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isThinking) return;
@@ -143,20 +119,17 @@ export const MaintenanceAssistant: React.FC = () => {
     setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
     setIsThinking(true);
 
-    if (!isGeminiConfigured()) {
+    if (!isGenAIMilConfigured() && !isOpenRouterConfigured()) {
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: 'SYSTEM OFFLINE: Gemini API key is not configured. Set `GEMINI_API_KEY` in `.env` (dev) or the `GEMINI_API_KEY` repository secret (prod build) and redeploy.'
+        content: 'SYSTEM OFFLINE: No AI provider configured. Set `GENAI_MIL_API_KEY` in `.env` (dev) or the `GENAI_MIL_API_KEY` repository secret (prod build) and redeploy.'
       }]);
       setIsThinking(false);
       return;
     }
 
-    // Shared tool executor — invoked by either Gemini's function-call
-    // pipeline or OpenRouter's fallback tools pipeline. Takes the
-    // canonical { name, args } pair and returns a JSON-serializable
-    // result (or an empty array for unknown tools, so the model can
-    // recover gracefully).
+    // Shared tool executor — invoked by either GenAI.mil's function-call
+    // pipeline or OpenRouter's fallback tools pipeline.
     const executeToolCall = async (name: string, args: Record<string, unknown>): Promise<unknown> => {
       if (isDemoMode) {
         if (name === 'query_maintenance_logs') {
@@ -187,8 +160,6 @@ export const MaintenanceAssistant: React.FC = () => {
         return [];
       }
 
-      // Real Firestore logic. Mirrors the query shape firestore.rules
-      // permits — scoped to the caller's shop/AMU and to non-demo data.
       const collectionName =
         name === 'query_maintenance_logs' ? 'logs' :
         name === 'query_difm_inventory' ? 'difm' :
@@ -209,7 +180,7 @@ export const MaintenanceAssistant: React.FC = () => {
         isRedBall?: boolean;
         course_code?: string;
       };
-      
+
       if (a.status && collectionName !== 'logs') q = query(q, where('status', '==', a.status));
       if (a.shift && collectionName === 'logs') q = query(q, where('shift', '==', a.shift));
       if (a.isRedBall && collectionName === 'logs') q = query(q, where('isRedBall', '==', true));
@@ -224,24 +195,29 @@ export const MaintenanceAssistant: React.FC = () => {
       }).slice(0, 20);
     };
 
+    const systemPrompt =
+      'You are the 92nd AMXS Maintenance Assistant. ' +
+      'Answer questions about aircraft maintenance, squadron operations, training programs, ' +
+      'parts/supply workflows, procedures, and concepts. ' +
+      'When the user asks for concrete records (logs for a tail, DIFM status, training gaps), ' +
+      'call the appropriate tool to pull live data. ' +
+      'When the user asks a general or conceptual question, answer from your own knowledge. ' +
+      'Be concise, practical, and military-technical when relevant. ' +
+      'Bold RED BALLS and EXPIRED training. Use markdown tables for record-style data.';
+
     // Backup-channel runner — OpenRouter with tools first, plain text if
     // the free-tier model bungles tool-calling. Returns true on success.
     const runBackupChannel = async (): Promise<boolean> => {
       if (!isOpenRouterConfigured()) return false;
       const backupSystemPrompt =
-        'You are the 92nd AMXS Maintenance Assistant backup channel. ' +
-        'The primary AI (Gemini) is at its daily quota. You have access ' +
-        'to tools for querying maintenance logs, DIFM inventory, and ' +
-        'training compliance — use them when the maintainer asks for ' +
-        'concrete records. Answer conceptual/how-to questions from your ' +
-        'own knowledge. Be concise, practical, and military-technical ' +
-        'when relevant. Bold RED BALLS and EXPIRED training. Use ' +
-        'markdown tables for record-style data.';
+        systemPrompt +
+        ' The primary AI (GenAI.mil) is temporarily unavailable. ' +
+        'You have access to tools — use them for concrete record queries.';
       try {
         const toolsText = await runOpenRouterWithTools({
           systemPrompt: backupSystemPrompt,
           userPrompt: userMsg,
-          tools: openRouterTools,
+          tools: maintenanceTools,
           executeToolCall,
         });
         setMessages(prev => [...prev, {
@@ -272,120 +248,71 @@ export const MaintenanceAssistant: React.FC = () => {
 
     reportStart('assistant');
 
-    // If Gemini is in cooldown from a recent quota hit, skip it and go
-    // straight to OpenRouter — no point burning 7s of retry backoff.
+    // If primary is in cooldown from a recent quota/lock hit, skip it and go
+    // straight to OpenRouter — no point burning retry backoff.
     if (isGeminiOnCooldown() && isOpenRouterConfigured()) {
       const ok = await runBackupChannel();
       if (ok) {
         setIsThinking(false);
         return;
       }
-      // Backup also failed — fall through to Gemini attempt as a last resort.
     }
 
-    try {
-      const ai = getAI();
-      const response = await withRetry(() => ai.models.generateContent({
-        model: "gemini-flash-latest",
-        contents: userMsg,
-        config: {
-          systemInstruction: `You are the 92nd AMXS Maintenance Assistant — a versatile helper for 92nd Air Refueling Squadron maintainers and leadership.
+    if (isGenAIMilConfigured()) {
+      try {
+        const text = await withRetry(() =>
+          runGenAIMilWithTools({
+            systemPrompt,
+            userPrompt: userMsg,
+            tools: maintenanceTools,
+            executeToolCall,
+          })
+        );
+        setMessages(prev => [...prev, { role: 'assistant', content: text }]);
+        reportSuccess('assistant');
+        setIsThinking(false);
+        return;
+      } catch (err) {
+        console.error('GenAI.mil Assistant Error:', err);
+        const classified = err instanceof AIRetryError ? err.classified : classifyError(err);
+        markGeminiExhausted(err);
 
-          SCOPE:
-          - Answer any question related to aircraft maintenance, squadron operations, training programs, parts/supply workflows, procedures, concepts, or how-to guidance.
-          - When the user asks for concrete records (logs for a tail, DIFM status, training gaps), call the appropriate tool to pull live data.
-          - When the user asks a general, conceptual, or explanatory question, answer directly from your own knowledge. Do NOT refuse just because no tool applies.
-          - If the user's intent is ambiguous, make a best-effort answer and offer to run a specific query if they want data.
-
-          TOOLS AVAILABLE:
-          - query_maintenance_logs, query_difm_inventory, query_training_compliance — use these only when the user clearly wants specific records from the database.
-
-          TONE:
-          - Clear, practical, and helpful. Military / technical context welcome but not required in every reply.
-          - Keep answers concise. Use bullets or tables only when they genuinely aid scanning.
-
-          FORMATTING:
-          - Markdown tables for record-style data (logs, DIFM rows, training).
-          - Bold RED BALLS and EXPIRED training when they appear.`,
-          tools: [{ functionDeclarations: maintenanceTools }],
-          temperature: 0,
-        }
-      }));
-
-      if (response.functionCalls) {
-        const toolOutputs: { callId: string; output: unknown }[] = [];
-        for (const call of response.functionCalls) {
-          const data = await executeToolCall(call.name!, (call.args ?? {}) as Record<string, unknown>);
-          toolOutputs.push({ callId: call.id!, output: data });
-        }
-
-        const modelParts = response.candidates?.[0]?.content?.parts;
-        if (!modelParts) {
-          throw new Error('Gemini returned no candidate parts for the tool round-trip.');
-        }
-
-        // Send tool outputs back to model to get final response
-        const finalResponse = await withRetry(() => ai.models.generateContent({
-          model: "gemini-flash-latest",
-          contents: [
-            { role: 'user', parts: [{ text: userMsg }] },
-            { role: 'model', parts: modelParts },
-            {
-              role: 'user',
-              parts: toolOutputs.map(o => ({
-                functionResponse: {
-                  name: response.functionCalls![0].name,
-                  response: { result: o.output },
-                }
-              }))
-            }
-          ],
-          config: {
-            systemInstruction: `Analyze the provided data result and summarize it for the maintainer.`,
-            temperature: 0,
-          }
-        }));
-
-        if (finalResponse.text) {
-          setMessages(prev => [...prev, { role: 'assistant', content: finalResponse.text! }]);
-        }
-      } else if (response.text) {
-        setMessages(prev => [...prev, { role: 'assistant', content: response.text }]);
-      }
-      reportSuccess('assistant');
-    } catch (err) {
-      console.error("AI Assistant Error:", err);
-      const classified = err instanceof AIRetryError ? err.classified : classifyError(err);
-      markGeminiExhausted(err);
-
-      if (shouldFallback(err)) {
-        // If we are about to fallback, let the user know in the chat so they aren't confused
-        // by the change in behavior or slight delay.
-        if (isOpenRouterConfigured()) {
+        if (shouldFallback(err) && isOpenRouterConfigured()) {
           const ok = await runBackupChannel();
           if (ok) {
             setIsThinking(false);
             return;
           }
         }
-      }
 
-      reportError('assistant', classified);
-      const friendly =
-        classified.kind === 'quota' || classified.kind === 'rate_limit'
-          ? `Maintenance Terminal: Primary AI (Gemini) is at its daily free-tier limit. ${isOpenRouterConfigured() ? 'The backup channel also failed.' : 'No backup channel (OpenRouter) is configured.'} Please check back after the quota resets or contact the administrator.`
-          : `Assistant unavailable: ${classified.message}`;
-      setMessages(prev => [...prev, { role: 'assistant', content: friendly }]);
-    } finally {
-      setIsThinking(false);
+        reportError('assistant', classified);
+        const friendly =
+          classified.kind === 'quota' || classified.kind === 'rate_limit'
+            ? `Maintenance Terminal: Primary AI (GenAI.mil) is temporarily rate-limited or locked. ${isOpenRouterConfigured() ? 'The backup channel also failed.' : 'No backup channel (OpenRouter) is configured.'} Check the console for an unlock URL if the key is locked.`
+            : `Assistant unavailable: ${classified.message}`;
+        setMessages(prev => [...prev, { role: 'assistant', content: friendly }]);
+        setIsThinking(false);
+        return;
+      }
     }
+
+    // GenAI.mil not configured — try OpenRouter directly
+    const ok = await runBackupChannel();
+    if (!ok) {
+      reportError('assistant', { kind: 'auth', message: 'No AI provider configured', retryable: false });
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'SYSTEM OFFLINE: No AI provider configured.',
+      }]);
+    }
+    setIsThinking(false);
   };
 
   return (
     <div className="fixed bottom-8 right-8 z-[1000]">
       <AnimatePresence>
         {isOpen && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
@@ -411,7 +338,7 @@ export const MaintenanceAssistant: React.FC = () => {
             </div>
 
             {/* Chat Body */}
-            <div 
+            <div
               ref={scrollRef}
               className="flex-1 p-6 overflow-y-auto space-y-6 bg-slate-50/50"
             >
@@ -426,7 +353,7 @@ export const MaintenanceAssistant: React.FC = () => {
                   </div>
                   <div className="grid grid-cols-1 gap-2 w-full mt-4">
                     {["Identify recurring tail number issues", "Check training gaps for next 30 days"].map(q => (
-                      <button 
+                      <button
                         key={q}
                         onClick={() => { setInput(q); }}
                         className="text-left p-3 text-[10px] font-black uppercase tracking-tight bg-white border border-outline hover:border-primary/40 transition-colors"
@@ -448,8 +375,8 @@ export const MaintenanceAssistant: React.FC = () => {
                   </span>
                   <div className={cn(
                     "p-4 text-sm leading-relaxed",
-                    m.role === 'user' 
-                      ? "bg-primary text-white font-medium shadow-lg" 
+                    m.role === 'user'
+                      ? "bg-primary text-white font-medium shadow-lg"
                       : "bg-white border border-outline text-slate-900 serif-header shadow-sm markdown-body"
                   )}>
                     {m.role === 'user' ? m.content : <ReactMarkdown>{m.content}</ReactMarkdown>}
@@ -475,14 +402,14 @@ export const MaintenanceAssistant: React.FC = () => {
             {/* Input */}
             <form onSubmit={handleSend} className="p-6 bg-white border-t border-outline">
               <div className="flex gap-3">
-                <input 
+                <input
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   placeholder="Analyze logs via natural language..."
                   className="flex-1 sleek-input text-xs bg-slate-50"
                   disabled={isThinking}
                 />
-                <button 
+                <button
                   disabled={isThinking || !input.trim()}
                   className="p-3 bg-primary text-white hover:bg-primary-hover disabled:opacity-50 transition-all flex items-center justify-center shrink-0"
                 >
@@ -500,8 +427,8 @@ export const MaintenanceAssistant: React.FC = () => {
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
           "w-14 h-14 rounded-none flex items-center justify-center shadow-[0_20px_50px_rgba(0,0,0,0.3)] transition-all border-2 backdrop-blur-md relative group",
-          isOpen 
-            ? "bg-white border-primary text-primary" 
+          isOpen
+            ? "bg-white border-primary text-primary"
             : "bg-sidebar/95 border-white/20 text-white"
         )}
         title="AI Maintenance Assistant"
