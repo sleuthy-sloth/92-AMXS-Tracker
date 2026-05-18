@@ -1,25 +1,17 @@
-import { GoogleGenAI } from "@google/genai";
-
-// SECURITY NOTE: process.env.GEMINI_API_KEY is inlined by Vite at build
+// SECURITY NOTE: process.env.GENAI_MIL_API_KEY is inlined by Vite at build
 // time (see vite.config.ts `define`), which means the key is visible in
-// the compiled JS shipped to browsers. Treat this key as public: rotate
-// it on any personnel change, restrict it by HTTP referrer in the Google
-// Cloud console, and migrate Gemini calls to a server-side proxy
-// (Firebase Functions / Cloud Run) before handling anything sensitive.
+// the compiled JS shipped to browsers. Additionally, GenAI.mil keys lock
+// every 8 hours — the app falls back to OpenRouter automatically, but
+// someone with the key must visit the unlock URL to re-enable it.
 
-let _ai: GoogleGenAI | null = null;
-
-export function isGeminiConfigured(): boolean {
-  return Boolean(process.env.GEMINI_API_KEY);
+export function isGenAIMilConfigured(): boolean {
+  return Boolean(process.env.GENAI_MIL_API_KEY);
 }
 
-export function getAI(): GoogleGenAI {
-  if (!_ai) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new Error("GEMINI_API_KEY is not configured. Add it to your .env file and restart the dev server.");
-    }
-    _ai = new GoogleGenAI({ apiKey });
+export function getGenAIMilApiKey(): string {
+  const key = process.env.GENAI_MIL_API_KEY;
+  if (!key) {
+    throw new Error('GENAI_MIL_API_KEY is not configured. Add it to your .env file and restart the dev server.');
   }
-  return _ai;
+  return key;
 }

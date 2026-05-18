@@ -1,25 +1,22 @@
 import { z } from 'zod';
-import { GenerateContentResponse } from '@google/genai';
-import { getAI, isGeminiConfigured } from './gemini';
+import { isGenAIMilConfigured, getGenAIMilApiKey } from './gemini';
 import { safeParse } from './aiSchemas';
 import { withRetry, AIRetryError, classifyError } from './aiRetry';
 
-// Provider-agnostic JSON generation with automatic Gemini → OpenRouter
-// fallback. Gemini is the primary; OpenRouter is engaged when Gemini
-// reports quota, rate-limit, or upstream unavailability (502/503/504 —
-// classified as `network`). Auth and parse errors rethrow without
-// fallback — they indicate config / data problems the secondary can't
-// magically fix. Caller abort / local offline also classify as network,
-// so we still try OpenRouter once: it fails fast and we rethrow cleanly.
+// Provider-agnostic JSON generation with automatic GenAI.mil → OpenRouter
+// fallback. GenAI.mil is the primary; OpenRouter is engaged when GenAI.mil
+// reports quota, rate-limit, key-lock (401 with unlock_url), or upstream
+// unavailability (502/503/504 — classified as `network`). Auth errors
+// (invalid key) and parse errors rethrow without fallback.
 
-export type AIProvider = 'gemini' | 'openrouter';
+export type AIProvider = 'genai-mil' | 'openrouter';
 
 export interface GenerateJSONOptions<T> {
   prompt: string;
   schema: z.ZodSchema<T>;
   context: string;
   signal?: AbortSignal;
-  /** Per-call model override. Defaults: gemini-1.5-flash / llama-3.2-3b:free. */
+  /** Per-call model override. Defaults: gemini-2.5-flash / llama-3.2-3b:free. */
   geminiModel?: string;
   openRouterModel?: string;
   /** Lower = more deterministic. Forwarded to both providers. */
@@ -32,6 +29,9 @@ export interface GenerateJSONResult<T> {
   data: T | null;
   source: AIProvider;
 }
+
+const GENAI_MIL_ENDPOINT = 'https://api.genai.mil/v1/chat/completions';
+const DEFAULT_GENAI_MIL_MODEL = 'gemini-2.5-flash';
 
 const DEFAULT_OPENROUTER_MODEL = 'google/gemini-2.5-flash:free';
 const DEFAULT_OPENROUTER_FALLBACK_MODEL = 'google/gemma-4-31b-it:free';
@@ -50,16 +50,15 @@ export function shouldFallback(err: unknown): boolean {
   );
 }
 
-// ─── Gemini cooldown circuit breaker ──────────────────────────────────
-// Once Gemini reports quota / rate-limit, don't bother hitting it again
-// until the retry window Google advertises has passed. Skips the
-// ~7s of retry backoff we'd otherwise burn on every subsequent call.
-const COOLDOWN_STORAGE_KEY = 'amxs-gemini-cooldown-until';
+// ─── GenAI.mil cooldown circuit breaker ───────────────────────────────
+// Once GenAI.mil reports quota / rate-limit / key-lock, skip it until the
+// retry window has passed to avoid burning retry backoff on every call.
+const COOLDOWN_STORAGE_KEY = 'amxs-genaimil-cooldown-until';
 const COOLDOWN_MIN_MS = 10_000;
 const COOLDOWN_MAX_MS = 10 * 60_000;
 const COOLDOWN_DEFAULT_MS = 60_000;
 
-let geminiCooldownUntil = 0;
+let genaiMilCooldownUntil = 0;
 
 function parseRetryDelayMs(message: string): number {
   const inline = message.match(/retry in\s+([\d.]+)\s*s/i);
@@ -77,25 +76,25 @@ export function markGeminiExhausted(err: unknown): void {
     Math.max(parsed || COOLDOWN_DEFAULT_MS, COOLDOWN_MIN_MS),
     COOLDOWN_MAX_MS
   );
-  geminiCooldownUntil = Date.now() + cooldownMs;
+  genaiMilCooldownUntil = Date.now() + cooldownMs;
   try {
-    sessionStorage.setItem(COOLDOWN_STORAGE_KEY, String(geminiCooldownUntil));
+    sessionStorage.setItem(COOLDOWN_STORAGE_KEY, String(genaiMilCooldownUntil));
   } catch {
     // sessionStorage unavailable — in-memory cooldown is still effective
   }
   console.warn(
-    `[AI] Gemini ${classified.kind} — skipping Gemini for ${(cooldownMs / 1000).toFixed(0)}s`
+    `[AI] GenAI.mil ${classified.kind} — skipping for ${(cooldownMs / 1000).toFixed(0)}s`
   );
 }
 
 export function isGeminiOnCooldown(): boolean {
-  if (geminiCooldownUntil && Date.now() < geminiCooldownUntil) return true;
+  if (genaiMilCooldownUntil && Date.now() < genaiMilCooldownUntil) return true;
   try {
     const raw = sessionStorage.getItem(COOLDOWN_STORAGE_KEY);
     if (!raw) return false;
     const stored = Number(raw);
     if (Number.isFinite(stored) && Date.now() < stored) {
-      geminiCooldownUntil = stored;
+      genaiMilCooldownUntil = stored;
       return true;
     }
     sessionStorage.removeItem(COOLDOWN_STORAGE_KEY);
@@ -106,12 +105,12 @@ export function isGeminiOnCooldown(): boolean {
 }
 
 export function geminiCooldownRemainingMs(): number {
-  return Math.max(0, geminiCooldownUntil - Date.now());
+  return Math.max(0, genaiMilCooldownUntil - Date.now());
 }
 
 /** Test-only: clear the cooldown so suites don't leak state across tests. */
 export function __resetGeminiCooldownForTests(): void {
-  geminiCooldownUntil = 0;
+  genaiMilCooldownUntil = 0;
   try {
     sessionStorage.removeItem(COOLDOWN_STORAGE_KEY);
   } catch {
@@ -119,37 +118,84 @@ export function __resetGeminiCooldownForTests(): void {
   }
 }
 
-async function callGemini<T>(opts: GenerateJSONOptions<T>): Promise<T | null> {
-  const response: GenerateContentResponse = await withRetry(
-    (signal) => {
-      // Gemini SDK ignores AbortSignal at the request level today; we still
-      // honor cancellation via withRetry's outer abort handling.
-      void signal;
+interface OpenAICompatChoice {
+  message?: {
+    role?: string;
+    content?: string | null;
+    tool_calls?: OpenRouterToolCall[];
+  };
+  finish_reason?: string;
+}
+interface OpenAICompatResponse {
+  choices?: OpenAICompatChoice[];
+  error?: { message?: string; code?: number; unlock_url?: string };
+}
 
-      const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [
-        { text: opts.prompt },
-      ];
-      if (opts.imageBase64) {
-        parts.unshift({
-          inlineData: {
-            mimeType: 'image/jpeg',
-            data: opts.imageBase64,
-          },
+async function callGenAIMil<T>(opts: GenerateJSONOptions<T>): Promise<T | null> {
+  const apiKey = getGenAIMilApiKey();
+
+  return withRetry(
+    async (signal) => {
+      const userContent = opts.imageBase64
+        ? [
+            { type: 'text', text: opts.prompt },
+            { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${opts.imageBase64}` } },
+          ]
+        : opts.prompt;
+
+      const res = await fetch(GENAI_MIL_ENDPOINT, {
+        method: 'POST',
+        signal,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: opts.geminiModel ?? DEFAULT_GENAI_MIL_MODEL,
+          temperature: opts.temperature ?? 0.1,
+          response_format: { type: 'json_object' },
+          messages: [
+            {
+              role: 'system',
+              content:
+                'Respond with a single JSON value matching the requested shape. Do not wrap it in markdown fences or commentary.',
+            },
+            { role: 'user', content: userContent },
+          ],
+        }),
+      });
+
+      if (!res.ok) {
+        // Special-case key-lock: 401 with unlock_url should fall back to OpenRouter
+        if (res.status === 401) {
+          const body = await res.json().catch(() => ({} as OpenAICompatResponse));
+          const unlockUrl = (body as OpenAICompatResponse)?.error?.unlock_url;
+          if (unlockUrl) {
+            console.warn(`[AI] GenAI.mil key locked. Unlock at: ${unlockUrl}`);
+            // Throw as 429 so classifyError treats it as rate_limit → fallback eligible
+            throw Object.assign(
+              new Error(`GenAI.mil key locked — visit ${unlockUrl} to unlock`),
+              { status: 429 }
+            );
+          }
+        }
+        const body = await res.text().catch(() => '');
+        throw Object.assign(new Error(`GenAI.mil ${res.status}: ${body || res.statusText}`), {
+          status: res.status,
         });
       }
 
-      return getAI().models.generateContent({
-        model: opts.geminiModel ?? 'gemini-2.5-flash',
-        contents: [{ role: 'user', parts }],
-        config: {
-          responseMimeType: 'application/json',
-          temperature: opts.temperature ?? 0.1,
-        },
-      });
+      const json = (await res.json()) as OpenAICompatResponse;
+      if (json.error) {
+        throw Object.assign(new Error(json.error.message ?? 'GenAI.mil error'), {
+          status: json.error.code,
+        });
+      }
+      const raw = json.choices?.[0]?.message?.content;
+      return safeParse(opts.schema, raw, opts.context);
     },
     { signal: opts.signal }
   );
-  return safeParse(opts.schema, response.text, opts.context);
 }
 
 interface OpenRouterToolCall {
@@ -237,24 +283,24 @@ async function callOpenRouter<T>(opts: GenerateJSONOptions<T>): Promise<T | null
 export async function generateJSONWithFallback<T>(
   opts: GenerateJSONOptions<T>
 ): Promise<GenerateJSONResult<T>> {
-  if (!isGeminiConfigured() && !isOpenRouterConfigured()) {
-    throw new Error('No AI provider configured (set GEMINI_API_KEY or OPENROUTER_API_KEY).');
+  if (!isGenAIMilConfigured() && !isOpenRouterConfigured()) {
+    throw new Error('No AI provider configured (set GENAI_MIL_API_KEY or OPENROUTER_API_KEY).');
   }
 
-  if (isGeminiConfigured() && !isGeminiOnCooldown()) {
+  if (isGenAIMilConfigured() && !isGeminiOnCooldown()) {
     try {
-      const data = await callGemini(opts);
-      return { data, source: 'gemini' };
-    } catch (geminiErr) {
-      if (!shouldFallback(geminiErr)) {
-        throw geminiErr;
+      const data = await callGenAIMil(opts);
+      return { data, source: 'genai-mil' };
+    } catch (primaryErr) {
+      if (!shouldFallback(primaryErr)) {
+        throw primaryErr;
       }
-      markGeminiExhausted(geminiErr);
+      markGeminiExhausted(primaryErr);
       if (!isOpenRouterConfigured()) {
-        throw geminiErr;
+        throw primaryErr;
       }
-      const kind = geminiErr instanceof AIRetryError ? geminiErr.classified.kind : 'unknown';
-      console.warn(`[AI] ${opts.context}: Gemini (${kind}) — attempting OpenRouter fallback`);
+      const kind = primaryErr instanceof AIRetryError ? primaryErr.classified.kind : 'unknown';
+      console.warn(`[AI] ${opts.context}: GenAI.mil (${kind}) — attempting OpenRouter fallback`);
     }
   }
 
@@ -283,10 +329,170 @@ export async function generateJSONWithFallback<T>(
 }
 
 /**
+ * Tool-calling conversation against GenAI.mil (primary). Mirrors the
+ * OpenRouter tool-calling path but uses the GenAI.mil endpoint and key.
+ * Handles the full 2-turn round-trip: initial call → execute tool calls
+ * via the caller-supplied executor → second call with tool results →
+ * final text answer. On key-lock (401 with unlock_url), rethrows as a
+ * rate_limit so the caller's fallback logic engages.
+ */
+export async function runGenAIMilWithTools(params: {
+  systemPrompt: string;
+  userPrompt: string;
+  tools: OpenRouterToolSchema[];
+  executeToolCall: (name: string, args: Record<string, unknown>) => Promise<unknown>;
+  signal?: AbortSignal;
+  model?: string;
+  temperature?: number;
+}): Promise<string> {
+  const apiKey = getGenAIMilApiKey();
+  const model = params.model ?? DEFAULT_GENAI_MIL_MODEL;
+  const temperature = params.temperature ?? 0;
+  const toolsPayload = params.tools.map((t) => ({
+    type: 'function' as const,
+    function: {
+      name: t.name,
+      description: t.description,
+      parameters: t.parameters,
+    },
+  }));
+
+  const firstResponse = await withRetry(
+    async (signal) => {
+      const res = await fetch(GENAI_MIL_ENDPOINT, {
+        method: 'POST',
+        signal,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          temperature,
+          tools: toolsPayload,
+          tool_choice: 'auto',
+          messages: [
+            { role: 'system', content: params.systemPrompt },
+            { role: 'user', content: params.userPrompt },
+          ],
+        }),
+      });
+      if (!res.ok) {
+        if (res.status === 401) {
+          const body = await res.json().catch(() => ({} as OpenAICompatResponse));
+          const unlockUrl = (body as OpenAICompatResponse)?.error?.unlock_url;
+          if (unlockUrl) {
+            console.warn(`[AI] GenAI.mil key locked. Unlock at: ${unlockUrl}`);
+            throw Object.assign(
+              new Error(`GenAI.mil key locked — visit ${unlockUrl} to unlock`),
+              { status: 429 }
+            );
+          }
+        }
+        const body = await res.text().catch(() => '');
+        throw Object.assign(new Error(`GenAI.mil ${res.status}: ${body || res.statusText}`), {
+          status: res.status,
+        });
+      }
+      const json = (await res.json()) as OpenAICompatResponse;
+      if (json.error) {
+        throw Object.assign(new Error(json.error.message ?? 'GenAI.mil error'), {
+          status: json.error.code,
+        });
+      }
+      return json;
+    },
+    { signal: params.signal }
+  );
+
+  const assistantMessage = firstResponse.choices?.[0]?.message;
+  const toolCalls = (assistantMessage as { tool_calls?: OpenRouterToolCall[] })?.tool_calls ?? [];
+
+  if (toolCalls.length === 0) {
+    const text = assistantMessage?.content;
+    if (typeof text !== 'string' || !text.trim()) {
+      throw new Error('GenAI.mil returned neither tool calls nor text');
+    }
+    return text;
+  }
+
+  const toolResults: Array<{ tool_call_id: string; name: string; content: string }> = [];
+  for (const call of toolCalls) {
+    let parsedArgs: Record<string, unknown>;
+    try {
+      parsedArgs = call.function.arguments
+        ? (JSON.parse(call.function.arguments) as Record<string, unknown>)
+        : {};
+    } catch {
+      throw new Error(`GenAI.mil returned malformed tool arguments for ${call.function.name}`);
+    }
+    const result = await params.executeToolCall(call.function.name, parsedArgs);
+    toolResults.push({
+      tool_call_id: call.id,
+      name: call.function.name,
+      content: JSON.stringify(result ?? null),
+    });
+  }
+
+  const finalText = await withRetry(
+    async (signal) => {
+      const res = await fetch(GENAI_MIL_ENDPOINT, {
+        method: 'POST',
+        signal,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          temperature,
+          messages: [
+            { role: 'system', content: params.systemPrompt },
+            { role: 'user', content: params.userPrompt },
+            {
+              role: 'assistant',
+              content: assistantMessage?.content ?? '',
+              tool_calls: toolCalls,
+            },
+            ...toolResults.map((r) => ({
+              role: 'tool' as const,
+              tool_call_id: r.tool_call_id,
+              name: r.name,
+              content: r.content,
+            })),
+          ],
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        throw Object.assign(new Error(`GenAI.mil ${res.status}: ${body || res.statusText}`), {
+          status: res.status,
+        });
+      }
+      const json = (await res.json()) as OpenAICompatResponse;
+      if (json.error) {
+        throw Object.assign(new Error(json.error.message ?? 'GenAI.mil error'), {
+          status: json.error.code,
+        });
+      }
+      const content = json.choices?.[0]?.message?.content;
+      if (typeof content !== 'string' || !content.trim()) {
+        throw new Error('GenAI.mil returned empty final content');
+      }
+      return content;
+    },
+    { signal: params.signal }
+  );
+
+  return finalText;
+}
+
+/**
  * Plain-text completion via OpenRouter — no Zod schema, no tools. Used by
- * the Maintenance Assistant's catch path when Gemini function-calling is
- * unavailable (quota / rate-limit / 5xx). Loses the ability to fetch live
- * records, but answers conceptual questions from the model's own knowledge.
+ * the Maintenance Assistant's catch path when the primary provider's
+ * function-calling is unavailable (quota / rate-limit / 5xx). Loses the
+ * ability to fetch live records, but answers conceptual questions from the
+ * model's own knowledge.
  */
 export async function generateTextWithOpenRouter(params: {
   systemPrompt: string;
@@ -343,11 +549,11 @@ export async function generateTextWithOpenRouter(params: {
 }
 
 /**
- * Run a tool-calling conversation against OpenRouter. Used when Gemini's
- * function-calling is unavailable (quota / rate-limit / 5xx) but we still
- * want live record lookups. Handles the full round-trip internally:
- * initial call → execute tool calls via the caller-supplied executor →
- * second call with tool results → final text answer.
+ * Run a tool-calling conversation against OpenRouter. Used when the primary
+ * provider is unavailable (quota / rate-limit / 5xx) but we still want live
+ * record lookups. Handles the full round-trip internally: initial call →
+ * execute tool calls via the caller-supplied executor → second call with
+ * tool results → final text answer.
  *
  * Throws on bad tool-call JSON, unknown tool names, or empty final
  * content — caller is expected to catch and fall through to a plain-text

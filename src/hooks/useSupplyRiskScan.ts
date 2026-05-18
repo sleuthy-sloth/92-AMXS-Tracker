@@ -18,7 +18,7 @@ import { useScanStatus } from '../contexts/AIScanStatusInstance';
 import { createNotification } from '../services/notificationService';
 import { MaintenanceLog } from '../types';
 import { tsToMillis } from '../lib/utils';
-import { isGeminiConfigured } from '../lib/gemini';
+import { isGenAIMilConfigured } from '../lib/gemini';
 import { SupplyRiskListSchema } from '../lib/aiSchemas';
 import { generateJSONWithFallback, isOpenRouterConfigured } from '../lib/aiProvider';
 import { getCachedAIResult, setCachedAIResult, generateDataHash } from '../lib/aiCache';
@@ -34,7 +34,7 @@ export const useSupplyRiskScan = () => {
   useEffect(() => {
     if (!profile || isDemoMode) return;
     if (!(profile.role === 'ncoic' || profile.role === 'leadership')) return;
-    if (!isGeminiConfigured() && !isOpenRouterConfigured()) return;
+    if (!isGenAIMilConfigured() && !isOpenRouterConfigured()) return;
 
     const scan = async () => {
       reportStart('supply-risk');
@@ -71,7 +71,7 @@ export const useSupplyRiskScan = () => {
         const cached = await getCachedAIResult<SupplyRiskParsed[]>('supply-risk', cacheKey, 14400000);
         
         let parsed: SupplyRiskParsed[] | null = cached || null;
-        let finalSource: 'gemini' | 'openrouter' = 'gemini';
+        let finalSource: 'genai-mil' | 'openrouter' = 'genai-mil';
 
         if (!cached) {
           const { data, source } = await generateJSONWithFallback({
@@ -86,7 +86,7 @@ export const useSupplyRiskScan = () => {
   OUTPUT JSON: [{"logId","tail_number","risk":"high|medium|low","likely_parts":[string],"rationale"}]`,
           });
           parsed = data as SupplyRiskParsed[];
-          finalSource = source as 'gemini' | 'openrouter';
+          finalSource = source as 'genai-mil' | 'openrouter';
           
           if (data) {
             await setCachedAIResult('supply-risk', cacheKey, data, currentHash);
