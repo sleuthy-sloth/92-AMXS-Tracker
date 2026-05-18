@@ -95,7 +95,7 @@ const AIStatusPanel: React.FC<{ showDetails: boolean }> = ({ showDetails }) => {
                       <span
                         className={cn(
                           'tech-label text-[8px] px-1.5 py-0.5 border tracking-widest',
-                          state.lastSource === 'gemini'
+                          state.lastSource === 'genai-mil'
                             ? 'border-primary/30 text-primary bg-primary/5'
                             : 'border-amber-500/30 text-amber-700 bg-amber-50'
                         )}
