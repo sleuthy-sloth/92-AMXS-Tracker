@@ -92,8 +92,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Seed database if admin logs in and it's empty.
         // Only in development — the super-admin is identified by the
         // SUPER_ADMIN_EMAIL environment variable.
+        // SECURITY: Database seeding is restricted to development builds
+        // (import.meta.env.DEV). It will NEVER run in production to prevent
+        // mock data from being written to the live Firestore database.
         const superAdminEmail = process.env.SUPER_ADMIN_EMAIL;
-        if (superAdminEmail && currentUser.email === superAdminEmail) {
+        if (import.meta.env.DEV && superAdminEmail && currentUser.email === superAdminEmail) {
           await seedDatabase();
         }
       } else {
