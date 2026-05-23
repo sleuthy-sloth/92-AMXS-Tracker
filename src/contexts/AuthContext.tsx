@@ -79,8 +79,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(currentUser);
       if (currentUser) {
         await fetchProfile(currentUser.uid);
-        // Seed database if admin logs in and it's empty
-        if (currentUser.email === 'spkoehl@gmail.com') {
+        // Seed database if admin logs in and it's empty.
+        // Only in development — the super-admin is identified by the
+        // SUPER_ADMIN_EMAIL environment variable.
+        const superAdminEmail = process.env.SUPER_ADMIN_EMAIL;
+        if (superAdminEmail && currentUser.email === superAdminEmail) {
           await seedDatabase();
         }
       } else {

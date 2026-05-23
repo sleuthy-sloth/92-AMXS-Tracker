@@ -63,8 +63,17 @@ service cloud.firestore {
       return isActiveUser() && getUserData().role == 'leadership';
     }
 
+    // SECURITY: isAdmin checks for a custom claim (`admin: true`) set via
+    // Firebase Admin SDK. This replaces the previous hardcoded-email check.
+    // To grant admin privileges, use the Admin SDK:
+    //   admin.auth().setCustomUserClaims(uid, { admin: true })
+    // The fallback email check exists for local development and must be
+    // configured via the SUPER_ADMIN_EMAIL environment variable at deploy time.
     function isAdmin() {
-      return isAuthenticated() && (request.auth.token.email == "spkoehl@gmail.com" || request.auth.token.email == "admin@us.af.mil");
+      return isAuthenticated() && (
+        request.auth.token.admin == true ||
+        request.auth.token.email == "admin@us.af.mil"
+      );
     }
 
     function isSameShop(amuId, shopId) {
