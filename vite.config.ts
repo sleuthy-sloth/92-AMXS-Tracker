@@ -69,6 +69,7 @@ export default defineConfig(({mode}) => {
     define: {
       'process.env.GENAI_MIL_API_KEY': JSON.stringify(env.GENAI_MIL_API_KEY),
       'process.env.OPENROUTER_API_KEY': JSON.stringify(env.OPENROUTER_API_KEY),
+      'process.env.SUPER_ADMIN_EMAIL': JSON.stringify(env.SUPER_ADMIN_EMAIL || ''),
     },
     resolve: {
       alias: {

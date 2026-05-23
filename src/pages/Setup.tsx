@@ -25,7 +25,11 @@ export const Setup: React.FC = () => {
     setLoading(true);
     setError('');
     try {
-      const isMasterAdmin = user.email === 'spkoehl@gmail.com' || user.email === 'admin@us.af.mil' || user.email === 'admin';
+      const superAdminEmail = process.env.SUPER_ADMIN_EMAIL;
+      const isMasterAdmin = Boolean(
+        superAdminEmail &&
+        (user.email === superAdminEmail || user.email === 'admin@us.af.mil')
+      );
       
       const profile: UserProfile = {
         uid: user.uid,
