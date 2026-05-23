@@ -34,6 +34,8 @@ export const Login: React.FC = () => {
           throw new Error('Registration requires a valid @us.af.mil email address.');
         }
         await signUpEmail(email, password);
+        setMessage('Account created. Please check your email to verify your account before signing in.');
+        setIsSignUp(false);
       } else {
         await signInEmail(email, password);
       }
@@ -44,6 +46,7 @@ export const Login: React.FC = () => {
       if (code === 'auth/user-not-found') msg = 'User account not found.';
       if (code === 'auth/wrong-password') msg = 'Incorrect password.';
       if (code === 'auth/email-already-in-use') msg = 'This email is already registered.';
+      if (code === 'auth/email-not-verified') msg = 'Please verify your email address before signing in. Check your inbox.';
       setError(msg);
     }
   };
