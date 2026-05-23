@@ -167,6 +167,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const bypassLogin = (role: UserRole = 'ncoic') => {
+    // SECURITY: bypassLogin is a development-only convenience. In production
+    // builds (import.meta.env.PROD), it is a no-op to prevent anyone from
+    // bypassing Firebase Authentication.
+    if (import.meta.env.PROD) {
+      console.error('[AMXS] bypassLogin is disabled in production builds.');
+      return;
+    }
+
     const mockUser = {
       uid: 'mock-user-preview',
       email: 'dev.preview@us.af.mil',

@@ -78,6 +78,8 @@ export const Login: React.FC = () => {
                 Authenticate with Google
               </button>
               
+              {!import.meta.env.PROD && (
+                <>
               <div className="relative py-2">
                 <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-outline"></div></div>
                 <div className="relative flex justify-center"><span className="bg-surface px-4 tech-label text-[8px]">Developer / Admin Access</span></div>
@@ -99,6 +101,18 @@ export const Login: React.FC = () => {
                   <span>Master Login</span>
                 </button>
               </div>
+                </>
+              )}
+
+              {import.meta.env.PROD && (
+                <button 
+                  onClick={() => setIsEmailMode(true)}
+                  className="bg-primary text-white border-2 border-primary px-5 py-4 font-black text-[10px] uppercase tracking-[0.2em] transition-all hover:bg-primary/90 active:scale-95 flex flex-col items-center gap-2 shadow-lg w-full"
+                >
+                  <Lock className="w-5 h-5 text-white" />
+                  <span>Master Login</span>
+                </button>
+              )}
             </div>
           ) : (
             <form onSubmit={handleEmailAuth} className="space-y-6 text-left">
