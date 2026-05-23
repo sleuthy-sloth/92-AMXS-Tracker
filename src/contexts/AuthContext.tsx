@@ -78,6 +78,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
+        // SECURITY: Require email verification before granting access.
+        // Unverified users are signed out and shown a message.
+        if (!currentUser.emailVerified) {
+          console.warn('[AMXS] Email not verified — signing out.');
+          await signOut(auth);
+          setUser(null);
+          setProfile(null);
+          setLoading(false);
+          return;
+        }
         await fetchProfile(currentUser.uid);
         // Seed database if admin logs in and it's empty.
         // Only in development — the super-admin is identified by the
