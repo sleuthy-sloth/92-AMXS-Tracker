@@ -1,7 +1,7 @@
 name: Mirror to Codeberg
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   workflow_dispatch:
   delete:
 
@@ -18,10 +18,10 @@ jobs:
           fetch-depth: 0
       - name: Push to Codeberg
         env:
-          CODEBERG_TOKEN: ${{ secrets.CODEBERG_TOKEN }}
+          CB_TOKEN: ${{ secrets.CODEBERG_TOKEN }}
         run: |
+          REPO="${{ github.event.repository.name }}"
           git fetch --unshallow 2>/dev/null || true
-          git remote add codeberg https://codeberg.org/sleuthy-sloth/${{ github.event.repository.name }}.git
-          git config --local http.https://codeberg.org/.extraheader "Authorization: basic $(echo -n "sleuthy-sloth:${CODEBERG_TOKEN}" | base64)"
-          git push --force --all codeberg
-          git push --force --tags codeberg
+          git remote add codeberg "https://codeberg.org/sleuthy-sloth/${REPO}.git"
+          git -c http.extraheader="Authorization: basic $(echo -n sleuthy-sloth:${CB_TOKEN} | base64 -w0)" push --force --all codeberg
+          git -c http.extraheader="Authorization: basic $(echo -n sleuthy-sloth:${CB_TOKEN} | base64 -w0)" push --force --tags codeberg
