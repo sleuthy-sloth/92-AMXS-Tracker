@@ -22,6 +22,13 @@ jobs:
         run: |
           REPO="${{ github.event.repository.name }}"
           git fetch --unshallow 2>/dev/null || true
+          # Store credentials via git credential helper
+          echo "url=https://codeberg.org" > /tmp/git-creds
+          echo "username=sleuthy-sloth" >> /tmp/git-creds
+          echo "password=${CB_TOKEN}" >> /tmp/git-creds
+          echo "" >> /tmp/git-creds
+          git credential approve < /tmp/git-creds
+          # Now push using stored credentials  
           git remote add codeberg "https://codeberg.org/sleuthy-sloth/${REPO}.git"
-          git -c http.extraheader="Authorization: basic $(echo -n sleuthy-sloth:${CB_TOKEN} | base64 -w0)" push --force --all codeberg
-          git -c http.extraheader="Authorization: basic $(echo -n sleuthy-sloth:${CB_TOKEN} | base64 -w0)" push --force --tags codeberg
+          git push --force --all codeberg
+          git push --force --tags codeberg
