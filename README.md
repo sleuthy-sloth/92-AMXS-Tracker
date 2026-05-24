@@ -1,16 +1,16 @@
 # 92 AMXS Tracker
 
-Logbook and training tracker for the 92nd Aircraft Maintenance Squadron.
+Simple logbook and training tracker for the 92nd Aircraft Maintenance Squadron. Built because tracking who's current on what shouldn't require a staff meeting.
 
-## Features
+## Tech
 
-- Training record tracking
-- Logbook entries
-- Qualification management
+React 19, Vite 8, TailwindCSS 4.
 
-## Tech Stack
+```bash
+npm install
+npm run dev
+```
 
-- React 19 + Vite 8
-- TailwindCSS 4
+## License
 
-Getting Started: `npm install && npm run dev`
+CC BY-NC 4.0.
