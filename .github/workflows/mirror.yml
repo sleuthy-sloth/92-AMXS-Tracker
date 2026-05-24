@@ -18,6 +18,7 @@ jobs:
           fetch-depth: 0
       - name: Push to Codeberg
         run: |
+          git fetch --unshallow 2>/dev/null || true
           git remote add codeberg https://sleuthy-sloth:${{ secrets.CODEBERG_TOKEN }}@codeberg.org/sleuthy-sloth/${{ github.event.repository.name }}.git
           git push --force --all codeberg
           git push --force --tags codeberg
