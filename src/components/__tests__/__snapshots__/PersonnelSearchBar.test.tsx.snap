@@ -1,0 +1,147 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`PersonnelSearchBar > renders with a query 1`] = `
+<div
+  class="flex flex-col md:flex-row gap-4"
+>
+  <div
+    class="flex-1 relative"
+  >
+    <svg
+      aria-hidden="true"
+      class="lucide lucide-search absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400"
+      fill="none"
+      height="24"
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      viewBox="0 0 24 24"
+      width="24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="m21 21-4.34-4.34"
+      />
+      <circle
+        cx="11"
+        cy="11"
+        r="8"
+      />
+    </svg>
+    <input
+      class="sleek-input pl-12 w-full"
+      placeholder="Search by name, MAN #, or email..."
+      type="text"
+      value="DOE"
+    />
+  </div>
+  <select
+    class="sleek-input md:w-48"
+  >
+    <option
+      value="all"
+    >
+      All Shops
+    </option>
+    <option
+      value="AVIONICS"
+    >
+      AVIONICS
+    </option>
+    <option
+      value="CREW_CHIEFS"
+    >
+      CREW_CHIEFS
+    </option>
+    <option
+      value="JETS"
+    >
+      JETS
+    </option>
+    <option
+      value="E&E"
+    >
+      E&E
+    </option>
+    <option
+      value="LEADERSHIP"
+    >
+      LEADERSHIP
+    </option>
+  </select>
+</div>
+`;
+
+exports[`PersonnelSearchBar > renders with no query 1`] = `
+<div
+  class="flex flex-col md:flex-row gap-4"
+>
+  <div
+    class="flex-1 relative"
+  >
+    <svg
+      aria-hidden="true"
+      class="lucide lucide-search absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400"
+      fill="none"
+      height="24"
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      viewBox="0 0 24 24"
+      width="24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="m21 21-4.34-4.34"
+      />
+      <circle
+        cx="11"
+        cy="11"
+        r="8"
+      />
+    </svg>
+    <input
+      class="sleek-input pl-12 w-full"
+      placeholder="Search by name, MAN #, or email..."
+      type="text"
+      value=""
+    />
+  </div>
+  <select
+    class="sleek-input md:w-48"
+  >
+    <option
+      value="all"
+    >
+      All Shops
+    </option>
+    <option
+      value="AVIONICS"
+    >
+      AVIONICS
+    </option>
+    <option
+      value="CREW_CHIEFS"
+    >
+      CREW_CHIEFS
+    </option>
+    <option
+      value="JETS"
+    >
+      JETS
+    </option>
+    <option
+      value="E&E"
+    >
+      E&E
+    </option>
+    <option
+      value="LEADERSHIP"
+    >
+      LEADERSHIP
+    </option>
+  </select>
+</div>
+`;
