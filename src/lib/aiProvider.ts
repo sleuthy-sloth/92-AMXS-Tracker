@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../firebase';
 import { isGenAIMilConfigured, isOpenRouterConfigured } from './gemini';
+export { isOpenRouterConfigured };
 import { safeParse } from './aiSchemas';
 import { withRetry, AIRetryError, classifyError } from './aiRetry';
 
