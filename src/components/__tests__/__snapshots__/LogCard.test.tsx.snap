@@ -49,7 +49,7 @@ exports[`LogCard > renders basic log card 1`] = `
         <span
           class="data-mono text-[10px]"
         >
-          1969.12.31
+          2023.11.14
           <span
             class="ml-2 opacity-60"
           >
@@ -156,7 +156,7 @@ exports[`LogCard > renders red ball status 1`] = `
         <span
           class="data-mono text-[10px]"
         >
-          1969.12.31
+          2023.11.14
           <span
             class="ml-2 opacity-60"
           >
@@ -258,7 +258,7 @@ exports[`LogCard > renders without jcn using id fallback 1`] = `
         <span
           class="data-mono text-[10px]"
         >
-          1969.12.31
+          2023.11.14
           <span
             class="ml-2 opacity-60"
           >
@@ -389,7 +389,7 @@ exports[`LogCard > shows G081 verified status 1`] = `
         <span
           class="data-mono text-[10px]"
         >
-          1969.12.31
+          2023.11.14
           <span
             class="ml-2 opacity-60"
           >
@@ -499,7 +499,7 @@ exports[`LogCard > shows editing state when another user is editing 1`] = `
         <span
           class="data-mono text-[10px]"
         >
-          1969.12.31
+          2023.11.14
           <span
             class="ml-2 opacity-60"
           >

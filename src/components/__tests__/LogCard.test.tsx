@@ -25,7 +25,11 @@ const baseLog: MaintenanceLog = {
   technician_name: 'DOE, J',
   doc_number: 'DOC-001',
   shift: 'Days',
-  timestamp: { seconds: 1700000000, nanoseconds: 0 } as any,
+  timestamp: {
+    seconds: 1700000000,
+    nanoseconds: 0,
+    toDate: () => new Date(1700000000 * 1000),
+  } as any,
   isRedBall: false,
   shopId: 'CREW_CHIEFS',
   amuId: 'BLACK',
