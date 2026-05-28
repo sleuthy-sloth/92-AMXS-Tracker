@@ -1,0 +1,553 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`LogCard > renders basic log card 1`] = `
+<div
+  class="p-8 flex flex-col justify-between hover:bg-putty/50 transition-colors cursor-pointer group relative overflow-hidden"
+>
+  <div>
+    <div
+      class="flex justify-between items-start mb-6"
+    >
+      <div>
+        <p
+          class="tech-label mb-1 text-slate-500"
+        >
+          JCN: JCN-2024-001
+        </p>
+        <h3
+          class="text-2xl font-black tracking-tighter uppercase group-hover:text-primary transition-colors text-slate-900"
+        >
+          62-3551
+        </h3>
+      </div>
+    </div>
+    <div
+      class="space-y-4 mb-8"
+    >
+      <div
+        class="flex justify-between border-b border-outline pb-2"
+      >
+        <span
+          class="tech-label !text-[9px]"
+        >
+          Lead Tech
+        </span>
+        <span
+          class="font-black text-[10px] uppercase tracking-tight"
+        >
+          DOE, J
+        </span>
+      </div>
+      <div
+        class="flex justify-between border-b border-outline pb-2"
+      >
+        <span
+          class="tech-label !text-[9px]"
+        >
+          Timestamp
+        </span>
+        <span
+          class="data-mono text-[10px]"
+        >
+          1969.12.31
+          <span
+            class="ml-2 opacity-60"
+          >
+            [
+            Days
+             
+            0700-1500
+            ]
+          </span>
+        </span>
+      </div>
+      <div
+        class="flex flex-col gap-2"
+      >
+        <span
+          class="tech-label !text-[9px] text-primary"
+        >
+          Discrepancy
+        </span>
+        <p
+          class="serif-header text-sm leading-relaxed line-clamp-3"
+        >
+          Left engine oil leak detected during pre-flight inspection.
+        </p>
+      </div>
+    </div>
+  </div>
+  <div
+    class="tech-label !text-[9px] text-primary group-hover:translate-x-1 transition-transform flex items-center gap-2"
+  >
+    View Details 
+    <svg
+      aria-hidden="true"
+      class="lucide lucide-chevron-right w-3 h-3"
+      fill="none"
+      height="24"
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      viewBox="0 0 24 24"
+      width="24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="m9 18 6-6-6-6"
+      />
+    </svg>
+  </div>
+</div>
+`;
+
+exports[`LogCard > renders red ball status 1`] = `
+<div
+  class="p-8 flex flex-col justify-between hover:bg-putty/50 transition-colors cursor-pointer group relative overflow-hidden"
+>
+  <div>
+    <div
+      class="flex justify-between items-start mb-6"
+    >
+      <div>
+        <p
+          class="tech-label mb-1 text-slate-500"
+        >
+          JCN: JCN-2024-001
+        </p>
+        <h3
+          class="text-2xl font-black tracking-tighter uppercase group-hover:text-primary transition-colors text-slate-900"
+        >
+          62-3551
+        </h3>
+      </div>
+      <span
+        class="badge badge-danger"
+      >
+        Red Ball
+      </span>
+    </div>
+    <div
+      class="space-y-4 mb-8"
+    >
+      <div
+        class="flex justify-between border-b border-outline pb-2"
+      >
+        <span
+          class="tech-label !text-[9px]"
+        >
+          Lead Tech
+        </span>
+        <span
+          class="font-black text-[10px] uppercase tracking-tight"
+        >
+          DOE, J
+        </span>
+      </div>
+      <div
+        class="flex justify-between border-b border-outline pb-2"
+      >
+        <span
+          class="tech-label !text-[9px]"
+        >
+          Timestamp
+        </span>
+        <span
+          class="data-mono text-[10px]"
+        >
+          1969.12.31
+          <span
+            class="ml-2 opacity-60"
+          >
+            [
+            Days
+             
+            0700-1500
+            ]
+          </span>
+        </span>
+      </div>
+      <div
+        class="flex flex-col gap-2"
+      >
+        <span
+          class="tech-label !text-[9px] text-primary"
+        >
+          Discrepancy
+        </span>
+        <p
+          class="serif-header text-sm leading-relaxed line-clamp-3"
+        >
+          Left engine oil leak detected during pre-flight inspection.
+        </p>
+      </div>
+    </div>
+  </div>
+  <div
+    class="tech-label !text-[9px] text-primary group-hover:translate-x-1 transition-transform flex items-center gap-2"
+  >
+    View Details 
+    <svg
+      aria-hidden="true"
+      class="lucide lucide-chevron-right w-3 h-3"
+      fill="none"
+      height="24"
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      viewBox="0 0 24 24"
+      width="24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="m9 18 6-6-6-6"
+      />
+    </svg>
+  </div>
+</div>
+`;
+
+exports[`LogCard > renders without jcn using id fallback 1`] = `
+<div
+  class="p-8 flex flex-col justify-between hover:bg-putty/50 transition-colors cursor-pointer group relative overflow-hidden"
+>
+  <div>
+    <div
+      class="flex justify-between items-start mb-6"
+    >
+      <div>
+        <p
+          class="tech-label mb-1 text-slate-500"
+        >
+          ID: #abc123
+        </p>
+        <h3
+          class="text-2xl font-black tracking-tighter uppercase group-hover:text-primary transition-colors text-slate-900"
+        >
+          62-3551
+        </h3>
+      </div>
+    </div>
+    <div
+      class="space-y-4 mb-8"
+    >
+      <div
+        class="flex justify-between border-b border-outline pb-2"
+      >
+        <span
+          class="tech-label !text-[9px]"
+        >
+          Lead Tech
+        </span>
+        <span
+          class="font-black text-[10px] uppercase tracking-tight"
+        >
+          DOE, J
+        </span>
+      </div>
+      <div
+        class="flex justify-between border-b border-outline pb-2"
+      >
+        <span
+          class="tech-label !text-[9px]"
+        >
+          Timestamp
+        </span>
+        <span
+          class="data-mono text-[10px]"
+        >
+          1969.12.31
+          <span
+            class="ml-2 opacity-60"
+          >
+            [
+            Days
+             
+            0700-1500
+            ]
+          </span>
+        </span>
+      </div>
+      <div
+        class="flex flex-col gap-2"
+      >
+        <span
+          class="tech-label !text-[9px] text-primary"
+        >
+          Discrepancy
+        </span>
+        <p
+          class="serif-header text-sm leading-relaxed line-clamp-3"
+        >
+          Left engine oil leak detected during pre-flight inspection.
+        </p>
+      </div>
+    </div>
+  </div>
+  <div
+    class="tech-label !text-[9px] text-primary group-hover:translate-x-1 transition-transform flex items-center gap-2"
+  >
+    View Details 
+    <svg
+      aria-hidden="true"
+      class="lucide lucide-chevron-right w-3 h-3"
+      fill="none"
+      height="24"
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      viewBox="0 0 24 24"
+      width="24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="m9 18 6-6-6-6"
+      />
+    </svg>
+  </div>
+</div>
+`;
+
+exports[`LogCard > shows G081 verified status 1`] = `
+<div
+  class="p-8 flex flex-col justify-between hover:bg-putty/50 transition-colors cursor-pointer group relative overflow-hidden"
+>
+  <div>
+    <div
+      class="flex justify-between items-start mb-6"
+    >
+      <div>
+        <p
+          class="tech-label mb-1 text-slate-500"
+        >
+          JCN: JCN-2024-001
+        </p>
+        <h3
+          class="text-2xl font-black tracking-tighter uppercase group-hover:text-primary transition-colors text-slate-900"
+        >
+          62-3551
+        </h3>
+      </div>
+      <div
+        class="badge flex items-center gap-1.5 ml-2 bg-emerald-50 text-emerald-600"
+      >
+        <svg
+          aria-hidden="true"
+          class="lucide lucide-shield-check w-3 h-3"
+          fill="none"
+          height="24"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          viewBox="0 0 24 24"
+          width="24"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"
+          />
+          <path
+            d="m9 12 2 2 4-4"
+          />
+        </svg>
+        <span
+          class="uppercase tracking-widest text-[8px]"
+        >
+          G081
+        </span>
+      </div>
+    </div>
+    <div
+      class="space-y-4 mb-8"
+    >
+      <div
+        class="flex justify-between border-b border-outline pb-2"
+      >
+        <span
+          class="tech-label !text-[9px]"
+        >
+          Lead Tech
+        </span>
+        <span
+          class="font-black text-[10px] uppercase tracking-tight"
+        >
+          DOE, J
+        </span>
+      </div>
+      <div
+        class="flex justify-between border-b border-outline pb-2"
+      >
+        <span
+          class="tech-label !text-[9px]"
+        >
+          Timestamp
+        </span>
+        <span
+          class="data-mono text-[10px]"
+        >
+          1969.12.31
+          <span
+            class="ml-2 opacity-60"
+          >
+            [
+            Days
+             
+            0700-1500
+            ]
+          </span>
+        </span>
+      </div>
+      <div
+        class="flex flex-col gap-2"
+      >
+        <span
+          class="tech-label !text-[9px] text-primary"
+        >
+          Discrepancy
+        </span>
+        <p
+          class="serif-header text-sm leading-relaxed line-clamp-3"
+        >
+          Left engine oil leak detected during pre-flight inspection.
+        </p>
+      </div>
+    </div>
+  </div>
+  <div
+    class="tech-label !text-[9px] text-primary group-hover:translate-x-1 transition-transform flex items-center gap-2"
+  >
+    View Details 
+    <svg
+      aria-hidden="true"
+      class="lucide lucide-chevron-right w-3 h-3"
+      fill="none"
+      height="24"
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      viewBox="0 0 24 24"
+      width="24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="m9 18 6-6-6-6"
+      />
+    </svg>
+  </div>
+</div>
+`;
+
+exports[`LogCard > shows editing state when another user is editing 1`] = `
+<div
+  class="p-8 flex flex-col justify-between hover:bg-putty/50 transition-colors cursor-pointer group relative overflow-hidden"
+>
+  <div>
+    <div
+      class="flex justify-between items-start mb-6"
+    >
+      <div>
+        <div
+          class="flex items-center gap-1.5 mb-1 text-sky-500"
+        >
+          <div
+            class="w-1.5 h-1.5 bg-sky-500 rounded-full animate-pulse"
+          />
+          <span
+            class="text-[8px] font-black uppercase tracking-widest leading-none"
+          >
+            SMITH, A
+             is editing
+          </span>
+        </div>
+        <h3
+          class="text-2xl font-black tracking-tighter uppercase group-hover:text-primary transition-colors text-slate-900"
+        >
+          62-3551
+        </h3>
+      </div>
+    </div>
+    <div
+      class="space-y-4 mb-8"
+    >
+      <div
+        class="flex justify-between border-b border-outline pb-2"
+      >
+        <span
+          class="tech-label !text-[9px]"
+        >
+          Lead Tech
+        </span>
+        <span
+          class="font-black text-[10px] uppercase tracking-tight"
+        >
+          DOE, J
+        </span>
+      </div>
+      <div
+        class="flex justify-between border-b border-outline pb-2"
+      >
+        <span
+          class="tech-label !text-[9px]"
+        >
+          Timestamp
+        </span>
+        <span
+          class="data-mono text-[10px]"
+        >
+          1969.12.31
+          <span
+            class="ml-2 opacity-60"
+          >
+            [
+            Days
+             
+            0700-1500
+            ]
+          </span>
+        </span>
+      </div>
+      <div
+        class="flex flex-col gap-2 opacity-50"
+      >
+        <span
+          class="tech-label !text-[9px] text-primary"
+        >
+          Discrepancy
+        </span>
+        <p
+          class="serif-header text-sm leading-relaxed line-clamp-3"
+        >
+          Left engine oil leak detected during pre-flight inspection.
+        </p>
+      </div>
+    </div>
+  </div>
+  <div
+    class="tech-label !text-[9px] text-primary group-hover:translate-x-1 transition-transform flex items-center gap-2"
+  >
+    View Details 
+    <svg
+      aria-hidden="true"
+      class="lucide lucide-chevron-right w-3 h-3"
+      fill="none"
+      height="24"
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      viewBox="0 0 24 24"
+      width="24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="m9 18 6-6-6-6"
+      />
+    </svg>
+  </div>
+</div>
+`;

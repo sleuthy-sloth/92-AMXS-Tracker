@@ -1,13 +1,5 @@
 import React, { useState } from 'react';
-import { 
-  Terminal, 
-  ShieldCheck, 
-  ShieldAlert, 
-  Lock, 
-  Mail, 
-  ChevronLeft,
-  Info
-} from 'lucide-react';
+import { Terminal, ShieldCheck, ShieldAlert, Lock, Mail, ChevronLeft, Info } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContextInstance';
 
 export const Login: React.FC = () => {
@@ -34,7 +26,9 @@ export const Login: React.FC = () => {
           throw new Error('Registration requires a valid @us.af.mil email address.');
         }
         await signUpEmail(email, password);
-        setMessage('Account created. Please check your email to verify your account before signing in.');
+        setMessage(
+          'Account created. Please check your email to verify your account before signing in.'
+        );
         setIsSignUp(false);
       } else {
         await signInEmail(email, password);
@@ -46,7 +40,8 @@ export const Login: React.FC = () => {
       if (code === 'auth/user-not-found') msg = 'User account not found.';
       if (code === 'auth/wrong-password') msg = 'Incorrect password.';
       if (code === 'auth/email-already-in-use') msg = 'This email is already registered.';
-      if (code === 'auth/email-not-verified') msg = 'Please verify your email address before signing in. Check your inbox.';
+      if (code === 'auth/email-not-verified')
+        msg = 'Please verify your email address before signing in. Check your inbox.';
       setError(msg);
     }
   };
@@ -59,71 +54,83 @@ export const Login: React.FC = () => {
             <Terminal className="text-white w-12 h-12" />
           </div>
           <div>
-            <h1 className="text-5xl font-black text-slate-900 tracking-tighter uppercase leading-none">92ND AMXS</h1>
-            <p className="serif-header text-lg mt-2 text-slate-600">Logistics Control & Training Oversight</p>
+            <h1 className="text-5xl font-black text-slate-900 tracking-tighter uppercase leading-none">
+              92ND AMXS
+            </h1>
+            <p className="serif-header text-lg mt-2 text-slate-600">
+              Logistics Control & Training Oversight
+            </p>
           </div>
         </div>
-        
+
         <div className="visible-grid bg-surface p-10 space-y-10 shadow-xl relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 -mr-16 -mt-16 rotate-45 pointer-events-none"></div>
-          
+
           <p className="serif-header text-sm leading-relaxed text-slate-600">
-            Access to the 92nd AMXS Maintenance & Training system is restricted to authorized personnel only. All activity is logged and monitored.
+            Access to the 92nd AMXS Maintenance & Training system is restricted to authorized
+            personnel only. All activity is logged and monitored.
           </p>
 
           {!isEmailMode ? (
             <div className="space-y-6">
-              <button 
+              <button
                 onClick={signIn}
                 className="sleek-button w-full py-4 text-sm flex items-center justify-center gap-3"
               >
                 <ShieldCheck className="w-5 h-5" />
                 Authenticate with Google
               </button>
-              
+
+              <div className="relative py-2">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-outline"></div>
+                </div>
+                <div className="relative flex justify-center">
+                  <span className="bg-surface px-4 tech-label text-[8px]">
+                    or sign in with email
+                  </span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setIsEmailMode(true)}
+                className="bg-white text-slate-900 border-2 border-slate-200 w-full py-4 text-sm flex items-center justify-center gap-3 font-black text-[10px] uppercase tracking-[0.2em] transition-all hover:bg-slate-50 active:scale-95"
+              >
+                <Lock className="w-5 h-5" />
+                Sign In with Email & Password
+              </button>
+
               {!import.meta.env.PROD && (
                 <>
-              <div className="relative py-2">
-                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-outline"></div></div>
-                <div className="relative flex justify-center"><span className="bg-surface px-4 tech-label text-[8px]">Developer / Admin Access</span></div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <button 
-                  onClick={() => bypassLogin('leadership')}
-                  className="bg-white text-slate-900 border-2 border-slate-200 px-5 py-4 font-black text-[10px] uppercase tracking-[0.2em] transition-all hover:bg-slate-50 active:scale-95 flex flex-col items-center gap-2"
-                >
-                  <ShieldAlert className="w-5 h-5 text-safety-orange" />
-                  <span>Demo Sandbox</span>
-                </button>
-                <button 
-                  onClick={() => setIsEmailMode(true)}
-                  className="bg-primary text-white border-2 border-primary px-5 py-4 font-black text-[10px] uppercase tracking-[0.2em] transition-all hover:bg-primary/90 active:scale-95 flex flex-col items-center gap-2 shadow-lg"
-                >
-                  <Lock className="w-5 h-5 text-white" />
-                  <span>Master Login</span>
-                </button>
-              </div>
+                  <div className="relative py-2">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-outline"></div>
+                    </div>
+                    <div className="relative flex justify-center">
+                      <span className="bg-surface px-4 tech-label text-[8px]">Developer</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => bypassLogin('leadership')}
+                    className="bg-white text-slate-900 border-2 border-slate-200 px-5 py-4 font-black text-[10px] uppercase tracking-[0.2em] transition-all hover:bg-slate-50 active:scale-95 flex flex-col items-center gap-2 w-full"
+                  >
+                    <ShieldAlert className="w-5 h-5 text-safety-orange" />
+                    <span>Demo Sandbox</span>
+                  </button>
                 </>
-              )}
-
-              {import.meta.env.PROD && (
-                <button 
-                  onClick={() => setIsEmailMode(true)}
-                  className="bg-primary text-white border-2 border-primary px-5 py-4 font-black text-[10px] uppercase tracking-[0.2em] transition-all hover:bg-primary/90 active:scale-95 flex flex-col items-center gap-2 shadow-lg w-full"
-                >
-                  <Lock className="w-5 h-5 text-white" />
-                  <span>Master Login</span>
-                </button>
               )}
             </div>
           ) : (
             <form onSubmit={handleEmailAuth} className="space-y-6 text-left">
               <div className="flex justify-between items-center mb-2">
                 <h3 className="tech-label text-primary">
-                  {isResetMode ? 'Password Recovery' : isSignUp ? 'New Account Registration' : 'System Credential Login'}
+                  {isResetMode
+                    ? 'Password Recovery'
+                    : isSignUp
+                      ? 'New Account Registration'
+                      : 'System Credential Login'}
                 </h3>
-                <button 
+                <button
                   type="button"
                   onClick={() => {
                     setIsEmailMode(false);
@@ -139,12 +146,12 @@ export const Login: React.FC = () => {
                 <label className="tech-label">System Email / Username (Must be @us.af.mil)</label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
-                  <input 
+                  <input
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="sleek-input pl-12 w-full" 
-                    placeholder="user@us.af.mil" 
+                    className="sleek-input pl-12 w-full"
+                    placeholder="user@us.af.mil"
                   />
                 </div>
               </div>
@@ -154,13 +161,13 @@ export const Login: React.FC = () => {
                   <label className="tech-label">Access Password</label>
                   <div className="relative">
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
-                    <input 
-                      type="password" 
+                    <input
+                      type="password"
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="sleek-input pl-12 w-full" 
-                      placeholder="••••••••" 
+                      className="sleek-input pl-12 w-full"
+                      placeholder="••••••••"
                     />
                   </div>
                 </div>
@@ -181,20 +188,26 @@ export const Login: React.FC = () => {
               )}
 
               <button type="submit" className="sleek-button w-full py-4 text-xs font-black">
-                {isResetMode ? 'Send Recovery Email' : isSignUp ? 'Initialize Access' : 'Authenticate Credentials'}
+                {isResetMode
+                  ? 'Send Recovery Email'
+                  : isSignUp
+                    ? 'Initialize Access'
+                    : 'Authenticate Credentials'}
               </button>
 
               <div className="pt-4 border-t border-outline flex flex-col gap-4">
                 {!isResetMode && (
-                  <button 
+                  <button
                     type="button"
                     onClick={() => setIsSignUp(!isSignUp)}
                     className="text-[11px] font-black uppercase tracking-widest text-primary hover:underline"
                   >
-                    {isSignUp ? 'Already have an account? Sign In' : 'New Personnel? Register for Access'}
+                    {isSignUp
+                      ? 'Already have an account? Sign In'
+                      : 'New Personnel? Register for Access'}
                   </button>
                 )}
-                <button 
+                <button
                   type="button"
                   onClick={() => setIsResetMode(!isResetMode)}
                   className="text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600"

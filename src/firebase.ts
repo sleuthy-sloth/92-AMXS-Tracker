@@ -1,11 +1,13 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore, enableMultiTabIndexedDbPersistence } from 'firebase/firestore';
+import { getFunctions, httpsCallable, type HttpsCallableResult } from 'firebase/functions';
 import firebaseConfig from '../firebase-applet-config.json';
 
 // Initialize Firebase SDK
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+export const functions = getFunctions(app);
 
 // Enable offline persistence
 enableMultiTabIndexedDbPersistence(db).catch((err) => {
@@ -37,7 +39,11 @@ export interface FirestoreErrorInfo {
   userId?: string;
 }
 
-export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+export function handleFirestoreError(
+  error: unknown,
+  operationType: OperationType,
+  path: string | null
+) {
   const code = (error as { code?: string })?.code;
   const message = error instanceof Error ? error.message : String(error);
   const errInfo: FirestoreErrorInfo = {
