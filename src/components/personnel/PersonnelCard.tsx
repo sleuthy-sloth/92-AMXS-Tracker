@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Users, UserCheck, UserClock } from 'lucide-react';
+import { Users, UserCheck, Clock } from 'lucide-react';
 
 interface PersonnelCardProps {
   stats: {
@@ -29,7 +29,7 @@ export const PersonnelCard: React.FC<PersonnelCardProps> = ({ stats }) => {
     {
       label: 'Pending Approval',
       value: stats.pending,
-      icon: UserClock,
+      icon: Clock,
       color: 'text-amber-600',
       bgColor: 'bg-amber-50',
     },
