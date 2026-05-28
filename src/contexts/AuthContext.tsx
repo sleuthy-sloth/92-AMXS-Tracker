@@ -1,23 +1,23 @@
 import React, { useEffect, useState } from 'react';
-import { 
-  GoogleAuthProvider, 
-  signInWithPopup, 
-  signOut, 
+import {
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut,
   onAuthStateChanged,
   User,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
-  updatePassword
+  updatePassword,
 } from 'firebase/auth';
-import { 
-  doc, 
-  getDoc, 
+import {
+  doc,
+  getDoc,
   getDocs,
-  collection, 
+  collection,
   updateDoc,
   writeBatch,
-  serverTimestamp
+  serverTimestamp,
 } from 'firebase/firestore';
 import { auth, db, handleFirestoreError, OperationType } from '../firebase';
 import { UserProfile, UserRole, AMUType } from '../types';
@@ -30,20 +30,20 @@ const seedDatabase = async () => {
     if (usersSnap.empty) {
       console.log('Seeding database...');
       const batch = writeBatch(db);
-      
-      MOCK_PERSONNEL.forEach(p => {
+
+      MOCK_PERSONNEL.forEach((p) => {
         batch.set(doc(db, 'users', p.uid), p);
       });
-      
-      MOCK_TRAINING.forEach(t => {
+
+      MOCK_TRAINING.forEach((t) => {
         batch.set(doc(db, 'training', t.id || `mock-${Math.random()}`), t);
       });
-      
-      MOCK_LOGS.forEach(l => {
+
+      MOCK_LOGS.forEach((l) => {
         const logToSave = { ...l, timestamp: serverTimestamp() };
         batch.set(doc(db, 'logs', l.id || `mock-${Math.random()}`), logToSave);
       });
-      
+
       await batch.commit();
       console.log('Database seeded successfully.');
     }
@@ -58,7 +58,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [isDemoMode, setIsDemoMode] = useState(false);
 
-  const toggleDemoMode = () => setIsDemoMode(prev => !prev);
+  const toggleDemoMode = () => setIsDemoMode((prev) => !prev);
 
   const fetchProfile = async (uid: string) => {
     try {
@@ -119,8 +119,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signInEmail = async (email: string, pass: string) => {
     try {
-      const loginEmail = email === 'admin' ? 'admin@us.af.mil' : email;
-      await signInWithEmailAndPassword(auth, loginEmail, pass);
+      await signInWithEmailAndPassword(auth, email, pass);
     } catch (error: unknown) {
       console.error('Email sign in error:', error);
       throw error;
@@ -129,11 +128,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUpEmail = async (email: string, pass: string) => {
     try {
-      const regEmail = email === 'admin' ? 'admin@us.af.mil' : email;
-      if (!regEmail.toLowerCase().endsWith('@us.af.mil')) {
+      if (!email.toLowerCase().endsWith('@us.af.mil')) {
         throw new Error('Registration is restricted to official @us.af.mil email addresses.');
       }
-      await createUserWithEmailAndPassword(auth, regEmail, pass);
+      await createUserWithEmailAndPassword(auth, email, pass);
     } catch (error) {
       console.error('Email sign up error:', error);
       throw error;
@@ -142,8 +140,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const resetPassword = async (email: string) => {
     try {
-      const resetEmail = email === 'admin' ? 'admin@us.af.mil' : email;
-      await sendPasswordResetEmail(auth, resetEmail);
+      await sendPasswordResetEmail(auth, email);
     } catch (error) {
       console.error('Password reset error:', error);
       throw error;
@@ -196,7 +193,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       email: 'dev.preview@us.af.mil',
       displayName: 'PREVIEW USER',
     } as User;
-    
+
     const mockProfile: UserProfile = {
       uid: 'mock-user-preview',
       name: 'PREVIEW USER',
@@ -208,9 +205,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       email: 'dev.preview@us.af.mil',
       phone: '555-0123',
       status: 'active',
-      isDemo: true
+      isDemo: true,
     };
-    
+
     setUser(mockUser);
     setProfile(mockProfile);
     setLoading(false);
@@ -260,24 +257,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      profile, 
-      loading, 
-      signIn, 
-      signInEmail,
-      signUpEmail,
-      resetPassword,
-      updateUserPassword,
-      logout, 
-      refreshProfile, 
-      bypassLogin, 
-      setShop,
-      setAMU,
-      setRole,
-      isDemoMode,
-      toggleDemoMode
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        profile,
+        loading,
+        signIn,
+        signInEmail,
+        signUpEmail,
+        resetPassword,
+        updateUserPassword,
+        logout,
+        refreshProfile,
+        bypassLogin,
+        setShop,
+        setAMU,
+        setRole,
+        isDemoMode,
+        toggleDemoMode,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

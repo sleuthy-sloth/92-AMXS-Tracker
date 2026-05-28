@@ -1,13 +1,9 @@
 import React from 'react';
-import { 
-  HashRouter as Router, 
-  Routes, 
-  Route, 
-  Navigate
-} from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './contexts/AuthContextInstance';
 import { AIScanStatusProvider } from './contexts/AIScanStatusContext';
+import { DemoDataProvider } from './contexts/DemoDataProvider';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { AppLayout } from './components/layout/AppLayout';
 
@@ -24,9 +20,6 @@ import { Onboarding } from './pages/Onboarding';
 import { Handoff } from './pages/Handoff';
 import { Workload } from './pages/Workload';
 import { Diagnostics } from './pages/Diagnostics';
-
-// Components
-import { MaintenanceAssistant } from './components/MaintenanceAssistant';
 
 // Hooks
 import { useProactiveTrainingScan } from './hooks/useProactiveTrainingScan';
@@ -49,7 +42,9 @@ const AppContent: React.FC = () => {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-on-surface-variant font-medium text-sm animate-pulse">Initializing System...</p>
+          <p className="text-on-surface-variant font-medium text-sm animate-pulse">
+            Initializing System...
+          </p>
         </div>
       </div>
     );
@@ -61,30 +56,31 @@ const AppContent: React.FC = () => {
 
   return (
     <TourContext.Provider value={tour}>
-    <AppLayout>
-      <ErrorBoundary>
-      <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/ops/*" element={<Operations />} />
-        <Route path="/maintenance" element={<Navigate to="/ops/maintenance" replace />} />
-        <Route path="/difm" element={<Navigate to="/ops/difm" replace />} />
-        <Route path="/g081" element={<Navigate to="/ops/g081" replace />} />
-        <Route path="/training" element={<TrainingTracker />} />
-        <Route path="/personnel" element={<Personnel />} />
-        <Route path="/support" element={<Support />} />
-        <Route path="/handoff" element={<Handoff />} />
-        {(profile?.role === 'ncoic' || profile?.role === 'leadership') && (
-          <Route path="/diagnostics" element={<Diagnostics />} />
-        )}
-        {(profile?.role === 'ncoic' || profile?.role === 'leadership') && (
-          <Route path="/workload" element={<Workload />} />
-        )}
-        {(profile?.role === 'ncoic' || profile?.role === 'leadership') && <Route path="/onboarding" element={<Onboarding />} />}
-        <Route path="*" element={<Navigate to="/" />} />
-      </Routes>
-      </ErrorBoundary>
-      <MaintenanceAssistant />
-    </AppLayout>
+      <AppLayout>
+        <ErrorBoundary>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/ops/*" element={<Operations />} />
+            <Route path="/maintenance" element={<Navigate to="/ops/maintenance" replace />} />
+            <Route path="/difm" element={<Navigate to="/ops/difm" replace />} />
+            <Route path="/g081" element={<Navigate to="/ops/g081" replace />} />
+            <Route path="/training" element={<TrainingTracker />} />
+            <Route path="/personnel" element={<Personnel />} />
+            <Route path="/support" element={<Support />} />
+            <Route path="/handoff" element={<Handoff />} />
+            {(profile?.role === 'ncoic' || profile?.role === 'leadership') && (
+              <Route path="/diagnostics" element={<Diagnostics />} />
+            )}
+            {(profile?.role === 'ncoic' || profile?.role === 'leadership') && (
+              <Route path="/workload" element={<Workload />} />
+            )}
+            {(profile?.role === 'ncoic' || profile?.role === 'leadership') && (
+              <Route path="/onboarding" element={<Onboarding />} />
+            )}
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
+        </ErrorBoundary>
+      </AppLayout>
     </TourContext.Provider>
   );
 };
@@ -93,11 +89,13 @@ export default function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <AIScanStatusProvider>
-          <Router>
-            <AppContent />
-          </Router>
-        </AIScanStatusProvider>
+        <DemoDataProvider>
+          <AIScanStatusProvider>
+            <Router>
+              <AppContent />
+            </Router>
+          </AIScanStatusProvider>
+        </DemoDataProvider>
       </AuthProvider>
     </ErrorBoundary>
   );
