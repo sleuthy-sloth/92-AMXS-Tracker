@@ -12,7 +12,10 @@ import {
 
 export type ScannedLog = ScannedLogParsed;
 
-export const scanMaintenanceForm = async (base64Image: string): Promise<ScannedLog | null> => {
+export const scanMaintenanceForm = async (
+  base64Image: string,
+  mimeType: string = 'image/jpeg'
+): Promise<ScannedLog | null> => {
   try {
     const { data } = await generateJSONWithFallback({
       prompt:
@@ -20,6 +23,7 @@ export const scanMaintenanceForm = async (base64Image: string): Promise<ScannedL
       schema: ScannedLogSchema,
       context: 'scanMaintenanceForm',
       imageBase64: base64Image,
+      imageMimeType: mimeType,
     });
     return data;
   } catch (err) {
@@ -39,7 +43,10 @@ export const scanMaintenanceForm = async (base64Image: string): Promise<ScannedL
   }
 };
 
-export const scanLogBook = async (base64Image: string): Promise<ScannedLogBookParsed | null> => {
+export const scanLogBook = async (
+  base64Image: string,
+  mimeType: string = 'image/jpeg'
+): Promise<ScannedLogBookParsed | null> => {
   try {
     const { data } = await generateJSONWithFallback({
       prompt:
@@ -47,6 +54,7 @@ export const scanLogBook = async (base64Image: string): Promise<ScannedLogBookPa
       schema: ScannedLogBookSchema,
       context: 'scanLogBook',
       imageBase64: base64Image,
+      imageMimeType: mimeType,
     });
     return data;
   } catch (err) {

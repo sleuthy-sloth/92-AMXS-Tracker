@@ -16,6 +16,8 @@ interface LogFormModalProps {
   loading: boolean;
   isScanning: boolean;
   isG081Uploading: boolean;
+  onScan: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
+  onG081Upload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   scanInputRef: React.RefObject<HTMLInputElement | null>;
   g081InputRef: React.RefObject<HTMLInputElement | null>;
   personnelRoster: UserProfile[];
@@ -31,6 +33,8 @@ export const LogFormModal: React.FC<LogFormModalProps> = ({
   loading,
   isScanning,
   isG081Uploading,
+  onScan,
+  onG081Upload,
   scanInputRef,
   g081InputRef,
   personnelRoster,
@@ -55,6 +59,7 @@ export const LogFormModal: React.FC<LogFormModalProps> = ({
                 <input
                   type="file"
                   ref={scanInputRef}
+                  onChange={onScan}
                   className="hidden"
                   accept="image/*"
                   capture="environment"
@@ -236,6 +241,7 @@ export const LogFormModal: React.FC<LogFormModalProps> = ({
                   <input
                     type="file"
                     ref={g081InputRef}
+                    onChange={onG081Upload}
                     className="hidden"
                     accept="image/*"
                     capture="environment"

@@ -20,8 +20,10 @@ export interface GenerateJSONOptions<T> {
   openRouterModel?: string;
   /** Lower = more deterministic. Forwarded to both providers. */
   temperature?: number;
-  /** Optional base64 encoded JPEG image data (without data:image/jpeg;base64, prefix) */
+  /** Optional base64 encoded image data (without the data:...;base64, prefix) */
   imageBase64?: string;
+  /** MIME type of the image (defaults to 'image/jpeg'). Used to construct the data URL. */
+  imageMimeType?: string;
 }
 
 export interface GenerateJSONResult<T> {
@@ -193,7 +195,9 @@ async function callGenAIMil<T>(opts: GenerateJSONOptions<T>): Promise<T | null> 
             { type: 'text' as const, text: opts.prompt },
             {
               type: 'image_url' as const,
-              image_url: { url: `data:image/jpeg;base64,${opts.imageBase64}` },
+              image_url: {
+                url: `data:${opts.imageMimeType || 'image/jpeg'};base64,${opts.imageBase64}`,
+              },
             },
           ]
         : opts.prompt;
@@ -260,7 +264,9 @@ async function callOpenRouter<T>(opts: GenerateJSONOptions<T>): Promise<T | null
             { type: 'text' as const, text: opts.prompt },
             {
               type: 'image_url' as const,
-              image_url: { url: `data:image/jpeg;base64,${opts.imageBase64}` },
+              image_url: {
+                url: `data:${opts.imageMimeType || 'image/jpeg'};base64,${opts.imageBase64}`,
+              },
             },
           ]
         : opts.prompt;

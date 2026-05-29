@@ -38,16 +38,18 @@ export function useLogScanning(
     setIsScanning(true);
     try {
       const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve) => {
+      const scanResultPromise = new Promise<{ base64: string; mimeType: string }>((resolve) => {
         reader.onload = () => {
-          const base64 = (reader.result as string).split(',')[1];
-          resolve(base64);
+          const dataUrl = reader.result as string;
+          const [mimeRaw, base64] = dataUrl.split(',');
+          const mimeType = mimeRaw.replace('data:', '').replace(';base64', '');
+          resolve({ base64, mimeType });
         };
       });
       reader.readAsDataURL(file);
-      const base64 = await base64Promise;
+      const { base64, mimeType } = await scanResultPromise;
 
-      const result = await scanMaintenanceForm(base64);
+      const result = await scanMaintenanceForm(base64, mimeType);
       if (result) {
         setFormData((prev) => ({
           ...prev,
@@ -78,16 +80,18 @@ export function useLogScanning(
 
     try {
       const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve) => {
+      const scanResultPromise = new Promise<{ base64: string; mimeType: string }>((resolve) => {
         reader.onload = () => {
-          const base64 = (reader.result as string).split(',')[1];
-          resolve(base64);
+          const dataUrl = reader.result as string;
+          const [mimeRaw, base64] = dataUrl.split(',');
+          const mimeType = mimeRaw.replace('data:', '').replace(';base64', '');
+          resolve({ base64, mimeType });
         };
       });
       reader.readAsDataURL(file);
-      const base64 = await base64Promise;
+      const { base64, mimeType } = await scanResultPromise;
 
-      const results = await scanLogBook(base64);
+      const results = await scanLogBook(base64, mimeType);
       if (results && results.length > 0) {
         if (
           !window.confirm(
