@@ -299,5 +299,20 @@ service cloud.firestore {
         request.resource.data.timestamp is timestamp &&
         request.resource.data.hash is string;
     }
+
+    // Reference Documents (ISO checklists, QRL parts lists)
+    match /reference_docs/{docId} {
+      allow read: if isActiveUser();
+      allow create: if isActiveUser() &&
+        request.resource.data.keys().hasAll(['name', 'type', 'storagePath', 'downloadUrl', 'size', 'mimeType', 'uploadedBy', 'uploadedByUid', 'shopId', 'amuId', 'uploadedAt']) &&
+        request.resource.data.type in ['iso', 'qrl'] &&
+        request.resource.data.uploadedByUid == request.auth.uid;
+      allow delete: if isActiveUser() && (
+        request.resource.data.uploadedByUid == request.auth.uid ||
+        isNCOIC() || isLeadership() || isAdmin()
+      );
+      // Updates are not used; delete + re-upload is the pattern.
+      allow update: if false;
+    }
   }
 }

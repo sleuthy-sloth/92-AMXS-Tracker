@@ -21,8 +21,8 @@ export const Operations: React.FC = () => {
 
   return (
     <div className="flex flex-col">
-      <div className="px-8 pt-2 border-b border-outline">
-        <nav className="flex gap-1" role="tablist">
+      <div className="px-8 pt-2 border-b border-outline overflow-x-auto">
+        <nav className="flex gap-1 min-w-max" role="tablist">
           {TABS.map((tab) => {
             const isActive = tab.key === activeKey;
             return (
