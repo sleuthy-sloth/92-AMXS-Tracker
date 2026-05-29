@@ -36,7 +36,7 @@ const seedDatabase = async () => {
       });
 
       MOCK_TRAINING.forEach((t) => {
-        batch.set(doc(db, 'training', t.id || `mock-${Math.random()}`), t);
+        batch.set(doc(db, 'trainings', t.id || `mock-${Math.random()}`), t);
       });
 
       MOCK_LOGS.forEach((l) => {

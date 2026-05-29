@@ -54,5 +54,4 @@ export function handleFirestoreError(
     userId: auth.currentUser?.uid,
   };
   console.error('Firestore Error:', errInfo);
-  throw new Error(code ? `${code}: ${message}` : message);
 }
