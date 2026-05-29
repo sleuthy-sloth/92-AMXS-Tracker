@@ -18,7 +18,8 @@ import { classifyError, AIRetryError } from '../../lib/aiRetry';
 import { cn } from '../../lib/utils';
 
 const CACHE_TTL_MS = 3600000; // 1 hour
-const LOCK_KEY_PREFIX = 'intelligence';
+const CACHE_PREFIX = 'intelligence';
+const SCAN_KIND = 'intelligence-feed';
 
 type IntelAlert = {
   id: string;
@@ -68,11 +69,7 @@ export const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[]; training: Trai
 
       const load = async () => {
         // ── Step 1: Read cache immediately (stale-ok) ────────────────
-        const cached = await getCachedAIResultStaleOk<IntelAlert[]>(
-          LOCK_KEY_PREFIX,
-          cacheKey,
-          CACHE_TTL_MS
-        );
+        reportError(SCAN_KIND, cacheKey, CACHE_TTL_MS);
 
         if (cancelled) return;
 
@@ -91,7 +88,7 @@ export const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[]; training: Trai
 
         // ── Step 2: If cache is fresh, we're done ────────────────────
         if (cached.exists && cached.age < CACHE_TTL_MS) {
-          reportSuccess(LOCK_KEY_PREFIX);
+          reportSuccess(SCAN_KIND);
           return;
         }
 
@@ -134,13 +131,13 @@ export const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[]; training: Trai
             ]);
           }
           setLoading(false);
-          reportSuccess(LOCK_KEY_PREFIX);
+          reportSuccess(SCAN_KIND);
           return;
         }
 
         const currentHash = generateDataHash([...recentLogs, ...imminentTraining]);
         const lockAcquired = await acquireCacheLock(
-          `${LOCK_KEY_PREFIX}_${cacheKey}`,
+          `${CACHE_PREFIX}_${cacheKey}`,
           sessionRef.current
         );
 
@@ -153,7 +150,7 @@ export const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[]; training: Trai
         }
 
         // ── Step 5: We hold the lock — generate fresh intelligence ────
-        reportStart(LOCK_KEY_PREFIX);
+        reportStart(SCAN_KIND);
         setLoading(true);
 
         try {
@@ -187,19 +184,19 @@ export const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[]; training: Trai
           setAlerts(finalAlerts);
 
           // Save to cache
-          await setCachedAIResult(LOCK_KEY_PREFIX, cacheKey, finalAlerts, currentHash);
-          reportSuccess(LOCK_KEY_PREFIX, source);
+          await setCachedAIResult(CACHE_PREFIX, cacheKey, finalAlerts, currentHash);
+          reportSuccess(SCAN_KIND, source);
         } catch (err) {
           console.error('Intelligence Feed Error:', err);
           const classified = err instanceof AIRetryError ? err.classified : classifyError(err);
-          reportError(LOCK_KEY_PREFIX, classified);
+          reportError(SCAN_KIND, classified);
 
           if (!cached.exists) {
             setAlerts([NOMINAL_ALERT]);
           }
         } finally {
           setLoading(false);
-          await releaseCacheLock(`${LOCK_KEY_PREFIX}_${cacheKey}`, sessionRef.current);
+          await releaseCacheLock(`${CACHE_PREFIX}_${cacheKey}`, sessionRef.current);
         }
       };
 
