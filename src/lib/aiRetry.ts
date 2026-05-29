@@ -39,7 +39,8 @@ function extractStatus(err: unknown): number | undefined {
   const candidate = err as { status?: unknown; code?: unknown; response?: { status?: unknown } };
   if (typeof candidate.status === 'number') return candidate.status;
   if (typeof candidate.code === 'number') return candidate.code;
-  if (candidate.response && typeof candidate.response.status === 'number') return candidate.response.status;
+  if (candidate.response && typeof candidate.response.status === 'number')
+    return candidate.response.status;
   const msg = err instanceof Error ? err.message : String(err);
   const match = msg.match(/\b(4\d{2}|5\d{2})\b/);
   return match ? Number(match[1]) : undefined;
@@ -56,7 +57,13 @@ export function classifyError(err: unknown): ClassifiedError {
     return { kind: 'parse', message, retryable: false, status };
   }
 
-  if (status === 401 || status === 403 || lower.includes('api key') || lower.includes('unauthorized') || lower.includes('forbidden')) {
+  if (
+    status === 401 ||
+    status === 403 ||
+    lower.includes('api key') ||
+    lower.includes('unauthorized') ||
+    lower.includes('forbidden')
+  ) {
     return { kind: 'auth', message, retryable: false, status };
   }
 
@@ -72,7 +79,12 @@ export function classifyError(err: unknown): ClassifiedError {
     return { kind: 'timeout', message, retryable: true, status };
   }
 
-  if (status === 503 || status === 502 || status === 504 || lower.includes('network') || lower.includes('fetch failed') || lower.includes('econn')) {
+  if (
+    (status && status >= 500) ||
+    lower.includes('network') ||
+    lower.includes('fetch failed') ||
+    lower.includes('econn')
+  ) {
     return { kind: 'network', message, retryable: true, status };
   }
 
@@ -87,16 +99,20 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) return reject(new DOMException('Aborted', 'AbortError'));
     const id = setTimeout(resolve, ms);
-    signal?.addEventListener('abort', () => {
-      clearTimeout(id);
-      reject(new DOMException('Aborted', 'AbortError'));
-    }, { once: true });
+    signal?.addEventListener(
+      'abort',
+      () => {
+        clearTimeout(id);
+        reject(new DOMException('Aborted', 'AbortError'));
+      },
+      { once: true }
+    );
   });
 }
 
 export async function withRetry<T>(
   fn: (signal: AbortSignal) => Promise<T>,
-  opts: RetryOptions = {},
+  opts: RetryOptions = {}
 ): Promise<T> {
   const retries = opts.retries ?? DEFAULT_RETRIES;
   const baseDelay = opts.baseDelayMs ?? DEFAULT_BASE_DELAY_MS;
@@ -136,5 +152,7 @@ export async function withRetry<T>(
     }
   }
 
-  throw new AIRetryError(lastClassified ?? { kind: 'unknown', message: 'Retry loop exhausted', retryable: false });
+  throw new AIRetryError(
+    lastClassified ?? { kind: 'unknown', message: 'Retry loop exhausted', retryable: false }
+  );
 }
