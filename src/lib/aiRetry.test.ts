@@ -54,6 +54,12 @@ describe('classifyError', () => {
     expect(c.retryable).toBe(true);
   });
 
+  it('identifies browser "Failed to fetch" as network (retryable)', () => {
+    const c = classifyError(new TypeError('Failed to fetch'));
+    expect(c.kind).toBe('network');
+    expect(c.retryable).toBe(true);
+  });
+
   it('identifies quota errors as quota (retryable)', () => {
     const c = classifyError(new Error('RESOURCE_EXHAUSTED: quota exceeded'));
     expect(c.kind).toBe('quota');
@@ -133,10 +139,11 @@ describe('withRetry', () => {
   });
 
   it('aborts via timeout when inner fn never resolves', async () => {
-    const fn = vi.fn((signal: AbortSignal) =>
-      new Promise((_, reject) => {
-        signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
-      })
+    const fn = vi.fn(
+      (signal: AbortSignal) =>
+        new Promise((_, reject) => {
+          signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+        })
     );
     const p = withRetry(fn, { retries: 0, timeoutMs: 100 }).catch((e) => e);
     await vi.advanceTimersByTimeAsync(100);
