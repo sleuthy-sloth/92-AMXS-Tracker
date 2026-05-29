@@ -104,6 +104,27 @@
         "timestamp": { "type": "string", "format": "date-time", "description": "Server timestamp of creation" }
       },
       "required": ["data", "timestamp", "hash"]
+    },
+    "ReferenceDoc": {
+      "title": "Reference Document",
+      "description": "Uploaded ISO checklist or QRL Excel file for shop reference",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Original filename" },
+        "type": { "type": "string", "enum": ["iso", "qrl"], "description": "Document category" },
+        "storagePath": { "type": "string", "description": "Path in Firebase Storage" },
+        "downloadUrl": { "type": "string", "format": "uri", "description": "Public download URL" },
+        "size": { "type": "integer", "description": "File size in bytes" },
+        "mimeType": { "type": "string", "description": "MIME type (application/vnd.openxmlformats...)" },
+        "description": { "type": "string", "description": "Optional short description" },
+        "uploadedBy": { "type": "string", "description": "Name of uploader" },
+        "uploadedByUid": { "type": "string", "description": "UID of uploader" },
+        "shopId": { "type": "string", "description": "Uploader's shop" },
+        "amuId": { "type": "string", "description": "Uploader's AMU" },
+        "uploadedAt": { "type": "string", "format": "date-time", "description": "Server upload timestamp" },
+        "isDemo": { "type": "boolean", "description": "Demo data flag" }
+      },
+      "required": ["name", "type", "storagePath", "downloadUrl", "size", "mimeType", "uploadedBy", "uploadedByUid", "shopId", "amuId", "uploadedAt"]
     }
   },
   "firestore": {
@@ -134,6 +155,10 @@
     "/ai_cache/{cacheId}": {
       "schema": "AICache",
       "description": "Caches results of heavy LLM calls"
+    },
+    "/reference_docs/{docId}": {
+      "schema": "ReferenceDoc",
+      "description": "Uploaded reference documents (ISO checklists, QRL parts lists)"
     }
   }
 }
