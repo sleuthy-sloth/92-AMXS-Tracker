@@ -1,14 +1,12 @@
 import { z } from 'zod';
-import { httpsCallable } from 'firebase/functions';
-import { functions } from '../firebase';
-import { isGenAIMilConfigured, isOpenRouterConfigured } from './gemini';
+import { isGenAIMilConfigured, isOpenRouterConfigured, getGenAIMilApiKey } from './gemini';
 export { isOpenRouterConfigured };
 import { safeParse } from './aiSchemas';
 import { withRetry, AIRetryError, classifyError } from './aiRetry';
 
 // Provider-agnostic JSON generation with automatic GenAI.mil → OpenRouter
-// fallback. All AI calls are proxied through Cloud Functions to keep API
-// keys server-side. The proxy validates authentication and enforces rate limits.
+// fallback. API keys are injected at build time from .env.local (dev) or
+// GitHub Secrets (CI/CD). The client calls AI providers directly.
 
 export type AIProvider = 'genai-mil' | 'openrouter';
 
@@ -31,19 +29,14 @@ export interface GenerateJSONResult<T> {
   source: AIProvider;
 }
 
+const GENAI_MIL_ENDPOINT = 'https://api.genai.mil/v1/chat/completions';
+const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
+
 const DEFAULT_GENAI_MIL_MODEL = 'gemini-2.5-flash';
 const DEFAULT_OPENROUTER_MODEL = 'google/gemma-4-31b-it:free';
 const DEFAULT_OPENROUTER_FALLBACK_MODEL = 'nvidia/nemotron-nano-12b-2-vl:free';
 // Tool calling: Gemma 4 31B supports native function calling and multimodal input.
 const DEFAULT_OPENROUTER_TOOLS_MODEL = 'google/gemma-4-31b-it:free';
-
-// Proxy response shape
-interface ProxyResponse {
-  ok: boolean;
-  status: number;
-  statusText: string;
-  body: unknown;
-}
 
 // OpenAI-compatible response types
 interface OpenAICompatChoice {
@@ -71,45 +64,6 @@ export interface OpenRouterToolSchema {
   description: string;
   /** JSON schema for the tool's parameters. */
   parameters: Record<string, unknown>;
-}
-
-// ─── Proxy helper ────────────────────────────────────────────────────
-
-/**
- * Call the Cloud Function AI proxy. Routes requests through server-side
- * proxy to keep API keys secure. Handles both GenAI.mil and OpenRouter.
- */
-export async function callAIProxy(
-  provider: AIProvider,
-  body: Record<string, unknown>,
-  signal?: AbortSignal
-): Promise<ProxyResponse> {
-  const proxyFn = httpsCallable<
-    { provider: AIProvider; body: Record<string, unknown> },
-    ProxyResponse
-  >(functions, 'proxyAI');
-
-  try {
-    const result = await proxyFn({ provider, body });
-    return result.data;
-  } catch (err) {
-    // Firebase Functions errors
-    if (err && typeof err === 'object' && 'code' in err) {
-      const firebaseErr = err as {
-        code: string;
-        message: string;
-        details?: { retryAfter?: number };
-      };
-      const status = firebaseErr.code === 'resource-exhausted' ? 429 : 500;
-      return {
-        ok: false,
-        status,
-        statusText: firebaseErr.message,
-        body: { error: { message: firebaseErr.message } },
-      };
-    }
-    throw err;
-  }
 }
 
 // ─── Fallback logic ──────────────────────────────────────────────────
@@ -188,9 +142,50 @@ export function __resetGeminiCooldownForTests(): void {
   }
 }
 
+// ─── Helper: direct fetch to an OpenAI-compatible endpoint ────────────
+
+async function directFetch(
+  endpoint: string,
+  apiKey: string,
+  body: Record<string, unknown>,
+  options: { signal?: AbortSignal; extraHeaders?: Record<string, string> } = {}
+): Promise<OpenAICompatResponse> {
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    signal: options.signal,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+      ...options.extraHeaders,
+    },
+    body: JSON.stringify(body),
+  });
+
+  const responseBody = (await res.json()) as OpenAICompatResponse;
+
+  if (!res.ok) {
+    const errMsg = responseBody?.error?.message ?? 'Unknown error';
+    throw Object.assign(new Error(`${res.status}: ${errMsg}`), {
+      status: res.status,
+      statusText: res.statusText,
+      body: responseBody,
+    });
+  }
+
+  if (responseBody.error) {
+    throw Object.assign(new Error(responseBody.error.message ?? 'API error'), {
+      status: responseBody.error.code,
+    });
+  }
+
+  return responseBody;
+}
+
 // ─── Provider implementations ────────────────────────────────────────
 
 async function callGenAIMil<T>(opts: GenerateJSONOptions<T>): Promise<T | null> {
+  const apiKey = getGenAIMilApiKey();
+
   return withRetry(
     async (signal) => {
       const userContent = opts.imageBase64
@@ -203,57 +198,61 @@ async function callGenAIMil<T>(opts: GenerateJSONOptions<T>): Promise<T | null> 
           ]
         : opts.prompt;
 
-      const result = await callAIProxy(
-        'genai-mil',
-        {
-          model: opts.geminiModel ?? DEFAULT_GENAI_MIL_MODEL,
-          temperature: opts.temperature ?? 0.1,
-          response_format: { type: 'json_object' },
-          messages: [
-            {
-              role: 'system',
-              content:
-                'Respond with a single JSON value matching the requested shape. Do not wrap it in markdown fences or commentary.',
-            },
-            { role: 'user', content: userContent },
-          ],
-        },
-        signal
-      );
+      try {
+        const json = await directFetch(
+          GENAI_MIL_ENDPOINT,
+          apiKey,
+          {
+            model: opts.geminiModel ?? DEFAULT_GENAI_MIL_MODEL,
+            temperature: opts.temperature ?? 0.1,
+            response_format: { type: 'json_object' },
+            messages: [
+              {
+                role: 'system',
+                content:
+                  'Respond with a single JSON value matching the requested shape. Do not wrap it in markdown fences or commentary.',
+              },
+              { role: 'user', content: userContent },
+            ],
+          },
+          { signal }
+        );
 
-      if (!result.ok) {
-        // Special-case key-lock: 401 with unlock_url should fall back to OpenRouter
-        if (result.status === 401) {
-          const body = result.body as OpenAICompatResponse;
+        const raw = json.choices?.[0]?.message?.content;
+        return safeParse(opts.schema, raw, opts.context);
+      } catch (err) {
+        // Special-case key-lock: 401 with unlock_url should fall back to OpenRouter.
+        // Throw as non-retryable AIRetryError so withRetry propagates immediately.
+        if (
+          err &&
+          typeof err === 'object' &&
+          'status' in err &&
+          (err as { status: number }).status === 401 &&
+          'body' in err
+        ) {
+          const body = (err as { body: OpenAICompatResponse }).body;
           const unlockUrl = body?.error?.unlock_url;
           if (unlockUrl) {
             console.warn(`[AI] GenAI.mil key locked. Unlock at: ${unlockUrl}`);
-            throw Object.assign(new Error(`GenAI.mil key locked — visit ${unlockUrl} to unlock`), {
+            throw new AIRetryError({
+              kind: 'rate_limit',
+              message: `GenAI.mil key locked — visit ${unlockUrl} to unlock`,
+              retryable: false,
               status: 429,
             });
           }
         }
-        const bodyStr = typeof result.body === 'string' ? result.body : JSON.stringify(result.body);
-        throw Object.assign(
-          new Error(`GenAI.mil ${result.status}: ${bodyStr || result.statusText}`),
-          { status: result.status }
-        );
+        throw err;
       }
-
-      const json = result.body as OpenAICompatResponse;
-      if (json.error) {
-        throw Object.assign(new Error(json.error.message ?? 'GenAI.mil error'), {
-          status: json.error.code,
-        });
-      }
-      const raw = json.choices?.[0]?.message?.content;
-      return safeParse(opts.schema, raw, opts.context);
     },
     { signal: opts.signal }
   );
 }
 
 async function callOpenRouter<T>(opts: GenerateJSONOptions<T>): Promise<T | null> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) throw new Error('OPENROUTER_API_KEY is not configured');
+
   return withRetry(
     async (signal) => {
       const userContent = opts.imageBase64
@@ -266,8 +265,9 @@ async function callOpenRouter<T>(opts: GenerateJSONOptions<T>): Promise<T | null
           ]
         : opts.prompt;
 
-      const result = await callAIProxy(
-        'openrouter',
+      const json = await directFetch(
+        OPENROUTER_ENDPOINT,
+        apiKey,
         {
           model: opts.openRouterModel ?? DEFAULT_OPENROUTER_MODEL,
           temperature: opts.temperature ?? 0.1,
@@ -281,23 +281,15 @@ async function callOpenRouter<T>(opts: GenerateJSONOptions<T>): Promise<T | null
             { role: 'user', content: userContent },
           ],
         },
-        signal
+        {
+          signal,
+          extraHeaders: {
+            'HTTP-Referer': window.location.origin,
+            'X-Title': 'AMXS Maintenance System',
+          },
+        }
       );
 
-      if (!result.ok) {
-        const bodyStr = typeof result.body === 'string' ? result.body : JSON.stringify(result.body);
-        throw Object.assign(
-          new Error(`OpenRouter ${result.status}: ${bodyStr || result.statusText}`),
-          { status: result.status }
-        );
-      }
-
-      const json = result.body as OpenAICompatResponse;
-      if (json.error) {
-        throw Object.assign(new Error(json.error.message ?? 'OpenRouter error'), {
-          status: json.error.code,
-        });
-      }
       const raw = json.choices?.[0]?.message?.content;
       return safeParse(opts.schema, raw, `${opts.context}/openrouter`);
     },
@@ -355,6 +347,43 @@ export async function generateJSONWithFallback<T>(
 
 // ─── Tool-calling implementations ────────────────────────────────────
 
+async function directFetchWithError(
+  endpoint: string,
+  apiKey: string,
+  body: Record<string, unknown>,
+  options: { signal?: AbortSignal; extraHeaders?: Record<string, string> } = {}
+): Promise<OpenAICompatResponse> {
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    signal: options.signal,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+      ...options.extraHeaders,
+    },
+    body: JSON.stringify(body),
+  });
+
+  const responseBody = (await res.json()) as OpenAICompatResponse;
+
+  if (!res.ok) {
+    const errMsg = responseBody?.error?.message ?? 'Unknown error';
+    throw Object.assign(new Error(`${res.status}: ${errMsg}`), {
+      status: res.status,
+      statusText: res.statusText,
+      body: responseBody,
+    });
+  }
+
+  if (responseBody.error) {
+    throw Object.assign(new Error(responseBody.error.message ?? 'API error'), {
+      status: responseBody.error.code,
+    });
+  }
+
+  return responseBody;
+}
+
 export async function runGenAIMilWithTools(params: {
   systemPrompt: string;
   userPrompt: string;
@@ -364,6 +393,7 @@ export async function runGenAIMilWithTools(params: {
   model?: string;
   temperature?: number;
 }): Promise<string> {
+  const apiKey = getGenAIMilApiKey();
   const model = params.model ?? DEFAULT_GENAI_MIL_MODEL;
   const temperature = params.temperature ?? 0;
   const toolsPayload = params.tools.map((t) => ({
@@ -377,46 +407,47 @@ export async function runGenAIMilWithTools(params: {
 
   const firstResponse = await withRetry(
     async (signal) => {
-      const result = await callAIProxy(
-        'genai-mil',
-        {
-          model,
-          temperature,
-          tools: toolsPayload,
-          tool_choice: 'auto',
-          messages: [
-            { role: 'system', content: params.systemPrompt },
-            { role: 'user', content: params.userPrompt },
-          ],
-        },
-        signal
-      );
-
-      if (!result.ok) {
-        if (result.status === 401) {
-          const body = result.body as OpenAICompatResponse;
+      try {
+        const json = await directFetchWithError(
+          GENAI_MIL_ENDPOINT,
+          apiKey,
+          {
+            model,
+            temperature,
+            tools: toolsPayload,
+            tool_choice: 'auto',
+            messages: [
+              { role: 'system', content: params.systemPrompt },
+              { role: 'user', content: params.userPrompt },
+            ],
+          },
+          { signal }
+        );
+        return json;
+      } catch (err) {
+        // Special-case key-lock: 401 with unlock_url should fall back to OpenRouter.
+        // Throw as non-retryable AIRetryError so withRetry propagates immediately.
+        if (
+          err &&
+          typeof err === 'object' &&
+          'status' in err &&
+          (err as { status: number }).status === 401 &&
+          'body' in err
+        ) {
+          const body = (err as { body: OpenAICompatResponse }).body;
           const unlockUrl = body?.error?.unlock_url;
           if (unlockUrl) {
             console.warn(`[AI] GenAI.mil key locked. Unlock at: ${unlockUrl}`);
-            throw Object.assign(new Error(`GenAI.mil key locked — visit ${unlockUrl} to unlock`), {
+            throw new AIRetryError({
+              kind: 'rate_limit',
+              message: `GenAI.mil key locked — visit ${unlockUrl} to unlock`,
+              retryable: false,
               status: 429,
             });
           }
         }
-        const bodyStr = typeof result.body === 'string' ? result.body : JSON.stringify(result.body);
-        throw Object.assign(
-          new Error(`GenAI.mil ${result.status}: ${bodyStr || result.statusText}`),
-          { status: result.status }
-        );
+        throw err;
       }
-
-      const json = result.body as OpenAICompatResponse;
-      if (json.error) {
-        throw Object.assign(new Error(json.error.message ?? 'GenAI.mil error'), {
-          status: json.error.code,
-        });
-      }
-      return json;
     },
     { signal: params.signal }
   );
@@ -452,8 +483,9 @@ export async function runGenAIMilWithTools(params: {
 
   const finalText = await withRetry(
     async (signal) => {
-      const result = await callAIProxy(
-        'genai-mil',
+      const json = await directFetchWithError(
+        GENAI_MIL_ENDPOINT,
+        apiKey,
         {
           model,
           temperature,
@@ -473,23 +505,9 @@ export async function runGenAIMilWithTools(params: {
             })),
           ],
         },
-        signal
+        { signal }
       );
 
-      if (!result.ok) {
-        const bodyStr = typeof result.body === 'string' ? result.body : JSON.stringify(result.body);
-        throw Object.assign(
-          new Error(`GenAI.mil ${result.status}: ${bodyStr || result.statusText}`),
-          { status: result.status }
-        );
-      }
-
-      const json = result.body as OpenAICompatResponse;
-      if (json.error) {
-        throw Object.assign(new Error(json.error.message ?? 'GenAI.mil error'), {
-          status: json.error.code,
-        });
-      }
       const content = json.choices?.[0]?.message?.content;
       if (typeof content !== 'string' || !content.trim()) {
         throw new Error('GenAI.mil returned empty final content');
@@ -509,10 +527,14 @@ export async function generateTextWithOpenRouter(params: {
   model?: string;
   temperature?: number;
 }): Promise<string> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) throw new Error('OPENROUTER_API_KEY is not configured');
+
   return withRetry(
     async (signal) => {
-      const result = await callAIProxy(
-        'openrouter',
+      const json = await directFetchWithError(
+        OPENROUTER_ENDPOINT,
+        apiKey,
         {
           model: params.model ?? DEFAULT_OPENROUTER_MODEL,
           temperature: params.temperature ?? 0.2,
@@ -521,23 +543,15 @@ export async function generateTextWithOpenRouter(params: {
             { role: 'user', content: params.userPrompt },
           ],
         },
-        signal
+        {
+          signal,
+          extraHeaders: {
+            'HTTP-Referer': window.location.origin,
+            'X-Title': 'AMXS Maintenance System',
+          },
+        }
       );
 
-      if (!result.ok) {
-        const bodyStr = typeof result.body === 'string' ? result.body : JSON.stringify(result.body);
-        throw Object.assign(
-          new Error(`OpenRouter ${result.status}: ${bodyStr || result.statusText}`),
-          { status: result.status }
-        );
-      }
-
-      const json = result.body as OpenAICompatResponse;
-      if (json.error) {
-        throw Object.assign(new Error(json.error.message ?? 'OpenRouter error'), {
-          status: json.error.code,
-        });
-      }
       const raw = json.choices?.[0]?.message?.content;
       if (typeof raw !== 'string' || !raw.trim()) {
         throw new Error('OpenRouter returned empty content');
@@ -557,6 +571,9 @@ export async function runOpenRouterWithTools(params: {
   model?: string;
   temperature?: number;
 }): Promise<string> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) throw new Error('OPENROUTER_API_KEY is not configured');
+
   const model = params.model ?? DEFAULT_OPENROUTER_TOOLS_MODEL;
   const temperature = params.temperature ?? 0;
   const toolsPayload = params.tools.map((t) => ({
@@ -570,8 +587,9 @@ export async function runOpenRouterWithTools(params: {
 
   const firstResponse = await withRetry(
     async (signal) => {
-      const result = await callAIProxy(
-        'openrouter',
+      const json = await directFetchWithError(
+        OPENROUTER_ENDPOINT,
+        apiKey,
         {
           model,
           temperature,
@@ -582,23 +600,15 @@ export async function runOpenRouterWithTools(params: {
             { role: 'user', content: params.userPrompt },
           ],
         },
-        signal
+        {
+          signal,
+          extraHeaders: {
+            'HTTP-Referer': window.location.origin,
+            'X-Title': 'AMXS Maintenance System',
+          },
+        }
       );
 
-      if (!result.ok) {
-        const bodyStr = typeof result.body === 'string' ? result.body : JSON.stringify(result.body);
-        throw Object.assign(
-          new Error(`OpenRouter ${result.status}: ${bodyStr || result.statusText}`),
-          { status: result.status }
-        );
-      }
-
-      const json = result.body as OpenAICompatResponse;
-      if (json.error) {
-        throw Object.assign(new Error(json.error.message ?? 'OpenRouter error'), {
-          status: json.error.code,
-        });
-      }
       return json;
     },
     { signal: params.signal }
@@ -635,8 +645,9 @@ export async function runOpenRouterWithTools(params: {
 
   const finalText = await withRetry(
     async (signal) => {
-      const result = await callAIProxy(
-        'openrouter',
+      const json = await directFetchWithError(
+        OPENROUTER_ENDPOINT,
+        apiKey,
         {
           model,
           temperature,
@@ -656,23 +667,15 @@ export async function runOpenRouterWithTools(params: {
             })),
           ],
         },
-        signal
+        {
+          signal,
+          extraHeaders: {
+            'HTTP-Referer': window.location.origin,
+            'X-Title': 'AMXS Maintenance System',
+          },
+        }
       );
 
-      if (!result.ok) {
-        const bodyStr = typeof result.body === 'string' ? result.body : JSON.stringify(result.body);
-        throw Object.assign(
-          new Error(`OpenRouter ${result.status}: ${bodyStr || result.statusText}`),
-          { status: result.status }
-        );
-      }
-
-      const json = result.body as OpenAICompatResponse;
-      if (json.error) {
-        throw Object.assign(new Error(json.error.message ?? 'OpenRouter error'), {
-          status: json.error.code,
-        });
-      }
       const content = json.choices?.[0]?.message?.content;
       if (typeof content !== 'string' || !content.trim()) {
         throw new Error('OpenRouter returned empty final content');

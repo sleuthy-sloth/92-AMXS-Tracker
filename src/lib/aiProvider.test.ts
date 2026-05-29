@@ -13,19 +13,6 @@ vi.mock('./gemini', () => ({
   },
 }));
 
-// Mock Firebase modules
-vi.mock('../firebase', () => ({
-  functions: {},
-  db: {},
-  auth: {},
-}));
-
-// Create a mock for httpsCallable
-const mockHttpsCallable = vi.fn();
-vi.mock('firebase/functions', () => ({
-  httpsCallable: () => mockHttpsCallable,
-}));
-
 const Schema = z.array(z.object({ id: z.number() }));
 
 const setKeys = (genaiMil?: string, openrouter?: string) => {
@@ -35,14 +22,30 @@ const setKeys = (genaiMil?: string, openrouter?: string) => {
   else process.env.OPENROUTER_API_KEY = openrouter;
 };
 
-const okProxyResponse = (data: unknown) => ({
-  data: {
-    ok: true,
-    status: 200,
-    statusText: 'OK',
-    body: { choices: [{ message: { content: JSON.stringify(data) } }] },
-  },
-});
+/** Create a valid JSON response for the AI endpoint */
+const okResponse = (data: unknown): Response =>
+  new Response(
+    JSON.stringify({
+      choices: [{ message: { content: JSON.stringify(data) } }],
+    }),
+    { status: 200, headers: { 'Content-Type': 'application/json' } }
+  );
+
+/** Create an error fetch Response */
+const errorResponse = (status: number, body: Record<string, unknown> = {}): Response =>
+  new Response(JSON.stringify({ error: { message: body.message ?? 'Error', ...body } }), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+/** Create a locked-key 401 response */
+const lockResponse = (unlockUrl: string): Response =>
+  new Response(
+    JSON.stringify({
+      error: { message: 'Key locked', unlock_url: unlockUrl },
+    }),
+    { status: 401, headers: { 'Content-Type': 'application/json' } }
+  );
 
 // Throw AIRetryError to short-circuit withRetry's backoff loop in tests
 const quotaError = () =>
@@ -51,20 +54,24 @@ const unavailableError = () =>
   new AIRetryError({ kind: 'network', message: '503 UNAVAILABLE', retryable: false, status: 503 });
 
 describe('aiProvider.generateJSONWithFallback', () => {
+  let fetchSpy: ReturnType<typeof vi.fn>;
+
   beforeEach(async () => {
     vi.clearAllMocks();
     setKeys('test-genaimil', 'test-openrouter');
     const { __resetGeminiCooldownForTests } = await import('./aiProvider');
     __resetGeminiCooldownForTests();
+
+    // Default: mock fetch to succeed with GenAI.mil call
+    fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(okResponse([{ id: 1 }]));
   });
 
   afterEach(() => {
     setKeys();
+    vi.restoreAllMocks();
   });
 
   it('returns genai-mil result on success without calling OpenRouter', async () => {
-    mockHttpsCallable.mockResolvedValueOnce(okProxyResponse([{ id: 1 }]));
-
     const { generateJSONWithFallback } = await import('./aiProvider');
     const result = await generateJSONWithFallback({
       prompt: 'p',
@@ -74,17 +81,16 @@ describe('aiProvider.generateJSONWithFallback', () => {
 
     expect(result.source).toBe('genai-mil');
     expect(result.data).toEqual([{ id: 1 }]);
-    expect(mockHttpsCallable).toHaveBeenCalledOnce();
-    expect(mockHttpsCallable.mock.calls[0][0]).toEqual({
-      provider: 'genai-mil',
-      body: expect.objectContaining({ model: expect.any(String) }),
-    });
+    // Should only make one fetch call (GenAI.mil)
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    // Verify it called the GenAI.mil endpoint
+    const callUrl = fetchSpy.mock.calls[0][0];
+    expect(callUrl).toContain('api.genai.mil');
   });
 
   it('falls back to OpenRouter on GenAI.mil quota exhaustion', async () => {
-    mockHttpsCallable
-      .mockRejectedValueOnce(quotaError())
-      .mockResolvedValueOnce(okProxyResponse([{ id: 9 }]));
+    // First call fails with quota, second succeeds
+    fetchSpy.mockRejectedValueOnce(quotaError()).mockResolvedValueOnce(okResponse([{ id: 9 }]));
 
     const { generateJSONWithFallback } = await import('./aiProvider');
     const result = await generateJSONWithFallback({
@@ -95,13 +101,16 @@ describe('aiProvider.generateJSONWithFallback', () => {
 
     expect(result.source).toBe('openrouter');
     expect(result.data).toEqual([{ id: 9 }]);
-    expect(mockHttpsCallable).toHaveBeenCalledTimes(2);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    // First call should be GenAI.mil, second should be OpenRouter
+    expect(fetchSpy.mock.calls[0][0]).toContain('api.genai.mil');
+    expect(fetchSpy.mock.calls[1][0]).toContain('openrouter.ai');
   });
 
   it('falls back to OpenRouter on GenAI.mil 503 / UNAVAILABLE', async () => {
-    mockHttpsCallable
+    fetchSpy
       .mockRejectedValueOnce(unavailableError())
-      .mockResolvedValueOnce(okProxyResponse([{ id: 7 }]));
+      .mockResolvedValueOnce(okResponse([{ id: 7 }]));
 
     const { generateJSONWithFallback } = await import('./aiProvider');
     const result = await generateJSONWithFallback({
@@ -112,11 +121,11 @@ describe('aiProvider.generateJSONWithFallback', () => {
 
     expect(result.source).toBe('openrouter');
     expect(result.data).toEqual([{ id: 7 }]);
-    expect(mockHttpsCallable).toHaveBeenCalledTimes(2);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 
   it('does NOT fall back on auth errors — rethrows', async () => {
-    mockHttpsCallable.mockRejectedValueOnce(
+    fetchSpy.mockRejectedValueOnce(
       new AIRetryError({ kind: 'auth', message: 'unauthorized', retryable: false })
     );
 
@@ -127,14 +136,11 @@ describe('aiProvider.generateJSONWithFallback', () => {
   });
 
   it('falls back to OpenRouter when GenAI.mil key is locked (401 with unlock_url)', async () => {
-    const lockError = new AIRetryError({
-      kind: 'rate_limit',
-      message: 'GenAI.mil key locked',
-      retryable: false,
-    });
-    mockHttpsCallable
-      .mockRejectedValueOnce(lockError)
-      .mockResolvedValueOnce(okProxyResponse([{ id: 5 }]));
+    const unlockUrl = 'https://unlock.genai.mil/key123';
+    // First call: 401 with unlock_url (throws as rate_limit -> fallback eligible)
+    fetchSpy
+      .mockResolvedValueOnce(lockResponse(unlockUrl))
+      .mockResolvedValueOnce(okResponse([{ id: 5 }]));
 
     const { generateJSONWithFallback } = await import('./aiProvider');
     const result = await generateJSONWithFallback({
@@ -145,12 +151,12 @@ describe('aiProvider.generateJSONWithFallback', () => {
 
     expect(result.source).toBe('openrouter');
     expect(result.data).toEqual([{ id: 5 }]);
-    expect(mockHttpsCallable).toHaveBeenCalledTimes(2);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 
   it('rethrows the GenAI.mil quota error when OpenRouter is unconfigured', async () => {
     setKeys('test-genaimil', undefined);
-    mockHttpsCallable.mockRejectedValue(quotaError());
+    fetchSpy.mockRejectedValue(quotaError());
 
     const { generateJSONWithFallback } = await import('./aiProvider');
     await expect(
@@ -167,16 +173,17 @@ describe('aiProvider.generateJSONWithFallback', () => {
   });
 
   it('skips GenAI.mil on the second call after a quota hit (cooldown)', async () => {
-    mockHttpsCallable
+    fetchSpy
       .mockRejectedValueOnce(quotaError())
-      .mockResolvedValueOnce(okProxyResponse([{ id: 1 }]))
-      .mockResolvedValueOnce(okProxyResponse([{ id: 2 }]));
+      .mockResolvedValueOnce(okResponse([{ id: 1 }]))
+      .mockResolvedValueOnce(okResponse([{ id: 2 }]));
 
     const { generateJSONWithFallback, isGeminiOnCooldown } = await import('./aiProvider');
 
+    // First call: GenAI.mil fails, falls back to OpenRouter
     await generateJSONWithFallback({ prompt: 'p', schema: Schema, context: 'test' });
     expect(isGeminiOnCooldown()).toBe(true);
-    expect(mockHttpsCallable).toHaveBeenCalledTimes(2); // 1 genai-mil (fail) + 1 openrouter
+    expect(fetchSpy).toHaveBeenCalledTimes(2); // 1 genai-mil (fail) + 1 openrouter
 
     // Second call: cooldown should skip GenAI.mil entirely
     const secondResult = await generateJSONWithFallback({
@@ -185,17 +192,15 @@ describe('aiProvider.generateJSONWithFallback', () => {
       context: 'test',
     });
     expect(secondResult.source).toBe('openrouter');
-    expect(mockHttpsCallable).toHaveBeenCalledTimes(3); // +1 openrouter only
-    expect(mockHttpsCallable.mock.calls[2][0]).toEqual({
-      provider: 'openrouter',
-      body: expect.objectContaining({ model: expect.any(String) }),
-    });
+    // Only one more OpenRouter call (not GenAI.mil)
+    expect(fetchSpy).toHaveBeenCalledTimes(3);
+    expect(fetchSpy.mock.calls[2][0]).toContain('openrouter.ai');
   });
 
   it('returns null data when OpenRouter response fails schema validation', async () => {
-    mockHttpsCallable
+    fetchSpy
       .mockRejectedValueOnce(quotaError())
-      .mockResolvedValueOnce(okProxyResponse([{ wrong: 'shape' }]));
+      .mockResolvedValueOnce(okResponse([{ wrong: 'shape' }]));
 
     const { generateJSONWithFallback } = await import('./aiProvider');
     const result = await generateJSONWithFallback({

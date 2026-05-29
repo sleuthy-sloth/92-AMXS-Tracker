@@ -66,14 +66,14 @@ export default defineConfig(({ mode }) => {
         },
       }),
     ],
-    // SECURITY: API keys are no longer injected into the client bundle.
-    // All AI calls are proxied through Cloud Functions (see functions/src/proxyAI.ts).
-    // Only SUPER_ADMIN_EMAIL remains — it's not a secret (just an email address).
+    // API keys are injected at build time from .env.local (dev) or GitHub Secrets (CI/CD).
+    // The client calls AI providers directly (no Cloud Functions proxy needed).
     define: {
       'process.env.SUPER_ADMIN_EMAIL': JSON.stringify(env.SUPER_ADMIN_EMAIL || ''),
-      // In dev mode, set to 'true' to bypass Cloud Functions and call AI directly.
-      // Requires GENAI_MIL_API_KEY and OPENROUTER_API_KEY in .env.local.
-      'process.env.DEV_DIRECT_AI': JSON.stringify(env.DEV_DIRECT_AI || ''),
+      // API keys injected from .env.local (dev) or GitHub Secrets (CI/CD).
+      // Used by the client to call AI providers directly (no Cloud Functions proxy).
+      'process.env.GENAI_MIL_API_KEY': JSON.stringify(env.GENAI_MIL_API_KEY || ''),
+      'process.env.OPENROUTER_API_KEY': JSON.stringify(env.OPENROUTER_API_KEY || ''),
     },
     resolve: {
       alias: {
