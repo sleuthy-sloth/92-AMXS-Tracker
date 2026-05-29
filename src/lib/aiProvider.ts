@@ -15,7 +15,7 @@ export interface GenerateJSONOptions<T> {
   schema: z.ZodSchema<T>;
   context: string;
   signal?: AbortSignal;
-  /** Per-call model override. Defaults: gemini-2.5-flash / llama-3.2-3b:free. */
+  /** Per-call model override. Defaults: gemini-3.5-flash / llama-3.2-3b:free. */
   geminiModel?: string;
   openRouterModel?: string;
   /** Lower = more deterministic. Forwarded to both providers. */
@@ -32,7 +32,7 @@ export interface GenerateJSONResult<T> {
 const GENAI_MIL_ENDPOINT = 'https://api.genai.mil/v1/chat/completions';
 const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
 
-const DEFAULT_GENAI_MIL_MODEL = 'gemini-2.5-flash';
+const DEFAULT_GENAI_MIL_MODEL = 'gemini-3.5-flash';
 const DEFAULT_OPENROUTER_MODEL = 'google/gemma-4-31b-it:free';
 const DEFAULT_OPENROUTER_FALLBACK_MODEL = 'nvidia/nemotron-nano-12b-2-vl:free';
 // Tool calling: Gemma 4 31B supports native function calling and multimodal input.
