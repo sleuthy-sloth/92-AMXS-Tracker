@@ -1,4 +1,4 @@
-import { callAIProxy } from '../lib/aiProvider';
+import { getGenAIMilApiKey } from '../lib/gemini';
 import { safeParse, TrainingReportSchema, type TrainingReportParsed } from '../lib/aiSchemas';
 
 export async function parseTrainingReport(
@@ -12,38 +12,48 @@ export async function parseTrainingReport(
         ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         : mimeType;
 
-    const result = await callAIProxy('genai-mil', {
-      model: 'gemini-2.5-flash',
-      temperature: 0.1,
-      response_format: { type: 'json_object' },
-      messages: [
-        {
-          role: 'system',
-          content:
-            'Extract training records from the provided file and return a JSON object with a "records" array. Each record must have: name (string), man_number (string), due_date (YYYY-MM-DD string), course_code (string), course_name (string). Return only valid JSON.',
-        },
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: 'Extract all training records from this file. Return a JSON object: { "records": [ { "name", "man_number", "due_date", "course_code", "course_name" }, ... ] }',
-            },
-            {
-              type: 'image_url',
-              image_url: { url: `data:${supportedMimeType};base64,${base64Data}` },
-            },
-          ],
-        },
-      ],
+    const apiKey = getGenAIMilApiKey();
+    const res = await fetch('https://api.genai.mil/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gemini-2.5-flash',
+        temperature: 0.1,
+        response_format: { type: 'json_object' },
+        messages: [
+          {
+            role: 'system',
+            content:
+              'Extract training records from the provided file and return a JSON object with a "records" array. Each record must have: name (string), man_number (string), due_date (YYYY-MM-DD string), course_code (string), course_name (string). Return only valid JSON.',
+          },
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: 'Extract all training records from this file. Return a JSON object: { "records": [ { "name", "man_number", "due_date", "course_code", "course_name" }, ... ] }',
+              },
+              {
+                type: 'image_url',
+                image_url: { url: `data:${supportedMimeType};base64,${base64Data}` },
+              },
+            ],
+          },
+        ],
+      }),
     });
 
-    if (!result.ok) {
-      const bodyStr = typeof result.body === 'string' ? result.body : JSON.stringify(result.body);
-      throw new Error(`GenAI.mil ${result.status}: ${bodyStr || result.statusText}`);
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}) as Record<string, unknown>);
+      throw new Error(
+        `GenAI.mil ${res.status}: ${(errBody as { error?: { message?: string } })?.error?.message ?? res.statusText}`
+      );
     }
 
-    const json = result.body as {
+    const json = (await res.json()) as {
       choices?: Array<{ message?: { content?: string } }>;
     };
     const raw = json.choices?.[0]?.message?.content;
