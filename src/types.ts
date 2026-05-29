@@ -107,6 +107,23 @@ export interface Notification {
   isDemo?: boolean;
 }
 
+export interface ReferenceDoc {
+  id?: string;
+  name: string;
+  type: 'iso' | 'qrl';
+  storagePath: string;
+  downloadUrl: string;
+  size: number;
+  mimeType: string;
+  description?: string;
+  uploadedBy: string;
+  uploadedByUid: string;
+  shopId: string;
+  amuId: AMUType;
+  uploadedAt: FirestoreTime;
+  isDemo?: boolean;
+}
+
 export interface UserPresence {
   userId: string;
   userName: string;
