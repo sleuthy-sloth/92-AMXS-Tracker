@@ -290,7 +290,7 @@ service cloud.firestore {
         isSameShop(resource.data.amuId, resource.data.shopId);
     }
 
-    // AI Cache collection (see src/lib/aiCache.ts). Stores cached analysis 
+    // AI Cache collection (see src/lib/aiCache.ts). Stores cached analysis
     // results to prevent duplicate expensive LLM calls.
     match /ai_cache/{cacheId} {
       allow read: if isActiveUser();
@@ -298,6 +298,18 @@ service cloud.firestore {
         request.resource.data.keys().hasAll(['data', 'timestamp', 'hash']) &&
         request.resource.data.timestamp is timestamp &&
         request.resource.data.hash is string;
+    }
+
+    // AI Cache Locks — distributed mutex so only one client refreshes
+    // each cache entry at a time (see aiCache.ts acquireCacheLock).
+    // Lock documents are short-lived (5 min TTL). The client-side logic
+    // handles mutual exclusion; the lock is a best-effort gate.
+    match /ai_cache_locks/{lockId} {
+      allow read: if isActiveUser();
+      allow write: if isActiveUser() &&
+        request.resource.data.keys().hasAll(['lockedAt', 'expiresAt', 'owner']) &&
+        request.resource.data.owner is string &&
+        request.resource.data.expiresAt is timestamp;
     }
 
     // Reference Documents (ISO checklists, QRL parts lists)

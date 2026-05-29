@@ -1,4 +1,4 @@
-import React, { useState, useEffect, memo } from 'react';
+import React, { useState, useEffect, useRef, memo } from 'react';
 import { Activity, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { motion } from 'motion/react';
 import { MaintenanceLog, TrainingRecord } from '../../types';
@@ -6,9 +6,19 @@ import { useAuth } from '../../contexts/AuthContextInstance';
 import { useScanStatus } from '../../contexts/AIScanStatusInstance';
 import { TrendAlertsSchema } from '../../lib/aiSchemas';
 import { generateJSONWithFallback } from '../../lib/aiProvider';
-import { getCachedAIResult, setCachedAIResult, generateDataHash } from '../../lib/aiCache';
+import {
+  getCachedAIResultStaleOk,
+  setCachedAIResult,
+  generateDataHash,
+  acquireCacheLock,
+  releaseCacheLock,
+  generateSessionId,
+} from '../../lib/aiCache';
 import { classifyError, AIRetryError } from '../../lib/aiRetry';
 import { cn } from '../../lib/utils';
+
+const CACHE_TTL_MS = 3600000; // 1 hour
+const LOCK_KEY_PREFIX = 'intelligence';
 
 type IntelAlert = {
   id: string;
@@ -18,29 +28,100 @@ type IntelAlert = {
   time: string;
 };
 
-export const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[]; training: TrainingRecord[] }> = memo(
-  ({ logs, training }) => {
+/** Fallback alert used when no data or an error occurs */
+const NOMINAL_ALERT: IntelAlert = {
+  id: 'nominal',
+  type: 'info',
+  title: 'System Nominal',
+  description: 'Operational data monitoring active. Analysis engine standby.',
+  time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+};
+
+/** Stale-but-cached fallback suffix */
+const staleSuffix = ' (cached)';
+
+/**
+ * IntelligenceFeed — AI-powered trend analysis for the 92 AMXS dashboard.
+ *
+ * Architecture:
+ *  1. On mount, reads the Firestore cache immediately (stale-while-revalidate).
+ *  2. Shows cached data instantly — never blocks the UI on a loading spinner.
+ *  3. If the cached entry is stale (> 1 hour), attempts a distributed lock so
+ *     exactly one client re-generates the AI analysis in the background.
+ *  4. Other clients see the stale data until the refresh completes.
+ *  5. No polling interval — the next refresh is triggered on the next page visit
+ *     or by an explicit user action.
+ */
+export const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[]; training: TrainingRecord[] }> =
+  memo(({ logs, training }) => {
     const { profile } = useAuth();
     const { reportStart, reportSuccess, reportError } = useScanStatus();
     const [alerts, setAlerts] = useState<IntelAlert[]>([]);
     const [loading, setLoading] = useState(true);
+    const sessionRef = useRef<string>(generateSessionId());
 
     useEffect(() => {
-      const generateIntelligence = async () => {
-        if (!profile) return;
-        setLoading(true);
-        reportStart('intelligence-feed');
-        
-        try {
-          const recentLogs = logs
-            .slice(0, 15)
-            .map((l) => `${l.tail_number} (${l.isRedBall ? 'RED BALL' : 'Standard'}): ${l.discrepancy}`);
-          const imminentTraining = training
-            .filter((t) => t.status !== 'current')
-            .slice(0, 10)
-            .map((t) => `${t.course_name} for Man ${t.man_number} due ${t.due_date}`);
+      if (!profile) return;
 
-          if (recentLogs.length === 0 && imminentTraining.length === 0) {
+      const cacheKey = `${profile.amuId}_${profile.shopId}`;
+      let cancelled = false;
+
+      const load = async () => {
+        // ── Step 1: Read cache immediately (stale-ok) ────────────────
+        const cached = await getCachedAIResultStaleOk<IntelAlert[]>(
+          LOCK_KEY_PREFIX,
+          cacheKey,
+          CACHE_TTL_MS
+        );
+
+        if (cancelled) return;
+
+        if (cached.exists) {
+          setAlerts(
+            cached.data!.map((a) => ({
+              ...a,
+              time:
+                cached.age > CACHE_TTL_MS
+                  ? `${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}${staleSuffix}`
+                  : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            }))
+          );
+          setLoading(false);
+        }
+
+        // ── Step 2: If cache is fresh, we're done ────────────────────
+        if (cached.exists && cached.age < CACHE_TTL_MS) {
+          reportSuccess(LOCK_KEY_PREFIX);
+          return;
+        }
+
+        // ── Step 3: If no cache at all, show a placeholder ────────────
+        if (!cached.exists) {
+          setAlerts([
+            {
+              id: 'initializing',
+              type: 'info',
+              title: 'Initializing Intelligence',
+              description:
+                'Analysis engine is warming up for this shop. Data will appear once processed.',
+              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            },
+          ]);
+        }
+
+        // ── Step 4: Attempt background refresh with distributed lock ──
+        const recentLogs = logs
+          .slice(0, 15)
+          .map(
+            (l) => `${l.tail_number} (${l.isRedBall ? 'RED BALL' : 'Standard'}): ${l.discrepancy}`
+          );
+        const imminentTraining = training
+          .filter((t) => t.status !== 'current')
+          .slice(0, 10)
+          .map((t) => `${t.course_name} for Man ${t.man_number} due ${t.due_date}`);
+
+        if (recentLogs.length === 0 && imminentTraining.length === 0) {
+          if (!cached.exists) {
             setAlerts([
               {
                 id: 'no-data',
@@ -51,24 +132,31 @@ export const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[]; training: Trai
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
               },
             ]);
-            setLoading(false);
-            reportSuccess('intelligence-feed');
-            return;
           }
+          setLoading(false);
+          reportSuccess(LOCK_KEY_PREFIX);
+          return;
+        }
 
-          const currentHash = generateDataHash([...recentLogs, ...imminentTraining]);
-          const cacheKey = `${profile.amuId}_${profile.shopId}`;
-          
-          // Check cache (1 hour max age)
-          const cached = await getCachedAIResult<IntelAlert[]>('intelligence', cacheKey, 3600000);
-          
-          if (cached) {
-            setAlerts(cached);
-            setLoading(false);
-            reportSuccess('intelligence-feed', 'genai-mil');
-            return;
-          }
+        const currentHash = generateDataHash([...recentLogs, ...imminentTraining]);
+        const lockAcquired = await acquireCacheLock(
+          `${LOCK_KEY_PREFIX}_${cacheKey}`,
+          sessionRef.current
+        );
 
+        if (cancelled) return;
+
+        if (!lockAcquired) {
+          // Another client is refreshing — use whatever we have
+          setLoading(false);
+          return;
+        }
+
+        // ── Step 5: We hold the lock — generate fresh intelligence ────
+        reportStart(LOCK_KEY_PREFIX);
+        setLoading(true);
+
+        try {
           const { data, source } = await generateJSONWithFallback({
             schema: TrendAlertsSchema,
             context: 'IntelligenceFeed',
@@ -85,48 +173,46 @@ export const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[]; training: Trai
               OUTPUT: JSON array [ { "type": "critical" | "warning" | "info", "title": string, "description": string } ]`,
           });
 
-          const finalAlerts = (!data || data.length === 0) 
-            ? [{
-                id: 'nominal',
-                type: 'info' as const,
-                title: 'System Nominal',
-                description: 'No significant readiness trends or critical alerts identified from recent data blocks.',
-                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              }]
-            : data.map((a, i) => ({
-                ...a,
-                id: `intel-${i}`,
-                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              }));
+          if (cancelled) return;
+
+          const finalAlerts =
+            !data || data.length === 0
+              ? [NOMINAL_ALERT]
+              : data.map((a, i) => ({
+                  ...a,
+                  id: `intel-${i}`,
+                  time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                }));
 
           setAlerts(finalAlerts);
-          
+
           // Save to cache
-          await setCachedAIResult('intelligence', cacheKey, finalAlerts, currentHash);
-          
-          reportSuccess('intelligence-feed', source);
+          await setCachedAIResult(LOCK_KEY_PREFIX, cacheKey, finalAlerts, currentHash);
+          reportSuccess(LOCK_KEY_PREFIX, source);
         } catch (err) {
           console.error('Intelligence Feed Error:', err);
           const classified = err instanceof AIRetryError ? err.classified : classifyError(err);
-          reportError('intelligence-feed', classified);
-          setAlerts([
-            {
-              id: 'nominal',
-              type: 'info',
-              title: 'System Nominal',
-              description: 'Operational data monitoring active. Analysis engine standby.',
-              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            },
-          ]);
+          reportError(LOCK_KEY_PREFIX, classified);
+
+          if (!cached.exists) {
+            setAlerts([NOMINAL_ALERT]);
+          }
         } finally {
           setLoading(false);
+          await releaseCacheLock(`${LOCK_KEY_PREFIX}_${cacheKey}`, sessionRef.current);
         }
       };
 
-      generateIntelligence();
-      const interval = setInterval(generateIntelligence, 300000);
-      return () => clearInterval(interval);
+      load();
+
+      // NOTE: No polling interval. Next refresh triggers on next visit
+      // or when the component re-mounts with different data.
+      return () => {
+        cancelled = true;
+      };
     }, [profile, logs, training, reportStart, reportSuccess, reportError]);
+
+    // ── Render ───────────────────────────────────────────────────────
 
     return (
       <div className="visible-grid bg-white border border-outline h-full">
@@ -143,9 +229,9 @@ export const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[]; training: Trai
           {loading && alerts.length === 0 ? (
             <div className="py-10 text-center space-y-3">
               <div className="flex justify-center gap-1">
-                <div className="w-1.5 h-1.5 bg-primary animate-bounce"></div>
-                <div className="w-1.5 h-1.5 bg-primary animate-bounce [animation-delay:0.2s]"></div>
-                <div className="w-1.5 h-1.5 bg-primary animate-bounce [animation-delay:0.4s]"></div>
+                <div className="w-1.5 h-1.5 bg-primary animate-bounce" />
+                <div className="w-1.5 h-1.5 bg-primary animate-bounce [animation-delay:0.2s]" />
+                <div className="w-1.5 h-1.5 bg-primary animate-bounce [animation-delay:0.4s]" />
               </div>
               <p className="tech-label text-[8px] text-slate-400 uppercase">
                 Processing Field Intelligence...
@@ -200,6 +286,5 @@ export const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[]; training: Trai
         </div>
       </div>
     );
-  }
-);
+  });
 IntelligenceFeed.displayName = 'IntelligenceFeed';
