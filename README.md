@@ -39,6 +39,7 @@ The **92 AMXS Tracker** is a full-featured operational management platform purpo
 | **Maintenance Logs** | Full CRUD for aircraft maintenance entries — tail numbers, JCNs, discrepancies, repairs, Red Ball alerts |
 | **DIFM (Due-In From Maintenance)** | Parts pipeline tracking — ordered → en-route → received → bench-check → installed |
 | **G081 Gallery** | Photo verification of G081 screen proofs with pending/verified status |
+| **Reference Docs** | ISO checklist + QRL file management — upload, view, edit Excel files in-browser, auto-save completed checklists |
 | **Training Tracker** | Personnel qualifications with current/expiring/expired status, 60-day expiration alerts |
 | **Personnel Roster** | Shop-level personnel management with role-based access control |
 
@@ -70,7 +71,7 @@ The **92 AMXS Tracker** is a full-featured operational management platform purpo
 │  ┌────────────────────────────────────────────┐  │
 │  │  React 19 + TypeScript + TailwindCSS 4     │  │
 │  │  ┌───────┐ ┌─────────┐ ┌───────────────┐  │  │
-│  │  │15     │ │12       │ │3 Services     │  │  │
+│  │  │16     │ │12       │ |3 Services     │  │  │
 │  │  │Pages  │ │Hooks    │ │OCR/Parser/    │  │  │
 │  │  │       │ │         │ │Notifications  │  │  │
 │  │  └───┬───┘ └────┬────┘ └───────┬───────┘  │  │
@@ -150,6 +151,16 @@ Command center with real-time KPIs: active logs, Red Ball items, training readin
 ### 🖼️ G081 Gallery
 - Photo verification gallery for G081 screen proof submissions
 - Pending/verified status with verifier attribution
+
+### 📄 Reference Docs
+- **Dual-section layout**: ISO Checklists and QRL (Quick Reference List) under a single tab
+- **File upload**: Drag-and-drop or click to upload `.xlsx` / `.xls` / `.csv` files to Firebase Storage
+- **In-browser viewer**: SheetJS renders Excel files as interactive HTML tables with multi-sheet tab support
+- **Edit mode**: Click "Edit" to make cells contenteditable — fill out checklist items directly in the browser
+- **Save completed**: "Save Completed" re-exports the edited workbook as a new `.xlsx` file, uploads to Firebase Storage, and creates a new Firestore record — templates are never overwritten
+- **Download**: Original file download from every document row
+- **Live search**: Filter documents by filename, description, or uploader
+- **All roles**: View and upload; NCOIC/Leadership only for delete operations
 
 ### 📊 Workload & Diagnostics
 - **Workload**: NCOIC/Leadership view of shop activity metrics (NCOIC/Leadership only)
@@ -277,13 +288,14 @@ jspdf ^4, xlsx ^0.18, driver.js ^1.4
 ```
 92-AMXS-Tracker/
 ├── src/
-│   ├── pages/                    # 15 page components
+│   ├── pages/                    # 16 page components
 │   │   ├── Dashboard.tsx         # Command center with KPIs
 │   │   ├── MaintenanceLogs.tsx   # Aircraft discrepancy tracking
 │   │   ├── DIFMLogs.tsx          # Parts pipeline tracking
 │   │   ├── TrainingTracker.tsx   # Qualification compliance
 │   │   ├── Personnel.tsx         # Shop roster management
 │   │   ├── G081Gallery.tsx       # Photo verification gallery
+│   │   ├── ReferenceDocs.tsx     # ISO checklists + QRL (upload, edit, view)
 │   │   ├── Operations.tsx        # Nested ops routing
 │   │   ├── Handoff.tsx           # Shift turnover
 │   │   ├── Workload.tsx          # NCOIC/Leadership analytics
