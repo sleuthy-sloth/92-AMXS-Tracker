@@ -12,6 +12,9 @@ import {
   Search,
   Sparkles,
   FileUp,
+  Pencil,
+  Save,
+  CheckCircle2,
 } from 'lucide-react';
 import {
   serverTimestamp,
@@ -76,12 +79,15 @@ interface ViewerModalProps {
 }
 
 const ViewerModal: React.FC<ViewerModalProps> = ({ doc, onClose }) => {
+  const { profile, isDemoMode } = useAuth();
   const [sheets, setSheets] = useState<
     { name: string; html: string; rows: number; cols: number }[]
   >([]);
   const [activeSheet, setActiveSheet] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -106,7 +112,7 @@ const ViewerModal: React.FC<ViewerModalProps> = ({ doc, onClose }) => {
           const rows = range ? range.e.r - range.s.r + 1 : 0;
           const cols = range ? range.e.c - range.s.c + 1 : 0;
 
-          // Convert to HTML table
+          // Convert to HTML table — editable only when toggled
           const html = XLSX.utils.sheet_to_html(sheet, {
             id: `sheet-${name}`,
             editable: false,
@@ -134,6 +140,91 @@ const ViewerModal: React.FC<ViewerModalProps> = ({ doc, onClose }) => {
     };
   }, [doc.downloadUrl]);
 
+  // Toggle edit mode: re-render the active sheet with/without contenteditable
+  const toggleEditMode = () => {
+    if (isEditing) {
+      // Switching OUT of edit mode — re-render without editable
+      setIsEditing(false);
+      return;
+    }
+    setIsEditing(true);
+  };
+
+  const handleSave = async () => {
+    if (!profile || isDemoMode || !sheets.length) return;
+
+    setSaving(true);
+    try {
+      // 1. Read each sheet's table from the DOM and build a new workbook
+      const newWorkbook = XLSX.utils.book_new();
+
+      for (let i = 0; i < sheets.length; i++) {
+        const sheetName = sheets[i].name;
+        const tableEl = document.getElementById(`sheet-${sheetName}`) as HTMLTableElement | null;
+        if (!tableEl) continue;
+
+        // Parse the HTML table back into a worksheet
+        const worksheet = XLSX.utils.table_to_sheet(tableEl, { raw: true });
+
+        // If original sheet had column widths, preserve them
+        // Append the sheet
+        XLSX.utils.book_append_sheet(newWorkbook, worksheet, sheetName);
+      }
+
+      // 2. Write as .xlsx buffer
+      const wbout = XLSX.write(newWorkbook, {
+        type: 'array',
+        bookType: 'xlsx',
+        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+
+      // 3. Create a File from the buffer
+      const timestamp = Date.now();
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const baseName = doc.name.replace(/\.(xlsx|xls|csv)$/i, '');
+      const newName = `${baseName}_completed_${dateStr}.xlsx`;
+      const blob = new Blob([wbout], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const file = new File([blob], newName, {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+
+      // 4. Upload to Firebase Storage
+      const safeName = newName.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const path = `reference-docs/${timestamp}-${safeName}`;
+      const storageRefPath = storageRef(storage, path);
+
+      await uploadBytesResumable(storageRefPath, file);
+
+      const downloadUrl = await getDownloadURL(storageRefPath);
+
+      // 5. Create new Firestore record (doesn't overwrite the template)
+      await addDoc(collection(db, 'reference_docs'), {
+        name: newName,
+        type: doc.type,
+        storagePath: path,
+        downloadUrl,
+        size: wbout.byteLength,
+        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        description: `Completed: ${doc.name} — edited in-browser by ${profile.name}`,
+        uploadedBy: profile.name,
+        uploadedByUid: profile.uid,
+        shopId: profile.shopId,
+        amuId: profile.amuId,
+        uploadedAt: serverTimestamp(),
+        isDemo: false,
+      });
+
+      setIsEditing(false);
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Save failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div
       className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-stealth/95 backdrop-blur-xl"
@@ -160,12 +251,45 @@ const ViewerModal: React.FC<ViewerModalProps> = ({ doc, onClose }) => {
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-slate-100 transition-colors text-slate-900 shrink-0 ml-4"
-          >
-            <X className="w-6 h-6" />
-          </button>
+          <div className="flex items-center gap-3 shrink-0 ml-4">
+            {!isEditing ? (
+              <button
+                onClick={toggleEditMode}
+                className="p-2 border border-outline text-slate-500 hover:text-primary hover:border-primary transition-all hover:bg-primary/5 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+                Edit
+              </button>
+            ) : (
+              <>
+                <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 bg-amber-50 border border-amber-200 px-3 py-2 flex items-center gap-2">
+                  <Pencil className="w-3.5 h-3.5" />
+                  Editing
+                </span>
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="p-2 bg-emerald-600 text-white hover:bg-emerald-700 transition-all flex items-center gap-2 text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-600/20 disabled:opacity-50"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  {saving ? 'Saving...' : 'Save Completed'}
+                </button>
+                <button
+                  onClick={() => setIsEditing(false)}
+                  disabled={saving}
+                  className="p-2 border border-outline text-slate-500 hover:text-safety-orange transition-all text-[10px] font-black uppercase tracking-widest disabled:opacity-30"
+                >
+                  Cancel Edit
+                </button>
+              </>
+            )}
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-slate-100 transition-colors text-slate-900"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
         </div>
 
         {/* Sheet tabs */}
@@ -217,6 +341,11 @@ const ViewerModal: React.FC<ViewerModalProps> = ({ doc, onClose }) => {
           {!loading && !error && sheets.length > 0 && (
             <div
               className="xlsx-viewer"
+              contentEditable={isEditing}
+              suppressContentEditableWarning
+              style={
+                isEditing ? { outline: '2px solid #f59e0b', outlineOffset: '-2px' } : undefined
+              }
               dangerouslySetInnerHTML={{ __html: sheets[activeSheet]?.html || '' }}
             />
           )}
@@ -224,11 +353,19 @@ const ViewerModal: React.FC<ViewerModalProps> = ({ doc, onClose }) => {
 
         {/* Footer */}
         <div className="px-8 py-4 border-t border-outline bg-slate-50/50 flex items-center justify-between shrink-0">
-          <span className="text-[10px] text-slate-400 font-medium">
-            {sheets.length > 0
-              ? `${sheets[activeSheet]?.rows} rows × ${sheets[activeSheet]?.cols} columns`
-              : `${formatSize(doc.size)}`}
-          </span>
+          <div className="flex items-center gap-4">
+            <span className="text-[10px] text-slate-400 font-medium">
+              {sheets.length > 0
+                ? `${sheets[activeSheet]?.rows} rows × ${sheets[activeSheet]?.cols} columns`
+                : `${formatSize(doc.size)}`}
+            </span>
+            {isEditing && (
+              <span className="text-[10px] text-amber-600 font-black uppercase tracking-widest flex items-center gap-1.5">
+                <Pencil className="w-3 h-3" />
+                Click any cell to edit — save as a new completed checklist
+              </span>
+            )}
+          </div>
           <a
             href={doc.downloadUrl}
             download={doc.name}
