@@ -8,7 +8,7 @@ export type AMUType = 'BLACK' | 'GREEN' | 'SILVER' | 'BLUE' | 'NONE' | 'ALL';
 export type ShiftType = 'Days' | 'Swings' | 'Nights' | 'Weekend Duty';
 
 export const SHOPS = ['AVIONICS', 'CREW_CHIEFS', 'JETS', 'E&E', 'LEADERSHIP'] as const;
-export type ShopType = typeof SHOPS[number];
+export type ShopType = (typeof SHOPS)[number];
 
 export interface UserProfile {
   uid: string;
@@ -20,7 +20,7 @@ export interface UserProfile {
   role: UserRole;
   email: string;
   phone?: string;
-  status: 'active' | 'pending' | 'rejected';
+  status: 'active' | 'pending' | 'rejected' | 'inactive';
   createdAt?: FirestoreTime;
   isDemo?: boolean;
 }
@@ -64,6 +64,10 @@ export interface TrainingRecord {
   amuId: AMUType;
   status: 'current' | 'expiring' | 'expired';
   isDemo?: boolean;
+  personnel_name?: string;
+  certificateUrl?: string;
+  createdAt?: FirestoreTime;
+  createdBy?: string;
 }
 
 export interface DIFMLog {
@@ -81,7 +85,13 @@ export interface DIFMLog {
   isDemo?: boolean;
 }
 
-export type NotificationType = 'red-ball' | 'parts' | 'training' | 'system' | 'supply-risk' | 'g081-expiry';
+export type NotificationType =
+  | 'red-ball'
+  | 'parts'
+  | 'training'
+  | 'system'
+  | 'supply-risk'
+  | 'g081-expiry';
 
 export interface Notification {
   id?: string;

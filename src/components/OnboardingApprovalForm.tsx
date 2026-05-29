@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { motion } from 'motion/react';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { UserProfile, UserRole, AMUType, ShopType } from '../types';
 import { AMUS, SHOPS } from '../mockData';
@@ -18,15 +18,18 @@ export const OnboardingApprovalForm: React.FC<Props> = ({ user, profile, onClose
     rank: user.rank || '',
     man_number: user.man_number !== 'PENDING' ? user.man_number : '',
     shopId:
-      user.shopId !== 'PENDING' ? (user.shopId as ShopType) : ((profile?.shopId as ShopType) || ('' as ShopType | '')),
-    amuId:
-      user.amuId !== 'NONE' ? user.amuId : ((profile?.amuId as AMUType) || ('' as AMUType | '')),
+      user.shopId !== 'PENDING'
+        ? (user.shopId as ShopType)
+        : (profile?.shopId as ShopType) || ('' as ShopType | ''),
+    amuId: user.amuId !== 'NONE' ? user.amuId : (profile?.amuId as AMUType) || ('' as AMUType | ''),
     role: 'technician' as UserRole,
   }));
   const [loading, setLoading] = useState(false);
 
   const ALLOWED_APPROVAL_ROLES: UserRole[] =
-    profile?.role === 'leadership' ? ['technician', 'ncoic', 'leadership'] : ['technician', 'ncoic'];
+    profile?.role === 'leadership'
+      ? ['technician', 'ncoic', 'leadership']
+      : ['technician', 'ncoic'];
 
   const handleApprove = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,17 +39,23 @@ export const OnboardingApprovalForm: React.FC<Props> = ({ user, profile, onClose
     }
     setLoading(true);
     try {
-      await setDoc(doc(db, 'users', user.uid), {
-        uid: user.uid,
-        email: user.email,
-        name: formData.name,
-        rank: formData.rank,
-        man_number: formData.man_number,
-        shopId: formData.shopId,
-        amuId: formData.amuId,
-        role: formData.role,
-        status: 'active',
-      });
+      await setDoc(
+        doc(db, 'users', user.uid),
+        {
+          uid: user.uid,
+          email: user.email,
+          name: formData.name,
+          rank: formData.rank,
+          man_number: formData.man_number,
+          shopId: formData.shopId,
+          amuId: formData.amuId,
+          role: formData.role,
+          status: 'active',
+          isDemo: false,
+          createdAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
       onClose();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -72,7 +81,10 @@ export const OnboardingApprovalForm: React.FC<Props> = ({ user, profile, onClose
             </h3>
             <p className="tech-label mt-3 text-slate-500">Assign credentials for {user.name}</p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 transition-colors text-slate-900">
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-slate-100 transition-colors text-slate-900"
+          >
             <X className="w-6 h-6" />
           </button>
         </div>
