@@ -82,7 +82,7 @@ export function classifyError(err: unknown): ClassifiedError {
   if (
     (status && status >= 500) ||
     lower.includes('network') ||
-    lower.includes('fetch failed') ||
+    lower.includes('fetch') ||
     lower.includes('econn')
   ) {
     return { kind: 'network', message, retryable: true, status };
