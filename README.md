@@ -191,7 +191,7 @@ All AI features are powered by a **dual-provider architecture** with automatic f
 
 | Tier | Provider | Model | Role |
 |------|----------|-------|------|
-| **Primary** | GenAI.mil | `gemini-2.5-flash` | DoD-approved endpoint |
+| **Primary** | GenAI.mil | `gemini-3.5-flash` | DoD-approved endpoint |
 | **Fallback** | OpenRouter | `gemma-4-31b:free` | Free-tier multimodal model, 262K context |
 | **Last Resort** | OpenRouter | `nemotron-nano-12b-2-vl:free` | OCR & document intelligence specialist |
 

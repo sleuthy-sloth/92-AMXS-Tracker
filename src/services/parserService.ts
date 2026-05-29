@@ -20,7 +20,7 @@ export async function parseTrainingReport(
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.5-flash',
         temperature: 0.1,
         response_format: { type: 'json_object' },
         messages: [
