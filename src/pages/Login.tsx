@@ -50,12 +50,11 @@ export const Login: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="max-w-md w-full text-center space-y-12">
         <div className="flex flex-col items-center gap-6">
-          <div className="w-24 h-24 bg-sidebar border border-white/10 flex items-center justify-center shadow-2xl overflow-hidden p-2">
+          <div className="w-24 h-24 bg-white border border-outline flex items-center justify-center shadow-2xl overflow-hidden p-3">
             <img
               src="https://media.defense.gov/2022/Sep/29/2003087437/-1/-1/0/220929-F-AFHRA-020.JPG"
               alt="92nd AMXS"
               className="w-full h-full object-contain"
-              style={{ mixBlendMode: 'multiply' }}
               referrerPolicy="no-referrer"
             />
           </div>
