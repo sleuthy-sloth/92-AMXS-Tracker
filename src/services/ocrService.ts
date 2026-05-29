@@ -152,6 +152,7 @@ export const parseTrainingReport = async (
       schema: TrainingReportSchema,
       context: 'parseTrainingReport',
       imageBase64: base64Data,
+      imageMimeType: mimeType,
     });
     return data ?? [];
   } catch (error) {
