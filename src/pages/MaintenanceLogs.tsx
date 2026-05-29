@@ -517,6 +517,8 @@ export const MaintenanceLogs: React.FC = () => {
         loading={loading}
         isScanning={isScanning}
         isG081Uploading={isG081Uploading}
+        onScan={handleScan}
+        onG081Upload={handleG081Upload}
         scanInputRef={scanInputRef}
         g081InputRef={g081InputRef}
         personnelRoster={personnelRoster}
