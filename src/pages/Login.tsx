@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Terminal, ShieldCheck, ShieldAlert, Lock, Mail, ChevronLeft, Info } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, Lock, Mail, ChevronLeft, Info } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContextInstance';
 
 export const Login: React.FC = () => {
@@ -50,8 +50,14 @@ export const Login: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="max-w-md w-full text-center space-y-12">
         <div className="flex flex-col items-center gap-6">
-          <div className="w-24 h-24 bg-sidebar border border-white/10 flex items-center justify-center shadow-2xl">
-            <Terminal className="text-white w-12 h-12" />
+          <div className="w-24 h-24 bg-sidebar border border-white/10 flex items-center justify-center shadow-2xl overflow-hidden p-2">
+            <img
+              src="https://media.defense.gov/2022/Sep/29/2003087437/-1/-1/0/220929-F-AFHRA-020.JPG"
+              alt="92nd AMXS"
+              className="w-full h-full object-contain"
+              style={{ mixBlendMode: 'multiply' }}
+              referrerPolicy="no-referrer"
+            />
           </div>
           <div>
             <h1 className="text-5xl font-black text-slate-900 tracking-tighter uppercase leading-none">
@@ -100,25 +106,21 @@ export const Login: React.FC = () => {
                 Sign In with Email & Password
               </button>
 
-              {!import.meta.env.PROD && (
-                <>
-                  <div className="relative py-2">
-                    <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t border-outline"></div>
-                    </div>
-                    <div className="relative flex justify-center">
-                      <span className="bg-surface px-4 tech-label text-[8px]">Developer</span>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => bypassLogin('leadership')}
-                    className="bg-white text-slate-900 border-2 border-slate-200 px-5 py-4 font-black text-[10px] uppercase tracking-[0.2em] transition-all hover:bg-slate-50 active:scale-95 flex flex-col items-center gap-2 w-full"
-                  >
-                    <ShieldAlert className="w-5 h-5 text-safety-orange" />
-                    <span>Demo Sandbox</span>
-                  </button>
-                </>
-              )}
+              <div className="relative py-2">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-outline"></div>
+                </div>
+                <div className="relative flex justify-center">
+                  <span className="bg-surface px-4 tech-label text-[8px]">Sandbox</span>
+                </div>
+              </div>
+              <button
+                onClick={() => bypassLogin('leadership')}
+                className="bg-white text-slate-900 border-2 border-slate-200 px-5 py-4 font-black text-[10px] uppercase tracking-[0.2em] transition-all hover:bg-slate-50 active:scale-95 flex flex-col items-center gap-2 w-full"
+              >
+                <ShieldAlert className="w-5 h-5 text-caution-yellow" />
+                <span>Demo Sandbox</span>
+              </button>
             </div>
           ) : (
             <form onSubmit={handleEmailAuth} className="space-y-6 text-left">
