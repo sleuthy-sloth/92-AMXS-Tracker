@@ -1,5 +1,13 @@
 import { useState, useEffect } from 'react';
-import { doc, setDoc, serverTimestamp, query, collection, where, onSnapshot } from 'firebase/firestore';
+import {
+  doc,
+  setDoc,
+  serverTimestamp,
+  query,
+  collection,
+  where,
+  onSnapshot,
+} from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContextInstance';
 import { UserPresence } from '../types';
@@ -22,15 +30,15 @@ export const usePresence = (location: string) => {
           activeAt: serverTimestamp(),
           shopId: profile.shopId,
           amuId: profile.amuId,
-          isDemo: isDemoMode
+          isDemo: isDemoMode,
         });
       } catch (e) {
-        console.error("Presence update failed", e);
+        console.error('Presence update failed', e);
       }
     };
 
     updatePresence();
-    const interval = setInterval(updatePresence, 30000); // Heartbeat every 30s
+    const interval = setInterval(updatePresence, 120000); // Heartbeat every 2 min (Spark free-tier friendly)
 
     const q = query(
       collection(db, 'presence'),
@@ -42,12 +50,12 @@ export const usePresence = (location: string) => {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const now = new Date();
       const users = snapshot.docs
-        .map(d => d.data() as UserPresence)
-        .filter(u => {
+        .map((d) => d.data() as UserPresence)
+        .filter((u) => {
           if (u.userId === user.uid) return false;
           // Only show users active in the last 2 minutes
           const activeAt = tsToDate(u.activeAt);
-          return (now.getTime() - activeAt.getTime()) < 120000;
+          return now.getTime() - activeAt.getTime() < 120000;
         });
       setActiveUsers(users);
     });
