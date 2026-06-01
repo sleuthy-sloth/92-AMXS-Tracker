@@ -83,7 +83,7 @@ export const useG081ExpiryScan = () => {
     };
 
     const timeout = setTimeout(scan, 8000);
-    const interval = setInterval(scan, 3600000);
+    const interval = setInterval(scan, 14400000); // Scan every 4 hours (Spark free-tier friendly)
     return () => {
       clearTimeout(timeout);
       clearInterval(interval);
