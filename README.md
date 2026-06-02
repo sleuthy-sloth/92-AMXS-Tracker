@@ -26,9 +26,20 @@
 
 The **92 AMXS Tracker** is a full-featured operational management platform purpose-built for Air Force maintenance squadrons. It replaces paper logbooks, disconnected spreadsheets, and email chains with a single real-time command center that tracks everything from aircraft discrepancies to personnel training compliance.
 
-**Live:** [sleuthy-sloth.github.io/92-AMXS-Tracker](https://sleuthy-sloth.github.io/92-AMXS-Tracker/)
+**Live:** [sleuthy-sloth.github.io/92-AMXS-Tracker](https://sleuthy-sloth.github.io/92-AMXS-Tracker/)  
+**Latest:** `v0.7.0` — App Check, accessibility, architecture cleanup (June 2026)
 
 ---
+
+## What's New in v0.7.0
+
+- **🔐 Firebase App Check** — reCAPTCHA Enterprise integration prevents unauthorized API access
+- **♿ Accessibility** — all 6 modals now include `role="dialog"`, `aria-modal`, and `aria-label` for Section 508 readiness
+- **🧱 Architecture cleanup** — `ReferenceDocs.tsx` decomposed from 921 lines into 4 files; dead `express`/`@types/express` dependencies removed
+- **🪝 `useRoleGuard` hook** — centralized RBAC (`canManage`, `canAdmin`, `isAllowed`) for route and action guards
+- **🔀 Demo data centralization** — Dashboard now uses `DemoDataProvider` instead of direct `MOCK_*` imports
+- **🐛 Bug fixes** — TrainingFormModal TS error (missing `shopId`/`amuId`), duplicate `directFetch` function removed
+- **#️⃣ Hash fix** — AI cache now uses 64-bit FNV-1a with null separators instead of 32-bit Java-style hash
 
 ## Capabilities
 
@@ -88,19 +99,15 @@ The **92 AMXS Tracker** is a full-featured operational management platform purpo
 ┌────────────────────┼──────────────────────────────┐
 │  Firebase Cloud     │                              │
 │  ┌──────────────────┴───────────────────────┐     │
-│  │  Cloud Functions                         │     │
-│  │  ┌─────────────┐  ┌───────────────────┐  │     │
-│  │  │ proxyAI     │  │ validators        │  │     │
-│  │  │ (Server-    │  │ (Firestore        │  │     │
-│  │  │  side API   │  │  triggers for     │  │     │
-│  │  │  keys)      │  │  write validation)│  │     │
-│  │  └─────────────┘  └───────────────────┘  │     │
-│  └──────────────────────────────────────────┘     │
 │  ┌──────────┐  ┌──────────┐  ┌───────────────┐   │
 │  │ Auth     │  │ Firestore│  │ App Check     │   │
-│  │ (@us.af  │  │ (Rules + │  │ (Planned)     │   │
-│  │  .mil)   │  │  IndexedDB│  │               │   │
+│  │ (@us.af  │  │ (Rules + │  │ (reCAPTCHA    │   │
+│  │  .mil)   │  │  IndexedDB│  │  Enterprise)  │   │
 │  └──────────┘  └──────────┘  └───────────────┘   │
+│  ┌──────────────────────────────────────────┐    │
+│  │ API keys injected at build time          │    │
+│  │ via GitHub Secrets — never in repo       │    │
+│  └──────────────────────────────────────────┘    │
 └───────────────────────────────────────────────────┘
          ↗                    ↖
 ┌────────┴──────┐    ┌────────┴──────────────┐
@@ -206,12 +213,7 @@ All AI features are powered by a **dual-provider architecture** with automatic f
 
 ### Security Architecture
 
-AI API keys are **never exposed to the client**. All AI calls are proxied through Firebase Cloud Functions (`functions/src/proxyAI.ts`), which:
-- Validates authentication before any request
-- Attaches API keys server-side from Firebase Secrets
-- Enforces per-user rate limiting (120 req/hour)
-- Handles stale rate-limit entry cleanup
-- Supports CORS for GitHub Pages and localhost
+AI API keys are **injected at build time** via GitHub Secrets (CI/CD pipeline) and **never committed to the repository**. The client calls AI providers directly. In production, Firebase App Check prevents unauthorized API access.
 
 ---
 
@@ -245,8 +247,8 @@ The app runs background compliance scans that detect and alert on:
 | **Authentication** | Firebase Auth — Google SSO or email/password, `@us.af.mil` domain enforced, email verification required |
 | **Authorization** | Firestore Security Rules — role-based (technician, NCOIC, leadership), AMU/shop scoping |
 | **Admin Claims** | Custom claims set via Firebase Admin SDK (no hardcoded emails) |
-| **API Keys** | Server-side only — Cloud Functions proxy with Firebase Secrets |
-| **Rate Limiting** | 120 AI requests/hour per user, enforced server-side |
+| **API Keys** | Injected at build time via GitHub Secrets (CI/CD only); not committed to repo |
+| **App Check** | Firebase App Check (reCAPTCHA Enterprise) — prevents unauthorized clients from calling Firebase APIs |
 | **Demo Isolation** | `isDemo` flag prevents mock data from leaking into live Firestore |
 | **Dev-only Gates** | `seedDatabase` and `bypassLogin` disabled in production builds (`import.meta.env.PROD`) |
 | **CI Gate** | `npm test` runs before deployment — broken code can't deploy |
@@ -262,7 +264,7 @@ The app runs background compliance scans that detect and alert on:
 | **Frontend** | React 19, TypeScript 5.8, Vite 6 |
 | **Styling** | TailwindCSS 4, custom military design system |
 | **Animation** | Motion (Framer Motion successor) |
-| **Backend** | Firebase (Auth, Firestore, Cloud Functions) |
+| **Backend** | Firebase (Auth, Firestore) |
 | **AI/ML** | GenAI.mil + OpenRouter (dual-provider fallback) |
 | **Validation** | Zod 4 for AI response validation |
 | **PWA** | vite-plugin-pwa with Workbox |
@@ -355,12 +357,9 @@ jspdf ^4, xlsx ^0.18, driver.js ^1.4
 │   │   ├── TourContext.ts         # Guided tour state
 │   │   └── DemoDataProvider.tsx   # Centralized mock data provider
 │   │
-│   └── mockData.ts               # Demo data (MOCK_LOGS, MOCK_DIFM, etc.)
-│
-├── functions/                    # Firebase Cloud Functions
-│   └── src/
-│       ├── proxyAI.ts            # AI API proxy (server-side keys)
-│       └── validators.ts         # Firestore write validation triggers
+│   ├── hooks/
+│   │   ├── useRoleGuard.ts        # RBAC helper (canManage, canAdmin, isAllowed)
+│   │   └── ...                    # 12 additional hooks
 │
 ├── .github/workflows/
 │   ├── deploy.yml                # GitHub Pages deployment (with test gate)
@@ -402,8 +401,8 @@ npm run dev
 
 | Variable | Required | Purpose |
 |----------|----------|---------|
-| `GENAI_MIL_API_KEY` | Dev only | Direct AI access (bypasses Cloud Functions proxy in dev) |
-| `OPENROUTER_API_KEY` | Dev only | OpenRouter fallback for dev mode |
+| `GENAI_MIL_API_KEY` | CI/CD only | Injected via GitHub Secrets at build time |
+| `OPENROUTER_API_KEY` | CI/CD only | OpenRouter fallback (injected at build time) |
 | `SUPER_ADMIN_EMAIL` | Yes | Designated admin user email |
 | `DEV_DIRECT_AI` | Optional | Set to `true` to bypass proxy in dev |
 
@@ -430,17 +429,15 @@ npm run format
 
 ### Cloud Functions
 
+This project runs on the Firebase Spark (free) tier and does not use Cloud Functions. API keys are injected during the GitHub Actions build via repository secrets.
+
 ```bash
-cd functions
-npm install
-npm run build
-
-# Set secrets (one-time)
-firebase functions:secrets:set GENAI_MIL_API_KEY
-firebase functions:secrets:set OPENROUTER_API_KEY
-
-# Deploy
-firebase deploy --only functions
+# To set up the deployment secrets:
+# 1. Go to GitHub repo → Settings → Secrets and variables → Actions
+# 2. Add these repository secrets:
+#    GENAI_MIL_API_KEY
+#    OPENROUTER_API_KEY
+#    SUPER_ADMIN_EMAIL
 ```
 
 ---
