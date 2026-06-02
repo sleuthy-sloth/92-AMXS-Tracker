@@ -9,7 +9,7 @@ import { generateJSONWithFallback } from '../../lib/aiProvider';
 import {
   getCachedAIResultStaleOk,
   setCachedAIResult,
-  generateDataHash,
+  generateDataHashSync,
   acquireCacheLock,
   releaseCacheLock,
   generateSessionId,
@@ -135,7 +135,7 @@ export const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[]; training: Trai
           return;
         }
 
-        const currentHash = generateDataHash([...recentLogs, ...imminentTraining]);
+        const currentHash = generateDataHashSync([...recentLogs, ...imminentTraining]);
         const lockAcquired = await acquireCacheLock(
           `${CACHE_PREFIX}_${cacheKey}`,
           sessionRef.current

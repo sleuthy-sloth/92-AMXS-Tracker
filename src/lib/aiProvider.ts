@@ -353,43 +353,6 @@ export async function generateJSONWithFallback<T>(
 
 // ─── Tool-calling implementations ────────────────────────────────────
 
-async function directFetchWithError(
-  endpoint: string,
-  apiKey: string,
-  body: Record<string, unknown>,
-  options: { signal?: AbortSignal; extraHeaders?: Record<string, string> } = {}
-): Promise<OpenAICompatResponse> {
-  const res = await fetch(endpoint, {
-    method: 'POST',
-    signal: options.signal,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-      ...options.extraHeaders,
-    },
-    body: JSON.stringify(body),
-  });
-
-  const responseBody = (await res.json()) as OpenAICompatResponse;
-
-  if (!res.ok) {
-    const errMsg = responseBody?.error?.message ?? 'Unknown error';
-    throw Object.assign(new Error(`${res.status}: ${errMsg}`), {
-      status: res.status,
-      statusText: res.statusText,
-      body: responseBody,
-    });
-  }
-
-  if (responseBody.error) {
-    throw Object.assign(new Error(responseBody.error.message ?? 'API error'), {
-      status: responseBody.error.code,
-    });
-  }
-
-  return responseBody;
-}
-
 export async function runGenAIMilWithTools(params: {
   systemPrompt: string;
   userPrompt: string;
@@ -414,7 +377,7 @@ export async function runGenAIMilWithTools(params: {
   const firstResponse = await withRetry(
     async (signal) => {
       try {
-        const json = await directFetchWithError(
+        const json = await directFetch(
           GENAI_MIL_ENDPOINT,
           apiKey,
           {
@@ -431,8 +394,6 @@ export async function runGenAIMilWithTools(params: {
         );
         return json;
       } catch (err) {
-        // Special-case key-lock: 401 with unlock_url should fall back to OpenRouter.
-        // Throw as non-retryable AIRetryError so withRetry propagates immediately.
         if (
           err &&
           typeof err === 'object' &&
@@ -489,7 +450,7 @@ export async function runGenAIMilWithTools(params: {
 
   const finalText = await withRetry(
     async (signal) => {
-      const json = await directFetchWithError(
+      const json = await directFetch(
         GENAI_MIL_ENDPOINT,
         apiKey,
         {
@@ -538,7 +499,7 @@ export async function generateTextWithOpenRouter(params: {
 
   return withRetry(
     async (signal) => {
-      const json = await directFetchWithError(
+      const json = await directFetch(
         OPENROUTER_ENDPOINT,
         apiKey,
         {
@@ -593,7 +554,7 @@ export async function runOpenRouterWithTools(params: {
 
   const firstResponse = await withRetry(
     async (signal) => {
-      const json = await directFetchWithError(
+      const json = await directFetch(
         OPENROUTER_ENDPOINT,
         apiKey,
         {
@@ -651,7 +612,7 @@ export async function runOpenRouterWithTools(params: {
 
   const finalText = await withRetry(
     async (signal) => {
-      const json = await directFetchWithError(
+      const json = await directFetch(
         OPENROUTER_ENDPOINT,
         apiKey,
         {

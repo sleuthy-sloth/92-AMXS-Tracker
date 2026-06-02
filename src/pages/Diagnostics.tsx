@@ -8,7 +8,7 @@ import { MaintenanceLog } from '../types';
 import { isGenAIMilConfigured } from '../lib/gemini';
 import { DiagnosticsSchema, DiagnosticFindingParsed } from '../lib/aiSchemas';
 import { generateJSONWithFallback, isOpenRouterConfigured } from '../lib/aiProvider';
-import { getCachedAIResult, setCachedAIResult, generateDataHash } from '../lib/aiCache';
+import { getCachedAIResult, setCachedAIResult, generateDataHashSync } from '../lib/aiCache';
 import { classifyError, AIRetryError } from '../lib/aiRetry';
 import { cn, normalizeTailNumber } from '../lib/utils';
 
@@ -77,11 +77,15 @@ export const Diagnostics: React.FC = () => {
         )
         .join('\n');
 
-      const currentHash = generateDataHash([summary]);
+      const currentHash = generateDataHashSync([summary]);
       const cacheKey = `${profile.amuId}_${profile.shopId}`;
-      
+
       // Check cache (1 hour)
-      const cached = await getCachedAIResult<DiagnosticFindingParsed[]>('diagnostics', cacheKey, 3600000);
+      const cached = await getCachedAIResult<DiagnosticFindingParsed[]>(
+        'diagnostics',
+        cacheKey,
+        3600000
+      );
       if (cached) {
         setFindings(cached);
         reportSuccess('diagnostics', 'genai-mil');
@@ -108,7 +112,7 @@ OUTPUT JSON: [{"tail_number","component","risk":"high|medium|low","pattern","rec
         reportError(
           'diagnostics',
           { kind: 'parse', message: 'AI response failed schema validation', retryable: false },
-          source,
+          source
         );
       } else {
         setFindings(parsed);
@@ -125,7 +129,7 @@ OUTPUT JSON: [{"tail_number","component","risk":"high|medium|low","pattern","rec
     }
   };
 
-  if (!profile || (profile.amuId === 'ALL' || profile.shopId === 'ALL')) {
+  if (!profile || profile.amuId === 'ALL' || profile.shopId === 'ALL') {
     return (
       <div className="p-8">
         <p className="text-slate-500 text-sm">
@@ -143,7 +147,9 @@ OUTPUT JSON: [{"tail_number","component","risk":"high|medium|low","pattern","rec
             <Stethoscope className="w-6 h-6" />
           </div>
           <div>
-            <h2 className="text-3xl font-black tracking-tighter uppercase">Predictive Diagnostics</h2>
+            <h2 className="text-3xl font-black tracking-tighter uppercase">
+              Predictive Diagnostics
+            </h2>
             <p className="serif-header text-sm text-slate-500 italic">
               Gemini-assisted component failure analysis &middot; {byTail.length} repeat tails
             </p>

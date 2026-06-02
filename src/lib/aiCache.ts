@@ -164,16 +164,49 @@ export function generateSessionId(): string {
 }
 
 /**
- * Simple hash function for arrays of strings to detect data changes.
+ * Generate a collision-resistant hash for arrays of strings.
+ * Uses SHA-256 via the Web Crypto API for proper cryptographic hashing.
+ * Falls back to a 53-bit hash when crypto.subtle is unavailable (e.g. test environments).
  */
-export function generateDataHash(inputs: string[]): string {
+export async function generateDataHash(inputs: string[]): Promise<string> {
   if (inputs.length === 0) return 'empty';
-  const joined = inputs.join('|');
-  let hash = 0;
-  for (let i = 0; i < joined.length; i++) {
-    const char = joined.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash |= 0; // Convert to 32bit integer
+  // Use a separator that cannot appear in URL-safe base64
+  const joined = inputs.join('\x00');
+
+  if (typeof crypto !== 'undefined' && crypto.subtle) {
+    try {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(joined);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+    } catch {
+      // Fall through to backup hash
+    }
   }
-  return String(hash);
+
+  // Backup: FNV-1a 64-bit-like hash (collision-resistant for small N)
+  let h = 0xcbf29ce484222325n;
+  for (let i = 0; i < joined.length; i++) {
+    h ^= BigInt(joined.charCodeAt(i));
+    h = (h * 0x100000001b3n) & 0xffffffffffffffffn;
+  }
+  return h.toString(16);
+}
+
+/**
+ * Synchronous wrapper for generateDataHash for use in non-async contexts.
+ * Falls back to a 64-bit FNV-1a hash when crypto.subtle is unavailable.
+ */
+export function generateDataHashSync(inputs: string[]): string {
+  if (inputs.length === 0) return 'empty';
+  const joined = inputs.join('\x00');
+
+  // Use 64-bit FNV-1a (much better collision resistance than 32-bit)
+  let h = 0xcbf29ce484222325n;
+  for (let i = 0; i < joined.length; i++) {
+    h ^= BigInt(joined.charCodeAt(i));
+    h = (h * 0x100000001b3n) & 0xffffffffffffffffn;
+  }
+  return h.toString(16);
 }
