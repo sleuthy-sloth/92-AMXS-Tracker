@@ -69,7 +69,11 @@ export const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[]; training: Trai
 
       const load = async () => {
         // ── Step 1: Read cache immediately (stale-ok) ────────────────
-        reportError(SCAN_KIND, cacheKey, CACHE_TTL_MS);
+        const cached = await getCachedAIResultStaleOk<IntelAlert[]>(
+          CACHE_PREFIX,
+          cacheKey,
+          CACHE_TTL_MS
+        );
 
         if (cancelled) return;
 

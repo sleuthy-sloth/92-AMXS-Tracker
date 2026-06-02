@@ -31,7 +31,7 @@ export const OnboardingApprovalForm: React.FC<Props> = ({ user, profile, onClose
       ? ['technician', 'ncoic', 'leadership']
       : ['technician', 'ncoic'];
 
-  const handleApprove = async (e: React.FormEvent) => {
+  const handleApprove = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!ALLOWED_APPROVAL_ROLES.includes(formData.role)) {
       alert(`Your role (${profile?.role}) is not allowed to assign "${formData.role}".`);

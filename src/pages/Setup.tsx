@@ -14,12 +14,12 @@ export const Setup: React.FC = () => {
     man_number: '',
     shopId: '' as ShopType | '',
     amuId: '' as AMUType | '',
-    phone: ''
+    phone: '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!user) return;
     setLoading(true);
@@ -27,10 +27,9 @@ export const Setup: React.FC = () => {
     try {
       const superAdminEmail = process.env.SUPER_ADMIN_EMAIL;
       const isMasterAdmin = Boolean(
-        superAdminEmail &&
-        (user.email === superAdminEmail || user.email === 'admin@us.af.mil')
+        superAdminEmail && (user.email === superAdminEmail || user.email === 'admin@us.af.mil')
       );
-      
+
       const profile: UserProfile = {
         uid: user.uid,
         email: user.email || '',
@@ -43,7 +42,7 @@ export const Setup: React.FC = () => {
         role: isMasterAdmin ? 'leadership' : 'pending',
         status: isMasterAdmin ? 'active' : 'pending',
         createdAt: serverTimestamp(),
-        isDemo: false
+        isDemo: false,
       };
       await setDoc(doc(db, 'users', user.uid), profile);
       await refreshProfile();
@@ -60,8 +59,12 @@ export const Setup: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="max-w-xl w-full space-y-12">
         <div className="text-center space-y-4">
-          <h2 className="text-4xl font-black tracking-tighter uppercase text-slate-900">Access Request</h2>
-          <p className="serif-header text-lg text-slate-600">Submit operational details for NCOIC verification</p>
+          <h2 className="text-4xl font-black tracking-tighter uppercase text-slate-900">
+            Access Request
+          </h2>
+          <p className="serif-header text-lg text-slate-600">
+            Submit operational details for NCOIC verification
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="visible-grid bg-surface p-12 space-y-10 shadow-xl">
@@ -69,22 +72,22 @@ export const Setup: React.FC = () => {
             <div className="grid grid-cols-2 gap-8">
               <div className="space-y-2">
                 <label className="tech-label">Rank</label>
-                <input 
+                <input
                   required
                   className="sleek-input w-full"
                   placeholder="E.G. SrA"
                   value={formData.rank}
-                  onChange={e => setFormData({...formData, rank: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, rank: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
                 <label className="tech-label">Full Name (Surname, Initial)</label>
-                <input 
+                <input
                   required
                   className="sleek-input w-full"
                   placeholder="DOE, J"
                   value={formData.name}
-                  onChange={e => setFormData({...formData, name: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 />
               </div>
             </div>
@@ -92,48 +95,56 @@ export const Setup: React.FC = () => {
             <div className="grid grid-cols-2 gap-8">
               <div className="space-y-2">
                 <label className="tech-label">Assigned AMU</label>
-                <select 
+                <select
                   required
                   className="sleek-input w-full"
                   value={formData.amuId}
-                  onChange={e => setFormData({...formData, amuId: e.target.value as AMUType})}
+                  onChange={(e) => setFormData({ ...formData, amuId: e.target.value as AMUType })}
                 >
                   <option value="">Select AMU...</option>
-                  {AMUS.map(a => <option key={a} value={a}>{a}</option>)}
+                  {AMUS.map((a) => (
+                    <option key={a} value={a}>
+                      {a}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="space-y-2">
                 <label className="tech-label">Assigned Shop</label>
-                <select 
+                <select
                   required
                   className="sleek-input w-full"
                   value={formData.shopId}
-                  onChange={e => setFormData({...formData, shopId: e.target.value as ShopType})}
+                  onChange={(e) => setFormData({ ...formData, shopId: e.target.value as ShopType })}
                 >
                   <option value="">Select Shop...</option>
-                  {SHOPS.map(s => <option key={s} value={s}>{s}</option>)}
+                  {SHOPS.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
 
             <div className="space-y-2">
               <label className="tech-label">Man Number</label>
-              <input 
+              <input
                 required
                 className="sleek-input w-full data-mono"
                 placeholder="99999"
                 value={formData.man_number}
-                onChange={e => setFormData({...formData, man_number: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, man_number: e.target.value })}
               />
             </div>
 
             <div className="space-y-2">
               <label className="tech-label">Contact Phone</label>
-              <input 
+              <input
                 className="sleek-input w-full"
                 placeholder="555-0123"
                 value={formData.phone}
-                onChange={e => setFormData({...formData, phone: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               />
             </div>
           </div>
@@ -146,14 +157,10 @@ export const Setup: React.FC = () => {
           )}
 
           <div className="flex flex-col gap-4">
-            <button 
-              type="submit"
-              disabled={loading}
-              className="sleek-button w-full py-5 text-lg"
-            >
+            <button type="submit" disabled={loading} className="sleek-button w-full py-5 text-lg">
               {loading ? 'Transmitting Request...' : 'Request System Access'}
             </button>
-            <button 
+            <button
               type="button"
               onClick={logout}
               className="tech-label text-slate-400 hover:text-slate-600 transition-colors uppercase tracking-[0.1em] text-center"

@@ -31,8 +31,8 @@ const okResponse = (data: unknown): Response =>
     { status: 200, headers: { 'Content-Type': 'application/json' } }
   );
 
-/** Create an error fetch Response */
-const errorResponse = (status: number, body: Record<string, unknown> = {}): Response =>
+/** Create an error fetch Response — used by test utilities */
+const _errorResponse = (status: number, body: Record<string, unknown> = {}): Response =>
   new Response(JSON.stringify({ error: { message: body.message ?? 'Error', ...body } }), {
     status,
     headers: { 'Content-Type': 'application/json' },

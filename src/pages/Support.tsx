@@ -7,7 +7,7 @@ import {
   ChevronRight,
   ShieldCheck,
   ShieldAlert,
-  Sparkles
+  Sparkles,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../contexts/AuthContextInstance';
@@ -16,11 +16,11 @@ import { ScanKind, ScanState } from '../contexts/AIScanStatusTypes';
 import { cn } from '../lib/utils';
 
 const SCAN_LABELS: Record<ScanKind, string> = {
-  'assistant': 'Maintenance Assistant',
+  assistant: 'Maintenance Assistant',
   'supply-risk': 'Supply Risk Scan',
   'g081-expiry': 'G081 Expiry Scan',
-  'training': 'Training Compliance Scan',
-  'diagnostics': 'Predictive Diagnostics',
+  training: 'Training Compliance Scan',
+  diagnostics: 'Predictive Diagnostics',
   'intelligence-feed': 'Intelligence Feed',
 };
 
@@ -60,7 +60,11 @@ const summariseError = (kind: string, message: string): string => {
 const dotColor = (state: ScanState): string => {
   if (state.status === 'running') return 'bg-sky-500 animate-pulse';
   if (state.status === 'error') {
-    if (state.lastError?.kind === 'auth' || state.lastError?.kind === 'parse' || state.lastError?.kind === 'unknown') {
+    if (
+      state.lastError?.kind === 'auth' ||
+      state.lastError?.kind === 'parse' ||
+      state.lastError?.kind === 'unknown'
+    ) {
       return 'bg-red-500';
     }
     return 'bg-amber-500';
@@ -132,7 +136,9 @@ export const Support: React.FC = () => {
   const showAIDetails = profile?.role === 'ncoic' || profile?.role === 'leadership';
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [passData, setPassData] = useState({ new: '', confirm: '' });
-  const [passStatus, setPassStatus] = useState<{ type: 'success' | 'error', msg: string } | null>(null);
+  const [passStatus, setPassStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(
+    null
+  );
   const [isUpdating, setIsUpdating] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
@@ -147,7 +153,7 @@ export const Support: React.FC = () => {
     };
   }, []);
 
-  const handlePasswordUpdate = async (e: React.FormEvent) => {
+  const handlePasswordUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (passData.new !== passData.confirm) {
       setPassStatus({ type: 'error', msg: 'Passwords do not match' });
@@ -169,29 +175,29 @@ export const Support: React.FC = () => {
 
   const faqs = [
     {
-      q: "How do I request access to a different shop?",
-      a: "Contact your NCOIC or a Leadership member. They can edit your profile from the Personnel tab and reassign your shop."
+      q: 'How do I request access to a different shop?',
+      a: 'Contact your NCOIC or a Leadership member. They can edit your profile from the Personnel tab and reassign your shop.',
     },
     {
       q: "My training records aren't showing up correctly.",
-      a: "Training records are updated via the 'Upload Training Report' feature in the Training Tracker. Ensure your NCOIC has uploaded the latest report from the training system."
+      a: "Training records are updated via the 'Upload Training Report' feature in the Training Tracker. Ensure your NCOIC has uploaded the latest report from the training system.",
     },
     {
-      q: "Can I edit a maintenance log after submitting it?",
-      a: "Currently, maintenance logs are permanent once submitted to ensure data integrity. If a mistake was made, please submit a new entry with the correct information and note the correction."
+      q: 'Can I edit a maintenance log after submitting it?',
+      a: 'Currently, maintenance logs are permanent once submitted to ensure data integrity. If a mistake was made, please submit a new entry with the correct information and note the correction.',
     },
     {
-      q: "How do I gain administrative access?",
-      a: "Administrative access is restricted to authorized personnel only. If you require admin privileges, contact the System Administrator directly with your justification."
+      q: 'How do I gain administrative access?',
+      a: 'Administrative access is restricted to authorized personnel only. If you require admin privileges, contact the System Administrator directly with your justification.',
     },
     {
-      q: "What should I do if the system is slow or unresponsive?",
-      a: "First, refresh your browser. If the issue persists, check your network connection. If it still fails, report the issue to the Technical Support contact listed on this page."
+      q: 'What should I do if the system is slow or unresponsive?',
+      a: 'First, refresh your browser. If the issue persists, check your network connection. If it still fails, report the issue to the Technical Support contact listed on this page.',
     },
     {
-      q: "How are maintenance discrepancies tracked?",
-      a: "Discrepancies are tracked in real-time via the Maintenance Logs page. Ensure all entries are accurate and complete to maintain data integrity across shifts."
-    }
+      q: 'How are maintenance discrepancies tracked?',
+      a: 'Discrepancies are tracked in real-time via the Maintenance Logs page. Ensure all entries are accurate and complete to maintain data integrity across shifts.',
+    },
   ];
 
   return (
@@ -200,9 +206,12 @@ export const Support: React.FC = () => {
         <div className="w-24 h-24 bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto text-primary">
           <HelpCircle className="w-12 h-12" />
         </div>
-        <h1 className="text-5xl font-black tracking-tighter uppercase text-slate-900">Support & Documentation</h1>
+        <h1 className="text-5xl font-black tracking-tighter uppercase text-slate-900">
+          Support & Documentation
+        </h1>
         <p className="serif-header text-xl max-w-2xl mx-auto text-slate-600">
-          Operational guidance and technical support for the 92nd AMXS Maintenance & Training Control System.
+          Operational guidance and technical support for the 92nd AMXS Maintenance & Training
+          Control System.
         </p>
       </div>
 
@@ -212,26 +221,39 @@ export const Support: React.FC = () => {
             <h3 className="text-xl font-black tracking-tighter uppercase flex items-center gap-3 text-slate-900">
               <Wifi className="w-6 h-6 text-primary" /> System Connectivity
             </h3>
-            <div className={cn(
-              "p-6 border flex items-center gap-4 transition-all",
-              isOnline 
-                ? "bg-emerald-500/5 border-emerald-500/20" 
-                : "bg-red-500/5 border-red-500/20"
-            )}>
-              <div className={cn(
-                "w-12 h-12 flex items-center justify-center rounded-none border",
-                isOnline ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" : "bg-red-500/10 border-red-500/20 text-red-500"
-              )}>
+            <div
+              className={cn(
+                'p-6 border flex items-center gap-4 transition-all',
+                isOnline
+                  ? 'bg-emerald-500/5 border-emerald-500/20'
+                  : 'bg-red-500/5 border-red-500/20'
+              )}
+            >
+              <div
+                className={cn(
+                  'w-12 h-12 flex items-center justify-center rounded-none border',
+                  isOnline
+                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'
+                    : 'bg-red-500/10 border-red-500/20 text-red-500'
+                )}
+              >
                 {isOnline ? <Wifi className="w-6 h-6" /> : <WifiOff className="w-6 h-6" />}
               </div>
               <div className="flex-1">
-                <p className="tech-label text-[10px] text-slate-400 uppercase tracking-widest">Network Status</p>
-                <p className={cn("text-lg font-black uppercase tracking-tight", isOnline ? "text-emerald-600" : "text-red-600")}>
+                <p className="tech-label text-[10px] text-slate-400 uppercase tracking-widest">
+                  Network Status
+                </p>
+                <p
+                  className={cn(
+                    'text-lg font-black uppercase tracking-tight',
+                    isOnline ? 'text-emerald-600' : 'text-red-600'
+                  )}
+                >
                   {isOnline ? 'Active Link Established' : 'Offline Cache Mode'}
                 </p>
                 <p className="text-xs text-slate-500 font-medium mt-1">
-                  {isOnline 
-                    ? 'All maintenance records and training logs are currently syncing with live servers.' 
+                  {isOnline
+                    ? 'All maintenance records and training logs are currently syncing with live servers.'
                     : 'System is running in buffered mode. All changes will commit automatically once re-connected.'}
                 </p>
               </div>
@@ -243,34 +265,40 @@ export const Support: React.FC = () => {
               <Users className="w-6 h-6 text-primary" /> Technical Oversight
             </h3>
             <div className="space-y-6">
-            <div className="p-6 bg-slate-50 border border-outline">
-              <p className="tech-label mb-2">System Administrator & Developer</p>
-              <p className="font-black text-sm uppercase tracking-tight text-slate-900">TSgt Steven Koehl</p>
-              <p className="data-mono text-xs mt-1 opacity-60">Steven.Koehl.1@us.af.mil</p>
+              <div className="p-6 bg-slate-50 border border-outline">
+                <p className="tech-label mb-2">System Administrator & Developer</p>
+                <p className="font-black text-sm uppercase tracking-tight text-slate-900">
+                  TSgt Steven Koehl
+                </p>
+                <p className="data-mono text-xs mt-1 opacity-60">Steven.Koehl.1@us.af.mil</p>
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        </div>
+        <div className="p-10">
+          <AIStatusPanel showDetails={showAIDetails} />
+        </div>
       </div>
-      <div className="p-10">
-        <AIStatusPanel showDetails={showAIDetails} />
-      </div>
-    </div>
 
       <div className="space-y-8">
-        <h2 className="text-3xl font-black tracking-tighter uppercase text-center">Frequently Asked Questions</h2>
+        <h2 className="text-3xl font-black tracking-tighter uppercase text-center">
+          Frequently Asked Questions
+        </h2>
         <div className="grid grid-cols-1 gap-0 visible-grid bg-surface">
           {faqs.map((faq, i) => (
             <div key={i} className="border-b border-outline last:border-b-0">
-              <button 
+              <button
                 onClick={() => setOpenFaq(openFaq === i ? null : i)}
                 className="w-full p-8 flex justify-between items-center hover:bg-putty/30 transition-colors text-left"
               >
                 <span className="font-black text-sm uppercase tracking-tight">{faq.q}</span>
-                <ChevronRight className={cn("w-5 h-5 transition-transform", openFaq === i ? "rotate-90" : "")} />
+                <ChevronRight
+                  className={cn('w-5 h-5 transition-transform', openFaq === i ? 'rotate-90' : '')}
+                />
               </button>
               <AnimatePresence>
                 {openFaq === i && (
-                  <motion.div 
+                  <motion.div
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
@@ -289,51 +317,64 @@ export const Support: React.FC = () => {
 
       {/* Account Management Section */}
       <div className="space-y-8">
-        <h2 className="text-3xl font-black tracking-tighter uppercase text-center">Account Security</h2>
+        <h2 className="text-3xl font-black tracking-tighter uppercase text-center">
+          Account Security
+        </h2>
         <div className="visible-grid bg-surface p-10 space-y-8 max-w-2xl mx-auto shadow-lg">
           <div className="space-y-4">
             <h3 className="tech-label text-primary">System Access Credentials</h3>
-            <p className="serif-header text-sm text-slate-600">You can update your operational password below. Ensure it meets military strength requirements.</p>
+            <p className="serif-header text-sm text-slate-600">
+              You can update your operational password below. Ensure it meets military strength
+              requirements.
+            </p>
           </div>
-          
+
           <form onSubmit={handlePasswordUpdate} className="space-y-6">
             <div className="space-y-2">
               <label className="tech-label">New Access Password</label>
-              <input 
+              <input
                 type="password"
                 required
                 minLength={8}
                 className="sleek-input w-full"
                 placeholder="••••••••"
                 value={passData.new}
-                onChange={e => setPassData({ ...passData, new: e.target.value })}
+                onChange={(e) => setPassData({ ...passData, new: e.target.value })}
               />
             </div>
             <div className="space-y-2">
               <label className="tech-label">Confirm New Password</label>
-              <input 
+              <input
                 type="password"
                 required
                 minLength={8}
                 className="sleek-input w-full"
                 placeholder="••••••••"
                 value={passData.confirm}
-                onChange={e => setPassData({ ...passData, confirm: e.target.value })}
+                onChange={(e) => setPassData({ ...passData, confirm: e.target.value })}
               />
             </div>
 
             {passStatus && (
-              <div className={cn(
-                "p-4 border flex items-center gap-3 text-[10px] font-black uppercase tracking-tight",
-                passStatus.type === 'success' ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600" : "bg-safety-orange/10 border-safety-orange/20 text-safety-orange"
-              )}>
-                {passStatus.type === 'success' ? <ShieldCheck className="w-4 h-4" /> : <ShieldAlert className="w-4 h-4" />}
+              <div
+                className={cn(
+                  'p-4 border flex items-center gap-3 text-[10px] font-black uppercase tracking-tight',
+                  passStatus.type === 'success'
+                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600'
+                    : 'bg-safety-orange/10 border-safety-orange/20 text-safety-orange'
+                )}
+              >
+                {passStatus.type === 'success' ? (
+                  <ShieldCheck className="w-4 h-4" />
+                ) : (
+                  <ShieldAlert className="w-4 h-4" />
+                )}
                 {passStatus.msg}
               </div>
             )}
 
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               disabled={isUpdating}
               className="sleek-button w-full py-4 text-xs font-black"
             >

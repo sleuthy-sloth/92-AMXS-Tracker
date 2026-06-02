@@ -9,7 +9,7 @@ import { LogFormData } from '../../hooks/useLogForm';
 interface LogFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (e: React.FormEvent) => void;
+  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
   formData: LogFormData;
   setFormData: React.Dispatch<React.SetStateAction<LogFormData>>;
   editingLogId: string | null;

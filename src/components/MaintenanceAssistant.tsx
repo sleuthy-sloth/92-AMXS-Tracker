@@ -121,7 +121,7 @@ export const MaintenanceAssistant: React.FC = () => {
     }
   }, [messages, user?.uid]);
 
-  const handleSend = async (e: React.FormEvent) => {
+  const handleSend = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!input.trim() || isThinking) return;
 

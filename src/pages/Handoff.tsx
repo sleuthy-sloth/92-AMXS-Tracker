@@ -67,7 +67,7 @@ export const Handoff: React.FC = () => {
     return unsub;
   }, [profile]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!profile) return;
     if (profile.amuId === 'ALL' || profile.shopId === 'ALL') {
@@ -228,7 +228,10 @@ export const Handoff: React.FC = () => {
         ) : (
           handoffs.map((h) => {
             const open = h.items.filter((i) => !i.acknowledged);
-            const canEdit = profile?.role === 'leadership' || profile?.role === 'ncoic' || profile?.uid === h.createdBy;
+            const canEdit =
+              profile?.role === 'leadership' ||
+              profile?.role === 'ncoic' ||
+              profile?.uid === h.createdBy;
             return (
               <div key={h.id} className="bg-white border border-outline group">
                 <header className="p-4 flex justify-between items-center border-b border-outline bg-slate-50 relative">
@@ -264,7 +267,10 @@ export const Handoff: React.FC = () => {
                 </header>
                 <ul className="divide-y divide-outline">
                   {h.items.map((item) => (
-                    <li key={item.id} className="p-4 flex items-start gap-3 group/item hover:bg-slate-50/50 transition-colors">
+                    <li
+                      key={item.id}
+                      className="p-4 flex items-start gap-3 group/item hover:bg-slate-50/50 transition-colors"
+                    >
                       {item.acknowledged ? (
                         <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                       ) : (

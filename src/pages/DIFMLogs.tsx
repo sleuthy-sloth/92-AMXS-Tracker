@@ -108,7 +108,7 @@ export const DIFMLogs: React.FC = () => {
     return unsubscribe;
   }, [profile, isDemoMode, logsLimit]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!profile) return;
 

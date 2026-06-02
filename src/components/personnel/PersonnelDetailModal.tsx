@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Mail, Phone, MapPin } from 'lucide-react';
+import { X, Mail, Phone } from 'lucide-react';
 import { UserProfile } from '../../types';
 import { cn } from '../../lib/utils';
 

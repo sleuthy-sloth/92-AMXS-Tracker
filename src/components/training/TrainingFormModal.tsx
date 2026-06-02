@@ -25,7 +25,7 @@ export const TrainingFormModal: React.FC<TrainingFormModalProps> = ({
     status: training?.status || ('current' as TrainingRecord['status']),
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     onSubmit({
       ...formData,

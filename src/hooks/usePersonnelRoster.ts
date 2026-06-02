@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { collection, query, where, onSnapshot, limit } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { UserProfile } from '../types';
 import { useAuth } from '../contexts/AuthContextInstance';
@@ -60,7 +60,7 @@ export function usePersonnelRoster(): UsePersonnelRosterReturn {
         const data = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
-        })) as UserProfile[];
+        })) as unknown as UserProfile[];
         setFirestorePersonnel(data);
         setLoading(false);
       },

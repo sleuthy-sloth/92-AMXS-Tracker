@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { Search, Grid, List, FileSpreadsheet, FileText, X, Send } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { TrainingRecord } from '../types';
@@ -11,14 +11,12 @@ import { useTrainingData } from '../hooks/useTrainingData';
 
 // Components
 import { TrainingStatsPanel } from '../components/training/TrainingStatsPanel';
-import { TrainingUploadZone } from '../components/training/TrainingUploadZone';
 
 export const TrainingTracker: React.FC = () => {
   const { profile } = useAuth();
 
   // Data hook
   const {
-    trainings,
     searchQuery,
     setSearchQuery,
     startDate,
@@ -33,13 +31,6 @@ export const TrainingTracker: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [selectedRecord, setSelectedRecord] = useState<TrainingRecord | null>(null);
   const [showNotifyModal, setShowNotifyModal] = useState(false);
-
-  // Helper to get person name from man_number
-  const getPersonName = (manNumber: string) => {
-    // In the refactored version, personnel_name is stored directly on the training record
-    const training = trainings.find((t) => t.man_number === manNumber);
-    return training?.personnel_name || 'Unknown Personnel';
-  };
 
   return (
     <div className="space-y-10" data-tour="page-root">

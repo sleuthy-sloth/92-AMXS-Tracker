@@ -37,7 +37,6 @@ export const MaintenanceLogs: React.FC = () => {
     setIsArchiveView,
     demoSeededLogs,
     setDemoSeededLogs,
-    demoArchiveOverrides,
     setDemoArchiveOverrides,
   } = useMaintenanceLogs();
 
@@ -102,7 +101,7 @@ export const MaintenanceLogs: React.FC = () => {
   }, [logs, searchQuery, startDate, endDate]);
 
   // Business logic handlers
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!profile) return;
 
