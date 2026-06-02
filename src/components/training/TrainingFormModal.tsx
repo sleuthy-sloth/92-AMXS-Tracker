@@ -29,6 +29,8 @@ export const TrainingFormModal: React.FC<TrainingFormModalProps> = ({
     e.preventDefault();
     onSubmit({
       ...formData,
+      shopId: training?.shopId || '',
+      amuId: training?.amuId || ('BLACK' as const),
       isDemo: false,
       createdAt: training?.createdAt,
       createdBy: training?.createdBy,
@@ -39,7 +41,13 @@ export const TrainingFormModal: React.FC<TrainingFormModalProps> = ({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={training ? 'Edit Training' : 'Add Training'}
+          tabIndex={-1}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+        >
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}

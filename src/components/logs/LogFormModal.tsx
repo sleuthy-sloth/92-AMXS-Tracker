@@ -44,7 +44,13 @@ export const LogFormModal: React.FC<LogFormModalProps> = ({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-stealth/80 backdrop-blur-md">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={editingLogId ? 'Edit Maintenance Entry' : 'New Maintenance Entry'}
+          tabIndex={-1}
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-stealth/80 backdrop-blur-md"
+        >
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}

@@ -24,7 +24,7 @@ import { generateJSONWithFallback, isOpenRouterConfigured } from '../lib/aiProvi
 import {
   getCachedAIResultStaleOk,
   setCachedAIResult,
-  generateDataHash,
+  generateDataHashSync,
   acquireCacheLock,
   releaseCacheLock,
   generateSessionId,
@@ -100,7 +100,7 @@ export const useSupplyRiskScan = () => {
         .map((l) => `${l.id}|${l.tail_number}: ${l.discrepancy}`)
         .join('\n');
 
-      const currentHash = generateDataHash([summary]);
+      const currentHash = generateDataHashSync([summary]);
       const lockAcquired = await acquireCacheLock(
         `${LOCK_KEY_PREFIX}_${cacheKey}`,
         sessionRef.current

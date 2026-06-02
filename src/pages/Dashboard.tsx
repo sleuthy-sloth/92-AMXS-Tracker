@@ -7,12 +7,13 @@ import { UserProfile, MaintenanceLog, TrainingRecord, DIFMLog } from '../types';
 import { useAuth } from '../contexts/AuthContextInstance';
 import { cn, tsToDate } from '../lib/utils';
 import { exportTurnoverToPDF, exportRedBallWeeklyPDF } from '../lib/exportUtils';
-import { MOCK_LOGS, MOCK_PERSONNEL, MOCK_TRAINING, MOCK_DIFM } from '../mockData';
+import { useDemoData } from '../contexts/DemoDataProvider';
 import { IntelligenceFeed } from '../components/dashboard/IntelligenceFeed';
 import { LoopClosure } from '../components/dashboard/LoopClosure';
 
 export const Dashboard: React.FC = () => {
   const { profile, isDemoMode } = useAuth();
+  const demoData = useDemoData();
   const [firestoreLogs, setFirestoreLogs] = useState<MaintenanceLog[]>([]);
   const [firestorePersonnel, setFirestorePersonnel] = useState<UserProfile[]>([]);
   const [firestoreTraining, setFirestoreTraining] = useState<TrainingRecord[]>([]);
@@ -20,43 +21,31 @@ export const Dashboard: React.FC = () => {
 
   const logs = useMemo<MaintenanceLog[]>(() => {
     if (!profile) return [];
-    if (!isDemoMode) return firestoreLogs;
-    return MOCK_LOGS.filter((l) => {
-      if (profile.amuId !== 'ALL' && l.amuId !== profile.amuId) return false;
-      if (profile.shopId !== 'ALL' && l.shopId !== profile.shopId) return false;
-      return true;
-    }).sort((a, b) => tsToDate(b.timestamp).getTime() - tsToDate(a.timestamp).getTime());
-  }, [isDemoMode, profile, firestoreLogs]);
+    if (isDemoMode && demoData.isDemo) {
+      return [...demoData.logs].sort(
+        (a, b) => tsToDate(b.timestamp).getTime() - tsToDate(a.timestamp).getTime()
+      );
+    }
+    return firestoreLogs;
+  }, [isDemoMode, demoData, profile, firestoreLogs]);
 
   const personnel = useMemo<UserProfile[]>(() => {
     if (!profile) return [];
-    if (!isDemoMode) return firestorePersonnel;
-    return MOCK_PERSONNEL.filter((p) => {
-      if (profile.amuId !== 'ALL' && p.amuId !== profile.amuId) return false;
-      if (profile.shopId !== 'ALL' && p.shopId !== profile.shopId) return false;
-      return true;
-    });
-  }, [isDemoMode, profile, firestorePersonnel]);
+    if (isDemoMode && demoData.isDemo) return demoData.personnel;
+    return firestorePersonnel;
+  }, [isDemoMode, demoData, profile, firestorePersonnel]);
 
   const training = useMemo<TrainingRecord[]>(() => {
     if (!profile) return [];
-    if (!isDemoMode) return firestoreTraining;
-    return MOCK_TRAINING.filter((t) => {
-      if (profile.amuId !== 'ALL' && t.amuId !== profile.amuId) return false;
-      if (profile.shopId !== 'ALL' && t.shopId !== profile.shopId) return false;
-      return true;
-    });
-  }, [isDemoMode, profile, firestoreTraining]);
+    if (isDemoMode && demoData.isDemo) return demoData.training;
+    return firestoreTraining;
+  }, [isDemoMode, demoData, profile, firestoreTraining]);
 
   const difm = useMemo<DIFMLog[]>(() => {
     if (!profile) return [];
-    if (!isDemoMode) return firestoreDifm;
-    return MOCK_DIFM.filter((d) => {
-      if (profile.amuId !== 'ALL' && d.amuId !== profile.amuId) return false;
-      if (profile.shopId !== 'ALL' && d.shopId !== profile.shopId) return false;
-      return true;
-    });
-  }, [isDemoMode, profile, firestoreDifm]);
+    if (isDemoMode && demoData.isDemo) return demoData.difm;
+    return firestoreDifm;
+  }, [isDemoMode, demoData, profile, firestoreDifm]);
 
   useEffect(() => {
     if (!profile || isDemoMode) return;

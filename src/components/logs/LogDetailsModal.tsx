@@ -25,7 +25,13 @@ export const LogDetailsModal: React.FC<LogDetailsModalProps> = ({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-stealth/80 backdrop-blur-md">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Maintenance log details for ${log.tail_number}`}
+        tabIndex={-1}
+        className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-stealth/80 backdrop-blur-md"
+      >
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
