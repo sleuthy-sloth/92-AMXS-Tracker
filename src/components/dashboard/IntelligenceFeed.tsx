@@ -41,6 +41,76 @@ const NOMINAL_ALERT: IntelAlert = {
 /** Stale-but-cached fallback suffix */
 const staleSuffix = ' (cached)';
 
+/** Generate realistic mock intelligence alerts from demo data (no AI calls). */
+function generateMockIntel(logs: MaintenanceLog[], training: TrainingRecord[]): IntelAlert[] {
+  const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const alerts: IntelAlert[] = [];
+
+  // Check for Red Ball items
+  const redBalls = logs.filter((l) => l.isRedBall);
+  if (redBalls.length > 0) {
+    const tail = redBalls[0].tail_number;
+    alerts.push({
+      id: 'mock-redball',
+      type: 'critical',
+      title: `Red Ball: Tail ${tail}`,
+      description: `${redBalls.length} urgent maintenance item${redBalls.length > 1 ? 's' : ''} require${redBalls.length === 1 ? 's' : ''} immediate attention. ${redBalls[0].discrepancy}`,
+      time: now,
+    });
+  }
+
+  // Check for recurring discrepancies (loop closure)
+  const tailCounts = new Map<string, number>();
+  logs.forEach((l) => {
+    tailCounts.set(l.tail_number, (tailCounts.get(l.tail_number) || 0) + 1);
+  });
+  const recurring = Array.from(tailCounts.entries()).filter(([, count]) => count > 1);
+  if (recurring.length > 0) {
+    const [topTail, count] = recurring.sort((a, b) => b[1] - a[1])[0];
+    alerts.push({
+      id: 'mock-loop',
+      type: 'warning',
+      title: `Recurring Issues: Tail ${topTail}`,
+      description: `Tail ${topTail} has ${count} maintenance entries — potential systemic issue. Recommend engineering review.`,
+      time: now,
+    });
+  }
+
+  // Check for expired/expiring training
+  const expired = training.filter((t) => t.status === 'expired');
+  const expiring = training.filter((t) => t.status === 'expiring');
+  if (expired.length > 0) {
+    alerts.push({
+      id: 'mock-training-expired',
+      type: 'critical',
+      title: `${expired.length} Expired Training ${expired.length === 1 ? 'Item' : 'Items'}`,
+      description: `${expired.length} personnel ${expired.length === 1 ? 'has' : 'have'} expired training certifications. Immediate retraining required for compliance.`,
+      time: now,
+    });
+  } else if (expiring.length > 0) {
+    alerts.push({
+      id: 'mock-training-expiring',
+      type: 'warning',
+      title: `${expiring.length} Training ${expiring.length === 1 ? 'Item' : 'Items'} Expiring`,
+      description: `${expiring.length} training certification${expiring.length > 1 ? 's' : ''} expiring within 60 days. Schedule retraining to maintain readiness.`,
+      time: now,
+    });
+  }
+
+  // Fallback: nominal
+  if (alerts.length === 0) {
+    alerts.push({
+      id: 'mock-nominal',
+      type: 'info',
+      title: 'System Nominal',
+      description: 'All systems operational. No critical alerts detected in current shop data.',
+      time: now,
+    });
+  }
+
+  return alerts;
+}
+
 /**
  * IntelligenceFeed — AI-powered trend analysis for the 92 AMXS dashboard.
  *
@@ -55,7 +125,7 @@ const staleSuffix = ' (cached)';
  */
 export const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[]; training: TrainingRecord[] }> =
   memo(({ logs, training }) => {
-    const { profile } = useAuth();
+    const { profile, isDemoMode } = useAuth();
     const { reportStart, reportSuccess, reportError } = useScanStatus();
     const [alerts, setAlerts] = useState<IntelAlert[]>([]);
     const [loading, setLoading] = useState(true);
@@ -63,6 +133,16 @@ export const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[]; training: Trai
 
     useEffect(() => {
       if (!profile) return;
+
+      // ── Demo mode: generate mock intelligence from mock data ────────
+      // Skip all Firestore/AI calls — demo user isn't really authenticated.
+      if (isDemoMode) {
+        const mockAlerts = generateMockIntel(logs, training);
+        setAlerts(mockAlerts);
+        setLoading(false);
+        reportSuccess(SCAN_KIND);
+        return;
+      }
 
       const cacheKey = `${profile.amuId}_${profile.shopId}`;
       let cancelled = false;
@@ -211,7 +291,7 @@ export const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[]; training: Trai
       return () => {
         cancelled = true;
       };
-    }, [profile, logs, training, reportStart, reportSuccess, reportError]);
+    }, [profile, isDemoMode, logs, training, reportStart, reportSuccess, reportError]);
 
     // ── Render ───────────────────────────────────────────────────────
 
