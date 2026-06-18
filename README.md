@@ -27,19 +27,18 @@
 The **92 AMXS Tracker** is a full-featured operational management platform purpose-built for Air Force maintenance squadrons. It replaces paper logbooks, disconnected spreadsheets, and email chains with a single real-time command center that tracks everything from aircraft discrepancies to personnel training compliance.
 
 **Live:** [sleuthy-sloth.github.io/92-AMXS-Tracker](https://sleuthy-sloth.github.io/92-AMXS-Tracker/)  
-**Latest:** `v0.8.0` — Test fixes, security hardening, bundle optimization (June 2026)
+**Latest:** `v0.9.0` — Interactive intelligence, scoped AI assistant (June 2026)
 
 ---
 
-## What's New in v0.8.0
+## What's New in v0.9.0
 
-- **🧪 Test suite fixed** — all 99 tests passing (React 19 `act` compatibility via `NODE_ENV=development` in vitest config)
-- **🔒 Security hardening** — removed hardcoded admin email from Firestore rules (admin access now exclusively via custom claims); demo sandbox `bypassLogin` disabled in production builds
-- **📦 Bundle optimization** — lazy-loaded admin routes (Onboarding, Handoff, Workload, Diagnostics) with `React.lazy` + `Suspense`; vendor chunks split (firebase, jsPDF, xlsx, motion, driver.js) — 60% reduction in main chunk size
-- **🛡️ Firestore rules fixes** — added `editingBy`/`editingByName`/`editingSince` to `hasOnly()` allowlist (was silently rejecting presence updates); added `'inactive'` to valid user statuses (soft-delete was broken)
-- **🧹 Code cleanup** — fixed `useRoleGuard` dead code (`isDemoMode || true`), renamed package from `react-example` to `amxs-tracker`, fixed husky `prepare` script for fresh installs
-- **🔒 npm audit** — resolved 15 of 17 vulnerabilities via `npm audit fix` (remaining 2 are in `xlsx` — no npm fix available, pending migration to SheetJS CDN)
-- **🧹 Repo hygiene** — removed committed tool artifacts (`metadata.json`, `.pi-lens/cache/`), cleaned obsolete test snapshots
+- **🔍 Clickable intelligence alerts** — Mission Intelligence feed alerts are now interactive. Click any alert to open a drill-down modal:
+  - **Red Ball alerts** → full list of all urgent maintenance items with tail numbers, discrepancies, repairs, technicians, and timestamps
+  - **Recurring issues** → all maintenance entries for the flagged tail number, plus a summary panel showing all recurring tails with entry counts
+  - **Training expired/expiring** → personnel list with names, ranks, courses, due dates, and shop assignments
+- **🤖 Scoped AI Maintenance Assistant** — floating AI terminal with tool-calling (query logs, DIFM, training) now active on all pages. System prompt is strictly scoped to tracker data — refuses general knowledge, coding, or off-topic questions. Only answers questions about maintenance logs, training compliance, DIFM parts, and personnel within the 92 AMXS Tracker.
+- **♿ Accessibility** — clickable alerts include keyboard support (Enter/Space), `role="button"`, `aria-label`, and focus indicators
 
 ## Capabilities
 

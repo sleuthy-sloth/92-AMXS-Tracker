@@ -324,7 +324,7 @@ export const Dashboard: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-4 space-y-8" data-tour="intelligence-feed">
-          <IntelligenceFeed logs={logs} training={training} />
+          <IntelligenceFeed logs={logs} training={training} personnel={personnel} />
           <LoopClosure logs={logs} />
         </div>
 

@@ -222,13 +222,12 @@ export const MaintenanceAssistant: React.FC = () => {
     };
 
     const systemPrompt =
-      'You are the 92nd AMXS Maintenance Assistant. ' +
-      'Answer questions about aircraft maintenance, squadron operations, training programs, ' +
-      'parts/supply workflows, procedures, and concepts. ' +
-      'When the user asks for concrete records (logs for a tail, DIFM status, training gaps), ' +
-      'call the appropriate tool to pull live data. ' +
-      'When the user asks a general or conceptual question, answer from your own knowledge. ' +
-      'Be concise, practical, and military-technical when relevant. ' +
+      'You are the 92nd AMXS Maintenance Assistant, a scoped AI tool embedded in the 92 AMXS Tracker application. ' +
+      'STRICT SCOPE: You may ONLY answer questions about data within this tracker — maintenance logs, DIFM parts, training compliance, personnel roster, and shift handoffs. ' +
+      'You must REFUSE any request that is outside this scope: no general knowledge questions, no coding help, no creative writing, no personal advice, no political or religious topics, no questions about other software or tools. ' +
+      'If a user asks something unrelated to squadron maintenance operations, respond with: "I can only answer questions about the 92 AMXS Tracker data — maintenance logs, training compliance, DIFM parts, and personnel. Please ask about something within that scope." ' +
+      'When the user asks for concrete records (logs for a tail, DIFM status, training gaps), call the appropriate tool to pull live data. ' +
+      'Be concise, practical, and military-technical. ' +
       'Bold RED BALLS and EXPIRED training. Use markdown tables for record-style data.';
 
     // Backup-channel runner — OpenRouter with tools first, plain text if
@@ -238,7 +237,7 @@ export const MaintenanceAssistant: React.FC = () => {
       const backupSystemPrompt =
         systemPrompt +
         ' The primary AI (GenAI.mil) is temporarily unavailable. ' +
-        'You have access to tools — use them for concrete record queries.';
+        'You have access to tools — use them for concrete record queries within the tracker scope.';
       try {
         const toolsText = await runOpenRouterWithTools({
           systemPrompt: backupSystemPrompt,
@@ -398,8 +397,8 @@ export const MaintenanceAssistant: React.FC = () => {
                   </div>
                   <div className="grid grid-cols-1 gap-2 w-full mt-4">
                     {[
-                      'Identify recurring tail number issues',
-                      'Check training gaps for next 30 days',
+                      'Show all Red Ball items for this shop',
+                      'Which personnel have expired training?',
                     ].map((q) => (
                       <button
                         key={q}

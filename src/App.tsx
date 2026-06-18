@@ -6,6 +6,7 @@ import { AIScanStatusProvider } from './contexts/AIScanStatusContext';
 import { DemoDataProvider } from './contexts/DemoDataProvider';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { AppLayout } from './components/layout/AppLayout';
+import { MaintenanceAssistant } from './components/MaintenanceAssistant';
 
 // Pages — eagerly loaded (needed on first render)
 import { Dashboard } from './pages/Dashboard';
@@ -97,6 +98,7 @@ const AppContent: React.FC = () => {
           </React.Suspense>
         </ErrorBoundary>
       </AppLayout>
+      <MaintenanceAssistant />
     </TourContext.Provider>
   );
 };

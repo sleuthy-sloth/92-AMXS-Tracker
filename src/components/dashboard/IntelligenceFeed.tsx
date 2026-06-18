@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, memo } from 'react';
-import { Activity, AlertTriangle, ShieldAlert } from 'lucide-react';
+import { Activity, AlertTriangle, ShieldAlert, ChevronRight } from 'lucide-react';
 import { motion } from 'motion/react';
 import { MaintenanceLog, TrainingRecord } from '../../types';
 import { useAuth } from '../../contexts/AuthContextInstance';
@@ -16,6 +16,7 @@ import {
 } from '../../lib/aiCache';
 import { classifyError, AIRetryError } from '../../lib/aiRetry';
 import { cn } from '../../lib/utils';
+import { IntelligenceDetailModal, type IntelDrillDown } from './IntelligenceDetailModal';
 
 const CACHE_TTL_MS = 3600000; // 1 hour
 const CACHE_PREFIX = 'intelligence';
@@ -27,6 +28,10 @@ type IntelAlert = {
   title: string;
   description: string;
   time: string;
+  /** Drill-down category — determines what detail modal shows when clicked */
+  category?: 'redball' | 'recurring' | 'training-expired' | 'training-expiring' | 'generic';
+  /** Optional tail number for drill-down filtering */
+  tailNumber?: string;
 };
 
 /** Fallback alert used when no data or an error occurs */
@@ -56,6 +61,8 @@ function generateMockIntel(logs: MaintenanceLog[], training: TrainingRecord[]): 
       title: `Red Ball: Tail ${tail}`,
       description: `${redBalls.length} urgent maintenance item${redBalls.length > 1 ? 's' : ''} require${redBalls.length === 1 ? 's' : ''} immediate attention. ${redBalls[0].discrepancy}`,
       time: now,
+      category: 'redball',
+      tailNumber: tail,
     });
   }
 
@@ -73,6 +80,8 @@ function generateMockIntel(logs: MaintenanceLog[], training: TrainingRecord[]): 
       title: `Recurring Issues: Tail ${topTail}`,
       description: `Tail ${topTail} has ${count} maintenance entries — potential systemic issue. Recommend engineering review.`,
       time: now,
+      category: 'recurring',
+      tailNumber: topTail,
     });
   }
 
@@ -86,6 +95,7 @@ function generateMockIntel(logs: MaintenanceLog[], training: TrainingRecord[]): 
       title: `${expired.length} Expired Training ${expired.length === 1 ? 'Item' : 'Items'}`,
       description: `${expired.length} personnel ${expired.length === 1 ? 'has' : 'have'} expired training certifications. Immediate retraining required for compliance.`,
       time: now,
+      category: 'training-expired',
     });
   } else if (expiring.length > 0) {
     alerts.push({
@@ -94,6 +104,7 @@ function generateMockIntel(logs: MaintenanceLog[], training: TrainingRecord[]): 
       title: `${expiring.length} Training ${expiring.length === 1 ? 'Item' : 'Items'} Expiring`,
       description: `${expiring.length} training certification${expiring.length > 1 ? 's' : ''} expiring within 60 days. Schedule retraining to maintain readiness.`,
       time: now,
+      category: 'training-expiring',
     });
   }
 
@@ -123,125 +134,129 @@ function generateMockIntel(logs: MaintenanceLog[], training: TrainingRecord[]): 
  *  5. No polling interval — the next refresh is triggered on the next page visit
  *     or by an explicit user action.
  */
-export const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[]; training: TrainingRecord[] }> =
-  memo(({ logs, training }) => {
-    const { profile, isDemoMode } = useAuth();
-    const { reportStart, reportSuccess, reportError } = useScanStatus();
-    const [alerts, setAlerts] = useState<IntelAlert[]>([]);
-    const [loading, setLoading] = useState(true);
-    const sessionRef = useRef<string>(generateSessionId());
+export const IntelligenceFeed: React.FC<{
+  logs: MaintenanceLog[];
+  training: TrainingRecord[];
+  personnel?: import('../../types').UserProfile[];
+}> = memo(({ logs, training, personnel = [] }) => {
+  const { profile, isDemoMode } = useAuth();
+  const { reportStart, reportSuccess, reportError } = useScanStatus();
+  const [alerts, setAlerts] = useState<IntelAlert[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [drillDown, setDrillDown] = useState<IntelDrillDown | null>(null);
+  const sessionRef = useRef<string>(generateSessionId());
 
-    useEffect(() => {
-      if (!profile) return;
+  useEffect(() => {
+    if (!profile) return;
 
-      // ── Demo mode: generate mock intelligence from mock data ────────
-      // Skip all Firestore/AI calls — demo user isn't really authenticated.
-      if (isDemoMode) {
-        const mockAlerts = generateMockIntel(logs, training);
-        setAlerts(mockAlerts);
+    // ── Demo mode: generate mock intelligence from mock data ────────
+    // Skip all Firestore/AI calls — demo user isn't really authenticated.
+    if (isDemoMode) {
+      const mockAlerts = generateMockIntel(logs, training);
+      setAlerts(mockAlerts);
+      setLoading(false);
+      reportSuccess(SCAN_KIND);
+      return;
+    }
+
+    const cacheKey = `${profile.amuId}_${profile.shopId}`;
+    let cancelled = false;
+
+    const load = async () => {
+      // ── Step 1: Read cache immediately (stale-ok) ────────────────
+      const cached = await getCachedAIResultStaleOk<IntelAlert[]>(
+        CACHE_PREFIX,
+        cacheKey,
+        CACHE_TTL_MS
+      );
+
+      if (cancelled) return;
+
+      if (cached.exists) {
+        setAlerts(
+          cached.data!.map((a) => ({
+            ...a,
+            time:
+              cached.age > CACHE_TTL_MS
+                ? `${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}${staleSuffix}`
+                : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          }))
+        );
+        setLoading(false);
+      }
+
+      // ── Step 2: If cache is fresh, we're done ────────────────────
+      if (cached.exists && cached.age < CACHE_TTL_MS) {
+        reportSuccess(SCAN_KIND);
+        return;
+      }
+
+      // ── Step 3: If no cache at all, show a placeholder ────────────
+      if (!cached.exists) {
+        setAlerts([
+          {
+            id: 'initializing',
+            type: 'info',
+            title: 'Initializing Intelligence',
+            description:
+              'Analysis engine is warming up for this shop. Data will appear once processed.',
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          },
+        ]);
+      }
+
+      // ── Step 4: Attempt background refresh with distributed lock ──
+      const recentLogs = logs
+        .slice(0, 15)
+        .map(
+          (l) => `${l.tail_number} (${l.isRedBall ? 'RED BALL' : 'Standard'}): ${l.discrepancy}`
+        );
+      const imminentTraining = training
+        .filter((t) => t.status !== 'current')
+        .slice(0, 10)
+        .map((t) => `${t.course_name} for Man ${t.man_number} due ${t.due_date}`);
+
+      if (recentLogs.length === 0 && imminentTraining.length === 0) {
+        if (!cached.exists) {
+          setAlerts([
+            {
+              id: 'no-data',
+              type: 'info',
+              title: 'Operation Static',
+              description:
+                'Insufficient shop data for trend analysis. Analysis engine monitoring for new inputs.',
+              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            },
+          ]);
+        }
         setLoading(false);
         reportSuccess(SCAN_KIND);
         return;
       }
 
-      const cacheKey = `${profile.amuId}_${profile.shopId}`;
-      let cancelled = false;
+      const currentHash = generateDataHashSync([...recentLogs, ...imminentTraining]);
+      const lockAcquired = await acquireCacheLock(
+        `${CACHE_PREFIX}_${cacheKey}`,
+        sessionRef.current
+      );
 
-      const load = async () => {
-        // ── Step 1: Read cache immediately (stale-ok) ────────────────
-        const cached = await getCachedAIResultStaleOk<IntelAlert[]>(
-          CACHE_PREFIX,
-          cacheKey,
-          CACHE_TTL_MS
-        );
+      if (cancelled) return;
 
-        if (cancelled) return;
+      if (!lockAcquired) {
+        // Another client is refreshing — use whatever we have
+        setLoading(false);
+        return;
+      }
 
-        if (cached.exists) {
-          setAlerts(
-            cached.data!.map((a) => ({
-              ...a,
-              time:
-                cached.age > CACHE_TTL_MS
-                  ? `${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}${staleSuffix}`
-                  : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            }))
-          );
-          setLoading(false);
-        }
+      // ── Step 5: We hold the lock — generate fresh intelligence ────
+      reportStart(SCAN_KIND);
+      setLoading(true);
 
-        // ── Step 2: If cache is fresh, we're done ────────────────────
-        if (cached.exists && cached.age < CACHE_TTL_MS) {
-          reportSuccess(SCAN_KIND);
-          return;
-        }
-
-        // ── Step 3: If no cache at all, show a placeholder ────────────
-        if (!cached.exists) {
-          setAlerts([
-            {
-              id: 'initializing',
-              type: 'info',
-              title: 'Initializing Intelligence',
-              description:
-                'Analysis engine is warming up for this shop. Data will appear once processed.',
-              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            },
-          ]);
-        }
-
-        // ── Step 4: Attempt background refresh with distributed lock ──
-        const recentLogs = logs
-          .slice(0, 15)
-          .map(
-            (l) => `${l.tail_number} (${l.isRedBall ? 'RED BALL' : 'Standard'}): ${l.discrepancy}`
-          );
-        const imminentTraining = training
-          .filter((t) => t.status !== 'current')
-          .slice(0, 10)
-          .map((t) => `${t.course_name} for Man ${t.man_number} due ${t.due_date}`);
-
-        if (recentLogs.length === 0 && imminentTraining.length === 0) {
-          if (!cached.exists) {
-            setAlerts([
-              {
-                id: 'no-data',
-                type: 'info',
-                title: 'Operation Static',
-                description:
-                  'Insufficient shop data for trend analysis. Analysis engine monitoring for new inputs.',
-                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              },
-            ]);
-          }
-          setLoading(false);
-          reportSuccess(SCAN_KIND);
-          return;
-        }
-
-        const currentHash = generateDataHashSync([...recentLogs, ...imminentTraining]);
-        const lockAcquired = await acquireCacheLock(
-          `${CACHE_PREFIX}_${cacheKey}`,
-          sessionRef.current
-        );
-
-        if (cancelled) return;
-
-        if (!lockAcquired) {
-          // Another client is refreshing — use whatever we have
-          setLoading(false);
-          return;
-        }
-
-        // ── Step 5: We hold the lock — generate fresh intelligence ────
-        reportStart(SCAN_KIND);
-        setLoading(true);
-
-        try {
-          const { data, source } = await generateJSONWithFallback({
-            schema: TrendAlertsSchema,
-            context: 'IntelligenceFeed',
-            prompt: `SYSTEM ROLE: 92nd AMXS Operational Intelligence Engine.
+      try {
+        const { data, source } = await generateJSONWithFallback({
+          schema: TrendAlertsSchema,
+          context: 'IntelligenceFeed',
+          prompt: `SYSTEM ROLE: 92nd AMXS Operational Intelligence Engine.
               MISSION: Provide forensic analysis of maintenance and training data.
 
               DATA SOURCE (Shop: ${profile.shopId}, AMU: ${profile.amuId}):
@@ -252,50 +267,65 @@ export const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[]; training: Trai
               STRICT NEGATIVE CONSTRAINT: Do NOT hallucinate or assume data. If data is sparse or shows no significant issues, return an empty array or only include factual observations (e.g. "Low volume of maintenance entries detected").
 
               OUTPUT: JSON array [ { "type": "critical" | "warning" | "info", "title": string, "description": string } ]`,
-          });
+        });
 
-          if (cancelled) return;
+        if (cancelled) return;
 
-          const finalAlerts =
-            !data || data.length === 0
-              ? [NOMINAL_ALERT]
-              : data.map((a, i) => ({
-                  ...a,
-                  id: `intel-${i}`,
-                  time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                }));
+        const finalAlerts =
+          !data || data.length === 0
+            ? [NOMINAL_ALERT]
+            : data.map((a, i) => ({
+                ...a,
+                id: `intel-${i}`,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              }));
 
-          setAlerts(finalAlerts);
+        setAlerts(finalAlerts);
 
-          // Save to cache
-          await setCachedAIResult(CACHE_PREFIX, cacheKey, finalAlerts, currentHash);
-          reportSuccess(SCAN_KIND, source);
-        } catch (err) {
-          console.error('Intelligence Feed Error:', err);
-          const classified = err instanceof AIRetryError ? err.classified : classifyError(err);
-          reportError(SCAN_KIND, classified);
+        // Save to cache
+        await setCachedAIResult(CACHE_PREFIX, cacheKey, finalAlerts, currentHash);
+        reportSuccess(SCAN_KIND, source);
+      } catch (err) {
+        console.error('Intelligence Feed Error:', err);
+        const classified = err instanceof AIRetryError ? err.classified : classifyError(err);
+        reportError(SCAN_KIND, classified);
 
-          if (!cached.exists) {
-            setAlerts([NOMINAL_ALERT]);
-          }
-        } finally {
-          setLoading(false);
-          await releaseCacheLock(`${CACHE_PREFIX}_${cacheKey}`, sessionRef.current);
+        if (!cached.exists) {
+          setAlerts([NOMINAL_ALERT]);
         }
-      };
+      } finally {
+        setLoading(false);
+        await releaseCacheLock(`${CACHE_PREFIX}_${cacheKey}`, sessionRef.current);
+      }
+    };
 
-      load();
+    load();
 
-      // NOTE: No polling interval. Next refresh triggers on next visit
-      // or when the component re-mounts with different data.
-      return () => {
-        cancelled = true;
-      };
-    }, [profile, isDemoMode, logs, training, reportStart, reportSuccess, reportError]);
+    // NOTE: No polling interval. Next refresh triggers on next visit
+    // or when the component re-mounts with different data.
+    return () => {
+      cancelled = true;
+    };
+  }, [profile, isDemoMode, logs, training, reportStart, reportSuccess, reportError]);
 
-    // ── Render ───────────────────────────────────────────────────────
+  // ── Render ───────────────────────────────────────────────────────
 
-    return (
+  const isClickable = (alert: IntelAlert): boolean =>
+    alert.category !== undefined && alert.category !== 'generic';
+
+  const handleClick = (alert: IntelAlert) => {
+    if (!isClickable(alert)) return;
+    setDrillDown({
+      alertId: alert.id,
+      title: alert.title,
+      type: alert.type,
+      category: alert.category!,
+      tailNumber: alert.tailNumber,
+    });
+  };
+
+  return (
+    <>
       <div className="visible-grid bg-white border border-outline h-full">
         <div className="p-6 border-b border-outline bg-slate-50 flex justify-between items-center">
           <div>
@@ -324,7 +354,11 @@ export const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[]; training: Trai
                 key={alert.id}
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="p-4 bg-slate-50 border-l-4 border-l-primary flex gap-4 shadow-sm"
+                onClick={() => handleClick(alert)}
+                className={cn(
+                  'p-4 bg-slate-50 border-l-4 border-l-primary flex gap-4 shadow-sm',
+                  isClickable(alert) && 'cursor-pointer hover:bg-slate-100 transition-colors'
+                )}
                 style={{
                   borderLeftColor:
                     alert.type === 'critical'
@@ -332,6 +366,15 @@ export const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[]; training: Trai
                       : alert.type === 'warning'
                         ? '#f59e0b'
                         : '#3b82f6',
+                }}
+                role={isClickable(alert) ? 'button' : undefined}
+                tabIndex={isClickable(alert) ? 0 : undefined}
+                aria-label={isClickable(alert) ? `View details for ${alert.title}` : undefined}
+                onKeyDown={(e) => {
+                  if (isClickable(alert) && (e.key === 'Enter' || e.key === ' ')) {
+                    e.preventDefault();
+                    handleClick(alert);
+                  }
                 }}
               >
                 <div
@@ -355,17 +398,33 @@ export const IntelligenceFeed: React.FC<{ logs: MaintenanceLog[]; training: Trai
                     <h4 className="text-[11px] font-black uppercase tracking-tight text-slate-900">
                       {alert.title}
                     </h4>
-                    <span className="tech-label text-[8px] opacity-40">{alert.time}</span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <span className="tech-label text-[8px] opacity-40">{alert.time}</span>
+                      {isClickable(alert) && <ChevronRight className="w-3 h-3 text-slate-400" />}
+                    </div>
                   </div>
                   <p className="text-xs text-slate-600 leading-relaxed serif-header">
                     {alert.description}
                   </p>
+                  {isClickable(alert) && (
+                    <p className="tech-label text-[8px] text-primary/60 uppercase mt-1">
+                      Click for details
+                    </p>
+                  )}
                 </div>
               </motion.div>
             ))
           )}
         </div>
       </div>
-    );
-  });
+      <IntelligenceDetailModal
+        drillDown={drillDown}
+        onClose={() => setDrillDown(null)}
+        logs={logs}
+        training={training}
+        personnel={personnel}
+      />
+    </>
+  );
+});
 IntelligenceFeed.displayName = 'IntelligenceFeed';
