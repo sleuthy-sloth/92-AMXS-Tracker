@@ -183,6 +183,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Demo mode: creates a mock user session for sandbox exploration.
     // All demo data is flagged with isDemo=true and never touches
     // production Firestore.
+    // SECURITY: Disabled in production builds to prevent unauthorized access.
+    if (import.meta.env.PROD) {
+      console.warn('[AMXS] Demo sandbox is disabled in production.');
+      return;
+    }
     console.log('[AMXS] Bypass login — entering demo sandbox');
 
     const mockUser = {

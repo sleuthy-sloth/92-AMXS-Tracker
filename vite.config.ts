@@ -75,6 +75,21 @@ export default defineConfig(({ mode }) => {
       'process.env.GENAI_MIL_API_KEY': JSON.stringify(env.GENAI_MIL_API_KEY || ''),
       'process.env.OPENROUTER_API_KEY': JSON.stringify(env.OPENROUTER_API_KEY || ''),
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('firebase') || id.includes('@firebase')) return 'vendor-firebase';
+              if (id.includes('jspdf') || id.includes('jspdf-autotable')) return 'vendor-pdf';
+              if (id.includes('xlsx')) return 'vendor-xlsx';
+              if (id.includes('motion')) return 'vendor-motion';
+              if (id.includes('driver.js')) return 'vendor-driver';
+            }
+          },
+        },
+      },
+    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

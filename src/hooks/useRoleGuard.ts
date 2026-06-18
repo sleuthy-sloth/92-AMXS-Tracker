@@ -38,8 +38,8 @@ export function useRoleGuard(allowedRoles?: UserRole[]) {
   const isNcoicOrAbove = role === 'ncoic' || role === 'leadership';
   const isLeadership = role === 'leadership';
 
-  // Demo mode: all roles have full access for testing purposes
-  const canView = isDemoMode || true; // all roles can view
+  // All roles can view; demo mode grants elevated permissions for testing.
+  const canView = true;
   const canManage = isDemoMode || isNcoicOrAbove;
   const canAdmin = isDemoMode || isLeadership;
 

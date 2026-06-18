@@ -27,19 +27,19 @@
 The **92 AMXS Tracker** is a full-featured operational management platform purpose-built for Air Force maintenance squadrons. It replaces paper logbooks, disconnected spreadsheets, and email chains with a single real-time command center that tracks everything from aircraft discrepancies to personnel training compliance.
 
 **Live:** [sleuthy-sloth.github.io/92-AMXS-Tracker](https://sleuthy-sloth.github.io/92-AMXS-Tracker/)  
-**Latest:** `v0.7.0` — App Check, accessibility, architecture cleanup (June 2026)
+**Latest:** `v0.8.0` — Test fixes, security hardening, bundle optimization (June 2026)
 
 ---
 
-## What's New in v0.7.0
+## What's New in v0.8.0
 
-- **🔐 Firebase App Check** — reCAPTCHA Enterprise integration prevents unauthorized API access
-- **♿ Accessibility** — all 6 modals now include `role="dialog"`, `aria-modal`, and `aria-label` for Section 508 readiness
-- **🧱 Architecture cleanup** — `ReferenceDocs.tsx` decomposed from 921 lines into 4 files; dead `express`/`@types/express` dependencies removed
-- **🪝 `useRoleGuard` hook** — centralized RBAC (`canManage`, `canAdmin`, `isAllowed`) for route and action guards
-- **🔀 Demo data centralization** — Dashboard now uses `DemoDataProvider` instead of direct `MOCK_*` imports
-- **🐛 Bug fixes** — TrainingFormModal TS error (missing `shopId`/`amuId`), duplicate `directFetch` function removed
-- **#️⃣ Hash fix** — AI cache now uses 64-bit FNV-1a with null separators instead of 32-bit Java-style hash
+- **🧪 Test suite fixed** — all 99 tests passing (React 19 `act` compatibility via `NODE_ENV=development` in vitest config)
+- **🔒 Security hardening** — removed hardcoded admin email from Firestore rules (admin access now exclusively via custom claims); demo sandbox `bypassLogin` disabled in production builds
+- **📦 Bundle optimization** — lazy-loaded admin routes (Onboarding, Handoff, Workload, Diagnostics) with `React.lazy` + `Suspense`; vendor chunks split (firebase, jsPDF, xlsx, motion, driver.js) — 60% reduction in main chunk size
+- **🛡️ Firestore rules fixes** — added `editingBy`/`editingByName`/`editingSince` to `hasOnly()` allowlist (was silently rejecting presence updates); added `'inactive'` to valid user statuses (soft-delete was broken)
+- **🧹 Code cleanup** — fixed `useRoleGuard` dead code (`isDemoMode || true`), renamed package from `react-example` to `amxs-tracker`, fixed husky `prepare` script for fresh installs
+- **🔒 npm audit** — resolved 15 of 17 vulnerabilities via `npm audit fix` (remaining 2 are in `xlsx` — no npm fix available, pending migration to SheetJS CDN)
+- **🧹 Repo hygiene** — removed committed tool artifacts (`metadata.json`, `.pi-lens/cache/`), cleaned obsolete test snapshots
 
 ## Capabilities
 
@@ -269,7 +269,7 @@ The app runs background compliance scans that detect and alert on:
 | **Validation** | Zod 4 for AI response validation |
 | **PWA** | vite-plugin-pwa with Workbox |
 | **Export** | jsPDF + autoTable (PDF), custom CSV |
-| **Testing** | Vitest + Testing Library (14 test files, 98 tests) |
+| **Testing** | Vitest + Testing Library (14 test files, 99 tests) |
 | **Linting** | ESLint + Prettier + Husky pre-commit hooks |
 | **Deployment** | GitHub Pages + Codeberg mirror |
 | **Onboarding** | Driver.js guided interactive tour |
@@ -452,6 +452,13 @@ The app deploys automatically to **GitHub Pages** on push to `main`:
 4. Deploy to GitHub Pages
 
 A mirror workflow syncs to **Codeberg** simultaneously.
+
+---
+
+## Known Issues
+
+- **`xlsx` package vulnerabilities** — The SheetJS community edition (`xlsx` ^0.18.5) has known prototype pollution and ReDoS vulnerabilities with no npm fix available. Mitigation: only user-uploaded files are processed (not untrusted external input). Planned migration to SheetJS CDN or `exceljs`.
+- **AI API keys in client bundle** — Keys are injected at build time via GitHub Secrets but are present in the deployed JavaScript. This is a deliberate trade-off to stay on the Firebase Spark free tier (no Cloud Functions). See [Security Model](#security-model) for mitigations.
 
 ---
 

@@ -1,7 +1,7 @@
 {
-  "name": "react-example",
+  "name": "amxs-tracker",
   "private": true,
-  "version": "0.7.0",
+  "version": "0.8.0",
   "type": "module",
   "engines": {
     "node": ">=24"
@@ -14,10 +14,10 @@
     "lint": "tsc --noEmit && eslint 'src/**/*.{ts,tsx}' --max-warnings=9999",
     "lint:fix": "eslint 'src/**/*.{ts,tsx}' --fix",
     "format": "prettier --write 'src/**/*.{ts,tsx,json,css,md}'",
-    "test": "vitest run",
+    "test": "NODE_ENV=development vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
-    "prepare": "husky"
+    "prepare": "husky || true"
   },
   "lint-staged": {
     "src/**/*.{ts,tsx}": [

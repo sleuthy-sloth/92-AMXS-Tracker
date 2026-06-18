@@ -70,10 +70,7 @@ service cloud.firestore {
     // The fallback email check exists for local development and must be
     // configured via the SUPER_ADMIN_EMAIL environment variable at deploy time.
     function isAdmin() {
-      return isAuthenticated() && (
-        request.auth.token.admin == true ||
-        request.auth.token.email == "admin@us.af.mil"
-      );
+      return isAuthenticated() && request.auth.token.admin == true;
     }
 
     function isSameShop(amuId, shopId) {
@@ -98,13 +95,13 @@ service cloud.firestore {
              data.shopId is string &&
              data.amuId is string &&
              data.role in ['leadership', 'ncoic', 'technician', 'pending'] &&
-             data.status in ['active', 'pending', 'rejected'] &&
+             data.status in ['active', 'pending', 'rejected', 'inactive'] &&
              data.email is string && data.email.size() < 254;
     }
 
     function isValidLog(data) {
       return data.keys().hasAll(['tail_number', 'discrepancy', 'repair', 'shopId', 'amuId', 'technician_name', 'man_number', 'timestamp']) &&
-             data.keys().hasOnly(['tail_number', 'discrepancy', 'repair', 'doc_number', 'shopId', 'amuId', 'technician_name', 'man_number', 'personnel', 'timestamp', 'jcn', 'isRedBall', 'shift', 'g081_photo', 'g081_status', 'g081_verified_by', 'g081_verified_at', 'isArchived', 'archivedAt', 'lastEditedBy', 'lastEditedAt', 'isDemo']) &&
+             data.keys().hasOnly(['tail_number', 'discrepancy', 'repair', 'doc_number', 'shopId', 'amuId', 'technician_name', 'man_number', 'personnel', 'timestamp', 'jcn', 'isRedBall', 'shift', 'g081_photo', 'g081_status', 'g081_verified_by', 'g081_verified_at', 'isArchived', 'archivedAt', 'lastEditedBy', 'lastEditedAt', 'isDemo', 'editingBy', 'editingByName', 'editingSince']) &&
              data.tail_number is string && data.tail_number.size() > 0 && data.tail_number.size() < 32 &&
              data.discrepancy is string && data.discrepancy.size() > 0 && data.discrepancy.size() < 5000 &&
              data.repair is string && data.repair.size() > 0 && data.repair.size() < 5000 &&
@@ -129,7 +126,10 @@ service cloud.firestore {
              (!('archivedAt' in data) || data.archivedAt is timestamp || data.archivedAt == null) &&
              (!('lastEditedBy' in data) || data.lastEditedBy is string) &&
              (!('lastEditedAt' in data) || data.lastEditedAt is timestamp) &&
-             (!('isDemo' in data) || data.isDemo is bool);
+             (!('isDemo' in data) || data.isDemo is bool) &&
+             (!('editingBy' in data) || data.editingBy is string || data.editingBy == null) &&
+             (!('editingByName' in data) || data.editingByName is string || data.editingByName == null) &&
+             (!('editingSince' in data) || data.editingSince is timestamp || data.editingSince == null);
     }
 
     function isValidTraining(data) {
