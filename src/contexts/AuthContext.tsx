@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   GoogleAuthProvider,
   signInWithPopup,
@@ -23,6 +23,8 @@ import { auth, db, handleFirestoreError, OperationType } from '../firebase';
 import { UserProfile, UserRole, AMUType } from '../types';
 import { ShopType, MOCK_LOGS, MOCK_PERSONNEL, MOCK_TRAINING } from '../mockData';
 import { AuthContext } from './AuthContextInstance';
+
+const DEMO_USER_UID = 'mock-user-preview';
 
 const seedDatabase = async () => {
   try {
@@ -57,8 +59,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isDemoMode, setIsDemoMode] = useState(false);
+  const isDemoModeRef = useRef(false);
 
-  const toggleDemoMode = () => setIsDemoMode((prev) => !prev);
+  const setDemoMode = (enabled: boolean) => {
+    isDemoModeRef.current = enabled;
+    setIsDemoMode(enabled);
+  };
+
+  const toggleDemoMode = () => {
+    setIsDemoMode((prev) => {
+      const next = !prev;
+      isDemoModeRef.current = next;
+      return next;
+    });
+  };
 
   const fetchProfile = async (uid: string) => {
     try {
@@ -76,8 +90,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (isDemoModeRef.current && !currentUser) {
+        setLoading(false);
+        return;
+      }
+
       setUser(currentUser);
       if (currentUser) {
+        setDemoMode(false);
         // SECURITY: Require email verification before granting access.
         // Unverified users are signed out and shown a message.
         if (!currentUser.emailVerified) {
@@ -85,6 +105,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           await signOut(auth);
           setUser(null);
           setProfile(null);
+          setDemoMode(false);
           setLoading(false);
           return;
         }
@@ -163,6 +184,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await signOut(auth);
       setUser(null);
       setProfile(null);
+      setDemoMode(false);
       if (uidToClear && typeof window !== 'undefined') {
         try {
           window.sessionStorage.removeItem(`amxs-ai-chat:${uidToClear}`);
@@ -183,21 +205,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Demo mode: creates a mock user session for sandbox exploration.
     // All demo data is flagged with isDemo=true and never touches
     // production Firestore.
-    // SECURITY: Disabled in production builds to prevent unauthorized access.
-    if (import.meta.env.PROD) {
-      console.warn('[AMXS] Demo sandbox is disabled in production.');
-      return;
-    }
+    // Keep the sandbox available from the login page in deployed builds while
+    // ensuring it uses in-memory mock identity/data only and never grants
+    // production Firestore access.
     console.log('[AMXS] Bypass login — entering demo sandbox');
 
     const mockUser = {
-      uid: 'mock-user-preview',
+      uid: DEMO_USER_UID,
       email: 'dev.preview@us.af.mil',
       displayName: 'PREVIEW USER',
     } as User;
 
     const mockProfile: UserProfile = {
-      uid: 'mock-user-preview',
+      uid: DEMO_USER_UID,
       name: 'PREVIEW USER',
       rank: 'TSgt',
       man_number: '99999',
@@ -213,14 +233,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(mockUser);
     setProfile(mockProfile);
     setLoading(false);
-    setIsDemoMode(true);
+    setDemoMode(true);
   };
 
   const setShop = async (shop: ShopType) => {
     if (profile) {
       const updatedProfile = { ...profile, shopId: shop };
       setProfile(updatedProfile);
-      if (user && user.uid !== 'mock-user-preview') {
+      if (user && user.uid !== DEMO_USER_UID) {
         try {
           await updateDoc(doc(db, 'users', user.uid), { shopId: shop });
         } catch (e) {
@@ -234,7 +254,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (profile) {
       const updatedProfile = { ...profile, amuId: amu };
       setProfile(updatedProfile);
-      if (user && user.uid !== 'mock-user-preview') {
+      if (user && user.uid !== DEMO_USER_UID) {
         try {
           await updateDoc(doc(db, 'users', user.uid), { amuId: amu });
         } catch (e) {
@@ -248,7 +268,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (profile) {
       const updatedProfile = { ...profile, role: role };
       setProfile(updatedProfile);
-      if (user && user.uid !== 'mock-user-preview') {
+      if (user && user.uid !== DEMO_USER_UID) {
         try {
           await updateDoc(doc(db, 'users', user.uid), { role: role });
         } catch (e) {
