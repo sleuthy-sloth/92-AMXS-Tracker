@@ -24,21 +24,21 @@
 
 ## Overview
 
-The **92 AMXS Tracker** is a full-featured operational management platform purpose-built for Air Force maintenance squadrons. It replaces paper logbooks, disconnected spreadsheets, and email chains with a single real-time command center that tracks everything from aircraft discrepancies to personnel training compliance.
+The **92 AMXS Tracker** is an operational management platform built for Air Force maintenance squadrons. It replaces paper logbooks, disconnected spreadsheets, and email chains with a single real-time command center that tracks everything from aircraft discrepancies to personnel training compliance.
 
-**Live:** [sleuthy-sloth.github.io/92-AMXS-Tracker](https://sleuthy-sloth.github.io/92-AMXS-Tracker/)  
-**Latest:** `v0.9.0` — Interactive intelligence, scoped AI assistant (June 2026)
+**Live:** [sleuthy-sloth.github.io/92-AMXS-Tracker](https://sleuthy-sloth.github.io/92-AMXS-Tracker/) 
+**Latest:** `v0.9.0`. Interactive intelligence, scoped AI assistant (June 2026)
 
 ---
 
 ## What's New in v0.9.0
 
-- **🔍 Clickable intelligence alerts** — Mission Intelligence feed alerts are now interactive. Click any alert to open a drill-down modal:
-  - **Red Ball alerts** → full list of all urgent maintenance items with tail numbers, discrepancies, repairs, technicians, and timestamps
-  - **Recurring issues** → all maintenance entries for the flagged tail number, plus a summary panel showing all recurring tails with entry counts
-  - **Training expired/expiring** → personnel list with names, ranks, courses, due dates, and shop assignments
-- **🤖 Scoped AI Maintenance Assistant** — floating AI terminal with tool-calling (query logs, DIFM, training) now active on all pages. System prompt is strictly scoped to tracker data — refuses general knowledge, coding, or off-topic questions. Only answers questions about maintenance logs, training compliance, DIFM parts, and personnel within the 92 AMXS Tracker.
-- **♿ Accessibility** — clickable alerts include keyboard support (Enter/Space), `role="button"`, `aria-label`, and focus indicators
+- **🔍 Clickable intelligence alerts:** Mission Intelligence feed alerts are now interactive. Click any alert to open a drill-down modal:
+ - **Red Ball alerts** → full list of all urgent maintenance items with tail numbers, discrepancies, repairs, technicians, and timestamps
+ - **Recurring issues** → all maintenance entries for the flagged tail number, plus a summary panel showing all recurring tails with entry counts
+ - **Training expired/expiring** → personnel list with names, ranks, courses, due dates, and shop assignments
+- **🤖 Scoped AI Maintenance Assistant:** floating AI terminal with tool-calling (query logs, DIFM, training) now active on all pages. System prompt is strictly scoped to tracker data. refuses general knowledge, coding, or off-topic questions. Only answers questions about maintenance logs, training compliance, DIFM parts, and personnel within the 92 AMXS Tracker.
+- **♿ Accessibility:** clickable alerts include keyboard support (Enter/Space), `role="button"`, `aria-label`, and focus indicators
 
 ## Capabilities
 
@@ -46,10 +46,10 @@ The **92 AMXS Tracker** is a full-featured operational management platform purpo
 
 | Module | What It Does |
 |--------|-------------|
-| **Maintenance Logs** | Full CRUD for aircraft maintenance entries — tail numbers, JCNs, discrepancies, repairs, Red Ball alerts |
-| **DIFM (Due-In From Maintenance)** | Parts pipeline tracking — ordered → en-route → received → bench-check → installed |
+| **Maintenance Logs** | Full CRUD for aircraft maintenance entries. tail numbers, JCNs, discrepancies, repairs, Red Ball alerts |
+| **DIFM (Due-In From Maintenance)** | Parts pipeline tracking. ordered → en-route → received → bench-check → installed |
 | **G081 Gallery** | Photo verification of G081 screen proofs with pending/verified status |
-| **Reference Docs** | ISO checklist + QRL file management — upload, view, edit Excel files in-browser, auto-save completed checklists |
+| **Reference Docs** | ISO checklist + QRL file management. upload, view, edit Excel files in-browser, auto-save completed checklists |
 | **Training Tracker** | Personnel qualifications with current/expiring/expired status, 60-day expiration alerts |
 | **Personnel Roster** | Shop-level personnel management with role-based access control |
 
@@ -66,10 +66,10 @@ The **92 AMXS Tracker** is a full-featured operational management platform purpo
 
 ### Real-Time Collaboration
 
-- **Live presence indicators** — see who's online and where
-- **Edit conflict detection** — warns when another user is editing the same record
-- **Multi-tab persistence** — IndexedDB-backed offline Firestore support
-- **Sync status indicator** — visual feedback on connectivity
+- **Live presence indicators:** see who's online and where
+- **Edit conflict detection:** warns when another user is editing the same record
+- **Multi-tab persistence:** IndexedDB-backed offline Firestore support
+- **Sync status indicator:** visual feedback on connectivity
 
 ---
 
@@ -77,42 +77,42 @@ The **92 AMXS Tracker** is a full-featured operational management platform purpo
 
 ```
 ┌──────────────────────────────────────────────────┐
-│  GitHub Pages (Static SPA)                       │
-│  ┌────────────────────────────────────────────┐  │
-│  │  React 19 + TypeScript + TailwindCSS 4     │  │
-│  │  ┌───────┐ ┌─────────┐ ┌───────────────┐  │  │
-│  │  │16     │ │12       │ |3 Services     │  │  │
-│  │  │Pages  │ │Hooks    │ │OCR/Parser/    │  │  │
-│  │  │       │ │         │ │Notifications  │  │  │
-│  │  └───┬───┘ └────┬────┘ └───────┬───────┘  │  │
-│  │      └──────────┼──────────────┘          │  │
-│  │           ┌─────┴─────┐                    │  │
-│  │           │ Firebase  │                    │  │
-│  │           │ Client    │                    │  │
-│  │           └─────┬─────┘                    │  │
-│  └─────────────────┼──────────────────────────┘  │
-│                    │                              │
-│  PWA: Workbox + IndexedDB offline support         │
+│ GitHub Pages (Static SPA) │
+│ ┌────────────────────────────────────────────┐ │
+│ │ React 19 + TypeScript + TailwindCSS 4 │ │
+│ │ ┌───────┐ ┌─────────┐ ┌───────────────┐ │ │
+│ │ │16 │ │12 │ |3 Services │ │ │
+│ │ │Pages │ │Hooks │ │OCR/Parser/ │ │ │
+│ │ │ │ │ │ │Notifications │ │ │
+│ │ └───┬───┘ └────┬────┘ └───────┬───────┘ │ │
+│ │ └──────────┼──────────────┘ │ │
+│ │ ┌─────┴─────┐ │ │
+│ │ │ Firebase │ │ │
+│ │ │ Client │ │ │
+│ │ └─────┬─────┘ │ │
+│ └─────────────────┼──────────────────────────┘ │
+│ │ │
+│ PWA: Workbox + IndexedDB offline support │
 └────────────────────┼──────────────────────────────┘
-                     │
+ │
 ┌────────────────────┼──────────────────────────────┐
-│  Firebase Cloud     │                              │
-│  ┌──────────────────┴───────────────────────┐     │
-│  ┌──────────┐  ┌──────────┐  ┌───────────────┐   │
-│  │ Auth     │  │ Firestore│  │ App Check     │   │
-│  │ (@us.af  │  │ (Rules + │  │ (reCAPTCHA    │   │
-│  │  .mil)   │  │  IndexedDB│  │  Enterprise)  │   │
-│  └──────────┘  └──────────┘  └───────────────┘   │
-│  ┌──────────────────────────────────────────┐    │
-│  │ API keys injected at build time          │    │
-│  │ via GitHub Secrets — never in repo       │    │
-│  └──────────────────────────────────────────┘    │
+│ Firebase Cloud │ │
+│ ┌──────────────────┴───────────────────────┐ │
+│ ┌──────────┐ ┌──────────┐ ┌───────────────┐ │
+│ │ Auth │ │ Firestore│ │ App Check │ │
+│ │ (@us.af │ │ (Rules + │ │ (reCAPTCHA │ │
+│ │ .mil) │ │ IndexedDB│ │ Enterprise) │ │
+│ └──────────┘ └──────────┘ └───────────────┘ │
+│ ┌──────────────────────────────────────────┐ │
+│ │ API keys injected at build time │ │
+│ │ via GitHub Secrets. never in repo │ │
+│ └──────────────────────────────────────────┘ │
 └───────────────────────────────────────────────────┘
-         ↗                    ↖
-┌────────┴──────┐    ┌────────┴──────────────┐
-│  GenAI.mil    │    │  OpenRouter           │
-│  (Primary AI) │    │  (Fallback — Qwen VL) │
-└───────────────┘    └───────────────────────┘
+ ↗ ↖
+┌────────┴──────┐ ┌────────┴──────────────┐
+│ GenAI.mil │ │ OpenRouter │
+│ (Primary AI) │ │ (Fallback. Qwen VL) │
+└───────────────┘ └───────────────────────┘
 ```
 
 ---
@@ -130,7 +130,7 @@ Command center with real-time KPIs: active logs, Red Ball items, training readin
 - Full-text search across tail numbers, JCNs, technicians, personnel
 - Date range filtering
 - **AI-powered OCR scanning** of AF Forms 781A/781K
-- **Bulk logbook scanning** — batch OCR from handwritten Green Log Book photos
+- **Bulk logbook scanning:** batch OCR from handwritten Green Log Book photos
 - Inline editing with **conflict detection** (warns if another user modified the record)
 - Edit presence indicators show who's currently editing
 - Export to CSV, PDF, and shift turnover reports
@@ -162,8 +162,8 @@ Command center with real-time KPIs: active logs, Red Ball items, training readin
 - **Dual-section layout**: ISO Checklists and QRL (Quick Reference List) under a single tab
 - **File upload**: Drag-and-drop or click to upload `.xlsx` / `.xls` / `.csv` files to Firebase Storage
 - **In-browser viewer**: SheetJS renders Excel files as interactive HTML tables with multi-sheet tab support
-- **Edit mode**: Click "Edit" to make cells contenteditable — fill out checklist items directly in the browser
-- **Save completed**: "Save Completed" re-exports the edited workbook as a new `.xlsx` file, uploads to Firebase Storage, and creates a new Firestore record — templates are never overwritten
+- **Edit mode**: Click "Edit" to make cells contenteditable. fill out checklist items directly in the browser
+- **Save completed**: "Save Completed" re-exports the edited workbook as a new `.xlsx` file, uploads to Firebase Storage, and creates a new Firestore record. templates are never overwritten
 - **Download**: Original file download from every document row
 - **Live search**: Filter documents by filename, description, or uploader
 - **All roles**: View and upload; NCOIC/Leadership only for delete operations
@@ -243,16 +243,16 @@ The app runs background compliance scans that detect and alert on:
 
 | Layer | Protection |
 |-------|-----------|
-| **Authentication** | Firebase Auth — Google SSO or email/password, `@us.af.mil` domain enforced, email verification required |
-| **Authorization** | Firestore Security Rules — role-based (technician, NCOIC, leadership), AMU/shop scoping |
+| **Authentication** | Firebase Auth. Google SSO or email/password, `@us.af.mil` domain enforced, email verification required |
+| **Authorization** | Firestore Security Rules. role-based (technician, NCOIC, leadership), AMU/shop scoping |
 | **Admin Claims** | Custom claims set via Firebase Admin SDK (no hardcoded emails) |
 | **API Keys** | Injected at build time via GitHub Secrets (CI/CD only); not committed to repo |
-| **App Check** | Firebase App Check (reCAPTCHA Enterprise) — prevents unauthorized clients from calling Firebase APIs |
+| **App Check** | Firebase App Check (reCAPTCHA Enterprise). prevents unauthorized clients from calling Firebase APIs |
 | **Demo Isolation** | `isDemo` flag prevents mock data from leaking into live Firestore |
 | **Dev-only Gates** | `seedDatabase` and `bypassLogin` disabled in production builds (`import.meta.env.PROD`) |
-| **CI Gate** | `npm test` runs before deployment — broken code can't deploy |
+| **CI Gate** | `npm test` runs before deployment. broken code can't deploy |
 | **Domain Restriction** | Firebase API key scoped to `sleuthy-sloth.github.io` in Google Cloud Console |
-| **Firebase Config** | API key is intentionally public — security is in Firestore Rules, not key secrecy |
+| **Firebase Config** | API key is intentionally public. security is in Firestore Rules, not key secrecy |
 
 ---
 
@@ -289,85 +289,85 @@ jspdf ^4, xlsx ^0.18, driver.js ^1.4
 ```
 92-AMXS-Tracker/
 ├── src/
-│   ├── pages/                    # 16 page components
-│   │   ├── Dashboard.tsx         # Command center with KPIs
-│   │   ├── MaintenanceLogs.tsx   # Aircraft discrepancy tracking
-│   │   ├── DIFMLogs.tsx          # Parts pipeline tracking
-│   │   ├── TrainingTracker.tsx   # Qualification compliance
-│   │   ├── Personnel.tsx         # Shop roster management
-│   │   ├── G081Gallery.tsx       # Photo verification gallery
-│   │   ├── ReferenceDocs.tsx     # ISO checklists + QRL (upload, edit, view)
-│   │   ├── Operations.tsx        # Nested ops routing
-│   │   ├── Handoff.tsx           # Shift turnover
-│   │   ├── Workload.tsx          # NCOIC/Leadership analytics
-│   │   ├── Diagnostics.tsx       # System health
-│   │   ├── Onboarding.tsx        # User approval workflow
-│   │   ├── Login.tsx             # Authentication
-│   │   ├── Setup.tsx             # Initial profile setup
-│   │   ├── PendingApproval.tsx   # Approval holding page
-│   │   └── Support.tsx           # Help center
-│   │
-│   ├── hooks/                    # 12 custom hooks
-│   │   ├── useMaintenanceLogs.ts # Logs + DIFM data management
-│   │   ├── useLogForm.ts         # Form state for log entries
-│   │   ├── useLogScanning.ts     # OCR scanning logic
-│   │   ├── useTrainingData.ts    # Training records + filtering
-│   │   ├── useTrainingUpload.ts  # File upload + AI parsing
-│   │   ├── usePersonnelRoster.ts # Personnel data management
-│   │   ├── useProactiveTrainingScan.ts
-│   │   ├── useG081ExpiryScan.ts
-│   │   ├── useSupplyRiskScan.ts
-│   │   ├── usePresence.ts        # Real-time presence
-│   │   ├── useGuidedTour.ts      # Driver.js onboarding
-│   │   └── useAuthConstrainedQuery.ts
-│   │
-│   ├── components/
-│   │   ├── logs/                 # 7 maintenance log components
-│   │   │   ├── LogCard.tsx, LogTableRow.tsx
-│   │   │   ├── LogSearchFilter.tsx, LogActionsMenu.tsx
-│   │   │   ├── LogDetailsModal.tsx, LogFormModal.tsx
-│   │   │   └── ShiftTimeline.tsx
-│   │   ├── training/             # 4 training components
-│   │   │   ├── TrainingStatsPanel.tsx, TrainingTable.tsx
-│   │   │   ├── TrainingUploadZone.tsx, TrainingFormModal.tsx
-│   │   ├── personnel/            # 3 personnel components
-│   │   │   ├── PersonnelCard.tsx, PersonnelSearchBar.tsx
-│   │   │   └── PersonnelDetailModal.tsx
-│   │   ├── dashboard/            # IntelligenceFeed, LoopClosure
-│   │   ├── layout/               # AppLayout, Sidebar, TopBar
-│   │   └── common/               # ErrorBoundary, SyncStatus, etc.
-│   │
-│   ├── services/
-│   │   ├── ocrService.ts         # AI-powered form/logbook scanning
-│   │   ├── parserService.ts      # Training report parsing
-│   │   └── notificationService.ts # In-app notification dispatch
-│   │
-│   ├── lib/
-│   │   ├── aiProvider.ts         # Dual-provider AI with fallback
-│   │   ├── aiRetry.ts            # Exponential backoff + error classification
-│   │   ├── aiSchemas.ts          # Zod schemas for AI response validation
-│   │   ├── aiCache.ts            # Firestore-backed AI response cache
-│   │   ├── exportUtils.ts        # PDF/CSV export generators
-│   │   └── utils.ts              # General utilities
-│   │
-│   ├── contexts/
-│   │   ├── AuthContext.tsx        # Firebase Auth + Firestore profile
-│   │   ├── AIScanStatusContext.tsx # AI scan status tracking
-│   │   ├── TourContext.ts         # Guided tour state
-│   │   └── DemoDataProvider.tsx   # Centralized mock data provider
-│   │
-│   ├── hooks/
-│   │   ├── useRoleGuard.ts        # RBAC helper (canManage, canAdmin, isAllowed)
-│   │   └── ...                    # 12 additional hooks
+│ ├── pages/ # 16 page components
+│ │ ├── Dashboard.tsx # Command center with KPIs
+│ │ ├── MaintenanceLogs.tsx # Aircraft discrepancy tracking
+│ │ ├── DIFMLogs.tsx # Parts pipeline tracking
+│ │ ├── TrainingTracker.tsx # Qualification compliance
+│ │ ├── Personnel.tsx # Shop roster management
+│ │ ├── G081Gallery.tsx # Photo verification gallery
+│ │ ├── ReferenceDocs.tsx # ISO checklists + QRL (upload, edit, view)
+│ │ ├── Operations.tsx # Nested ops routing
+│ │ ├── Handoff.tsx # Shift turnover
+│ │ ├── Workload.tsx # NCOIC/Leadership analytics
+│ │ ├── Diagnostics.tsx # System health
+│ │ ├── Onboarding.tsx # User approval workflow
+│ │ ├── Login.tsx # Authentication
+│ │ ├── Setup.tsx # Initial profile setup
+│ │ ├── PendingApproval.tsx # Approval holding page
+│ │ └── Support.tsx # Help center
+│ │
+│ ├── hooks/ # 12 custom hooks
+│ │ ├── useMaintenanceLogs.ts # Logs + DIFM data management
+│ │ ├── useLogForm.ts # Form state for log entries
+│ │ ├── useLogScanning.ts # OCR scanning logic
+│ │ ├── useTrainingData.ts # Training records + filtering
+│ │ ├── useTrainingUpload.ts # File upload + AI parsing
+│ │ ├── usePersonnelRoster.ts # Personnel data management
+│ │ ├── useProactiveTrainingScan.ts
+│ │ ├── useG081ExpiryScan.ts
+│ │ ├── useSupplyRiskScan.ts
+│ │ ├── usePresence.ts # Real-time presence
+│ │ ├── useGuidedTour.ts # Driver.js onboarding
+│ │ └── useAuthConstrainedQuery.ts
+│ │
+│ ├── components/
+│ │ ├── logs/ # 7 maintenance log components
+│ │ │ ├── LogCard.tsx, LogTableRow.tsx
+│ │ │ ├── LogSearchFilter.tsx, LogActionsMenu.tsx
+│ │ │ ├── LogDetailsModal.tsx, LogFormModal.tsx
+│ │ │ └── ShiftTimeline.tsx
+│ │ ├── training/ # 4 training components
+│ │ │ ├── TrainingStatsPanel.tsx, TrainingTable.tsx
+│ │ │ ├── TrainingUploadZone.tsx, TrainingFormModal.tsx
+│ │ ├── personnel/ # 3 personnel components
+│ │ │ ├── PersonnelCard.tsx, PersonnelSearchBar.tsx
+│ │ │ └── PersonnelDetailModal.tsx
+│ │ ├── dashboard/ # IntelligenceFeed, LoopClosure
+│ │ ├── layout/ # AppLayout, Sidebar, TopBar
+│ │ └── common/ # ErrorBoundary, SyncStatus, etc.
+│ │
+│ ├── services/
+│ │ ├── ocrService.ts # AI-powered form/logbook scanning
+│ │ ├── parserService.ts # Training report parsing
+│ │ └── notificationService.ts # In-app notification dispatch
+│ │
+│ ├── lib/
+│ │ ├── aiProvider.ts # Dual-provider AI with fallback
+│ │ ├── aiRetry.ts # Exponential backoff + error classification
+│ │ ├── aiSchemas.ts # Zod schemas for AI response validation
+│ │ ├── aiCache.ts # Firestore-backed AI response cache
+│ │ ├── exportUtils.ts # PDF/CSV export generators
+│ │ └── utils.ts # General utilities
+│ │
+│ ├── contexts/
+│ │ ├── AuthContext.tsx # Firebase Auth + Firestore profile
+│ │ ├── AIScanStatusContext.tsx # AI scan status tracking
+│ │ ├── TourContext.ts # Guided tour state
+│ │ └── DemoDataProvider.tsx # Centralized mock data provider
+│ │
+│ ├── hooks/
+│ │ ├── useRoleGuard.ts # RBAC helper (canManage, canAdmin, isAllowed)
+│ │ └── ... # 12 additional hooks
 │
 ├── .github/workflows/
-│   ├── deploy.yml                # GitHub Pages deployment (with test gate)
-│   └── mirror.yml                # Codeberg mirror
+│ ├── deploy.yml # GitHub Pages deployment (with test gate)
+│ └── mirror.yml # Codeberg mirror
 │
-├── firebase.json                 # Firebase project configuration
-├── firestore.rules               # Firestore security rules (~170 lines)
-├── vite.config.ts                # Vite + PWA configuration
-└── vitest.config.ts              # Test configuration
+├── firebase.json # Firebase project configuration
+├── firestore.rules # Firestore security rules (~170 lines)
+├── vite.config.ts # Vite + PWA configuration
+└── vitest.config.ts # Test configuration
 ```
 
 ---
@@ -405,7 +405,7 @@ npm run dev
 | `SUPER_ADMIN_EMAIL` | Yes | Designated admin user email |
 | `DEV_DIRECT_AI` | Optional | Set to `true` to bypass proxy in dev |
 
-> **Production:** API keys are stored as Firebase Secrets — not in the client bundle.
+> **Production:** API keys are stored as Firebase Secrets. not in the client bundle.
 
 ### Testing
 
@@ -434,9 +434,9 @@ This project runs on the Firebase Spark (free) tier and does not use Cloud Funct
 # To set up the deployment secrets:
 # 1. Go to GitHub repo → Settings → Secrets and variables → Actions
 # 2. Add these repository secrets:
-#    GENAI_MIL_API_KEY
-#    OPENROUTER_API_KEY
-#    SUPER_ADMIN_EMAIL
+# GENAI_MIL_API_KEY
+# OPENROUTER_API_KEY
+# SUPER_ADMIN_EMAIL
 ```
 
 ---
@@ -445,9 +445,9 @@ This project runs on the Firebase Spark (free) tier and does not use Cloud Funct
 
 The app deploys automatically to **GitHub Pages** on push to `main`:
 
-1. `npm ci` — install dependencies
-2. `npm test` — run test suite (blocks deploy on failure)
-3. `npm run build` — Vite production build
+1. `npm ci`. install dependencies
+2. `npm test`. run test suite (blocks deploy on failure)
+3. `npm run build`. Vite production build
 4. Deploy to GitHub Pages
 
 A mirror workflow syncs to **Codeberg** simultaneously.
@@ -456,14 +456,14 @@ A mirror workflow syncs to **Codeberg** simultaneously.
 
 ## Known Issues
 
-- **`xlsx` package vulnerabilities** — The SheetJS community edition (`xlsx` ^0.18.5) has known prototype pollution and ReDoS vulnerabilities with no npm fix available. Mitigation: only user-uploaded files are processed (not untrusted external input). Planned migration to SheetJS CDN or `exceljs`.
-- **AI API keys in client bundle** — Keys are injected at build time via GitHub Secrets but are present in the deployed JavaScript. This is a deliberate trade-off to stay on the Firebase Spark free tier (no Cloud Functions). See [Security Model](#security-model) for mitigations.
+- **`xlsx` package vulnerabilities:** The SheetJS community edition (`xlsx` ^0.18.5) has known prototype pollution and ReDoS vulnerabilities with no npm fix available. Mitigation: only user-uploaded files are processed (not untrusted external input). Planned migration to SheetJS CDN or `exceljs`.
+- **AI API keys in client bundle:** Keys are injected at build time via GitHub Secrets but are present in the deployed JavaScript. This is a deliberate trade-off to stay on the Firebase Spark free tier (no Cloud Functions). See [Security Model](#security-model) for mitigations.
 
 ---
 
 ## License
 
-[CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) — Attribution-NonCommercial
+[CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/). Attribution-NonCommercial
 
 Copyright (c) 2026 Steven (Sleuthy-Sloth)
 
