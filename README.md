@@ -463,8 +463,4 @@ A mirror workflow syncs to **Codeberg** simultaneously.
 
 ## License
 
-[CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/). Attribution-NonCommercial
-
-Copyright (c) 2026 Steven (Sleuthy-Sloth)
-
-This work is licensed under the Creative Commons Attribution-NonCommercial 4.0 International License. You are free to share and adapt for non-commercial purposes with appropriate attribution.
+[MIT](LICENSE). Copyright (c) 2026 Steven Koehl.
