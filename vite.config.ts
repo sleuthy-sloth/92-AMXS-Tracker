@@ -66,14 +66,10 @@ export default defineConfig(({ mode }) => {
         },
       }),
     ],
-    // API keys are injected at build time from .env.local (dev) or GitHub Secrets (CI/CD).
-    // The client calls AI providers directly (no Cloud Functions proxy needed).
+    // SUPER_ADMIN_EMAIL is injected from .env.local (dev) for seed-database gating.
+    // It is NOT a secret — it's just an email address that gates a dev-only feature.
     define: {
       'process.env.SUPER_ADMIN_EMAIL': JSON.stringify(env.SUPER_ADMIN_EMAIL || ''),
-      // API keys injected from .env.local (dev) or GitHub Secrets (CI/CD).
-      // Used by the client to call AI providers directly (no Cloud Functions proxy).
-      'process.env.GENAI_MIL_API_KEY': JSON.stringify(env.GENAI_MIL_API_KEY || ''),
-      'process.env.OPENROUTER_API_KEY': JSON.stringify(env.OPENROUTER_API_KEY || ''),
     },
     build: {
       rollupOptions: {

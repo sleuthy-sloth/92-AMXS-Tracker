@@ -7,7 +7,9 @@ import { isOpenRouterConfigured } from './lib/aiProvider';
 
 if (!isGenAIMilConfigured() && !isOpenRouterConfigured()) {
   console.warn(
-    '[AMXS] No AI provider configured. Set GENAI_MIL_API_KEY or OPENROUTER_API_KEY in .env.local (dev) or as GitHub repository secrets (CI/CD).'
+    '[AMXS] No AI provider configured. ' +
+      'For production, deploy the Cloud Functions proxy (functions/src/index.ts). ' +
+      'For local development, set VITE_GENAI_MIL_API_KEY or VITE_OPENROUTER_API_KEY in .env.local.'
   );
 }
 

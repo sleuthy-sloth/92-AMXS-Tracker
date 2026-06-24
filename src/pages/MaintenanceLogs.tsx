@@ -3,6 +3,7 @@ import { Plus, Grid, List, History as HistoryIcon, ShieldAlert } from 'lucide-re
 import { serverTimestamp, collection, addDoc, updateDoc, doc, deleteDoc } from 'firebase/firestore';
 import { AnimatePresence } from 'motion/react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
+import { writeAuditLog } from '../lib/auditLog';
 import { MaintenanceLog } from '../types';
 import { useAuth } from '../contexts/AuthContextInstance';
 import { cn, tsToDate, tsToMillis, tailMatchesSearch } from '../lib/utils';
@@ -156,11 +157,14 @@ export const MaintenanceLogs: React.FC = () => {
           isRedBall: formData.isRedBall,
           personnel: personnelArray,
           shift: formData.shift,
-          g081_photo: formData.g081Photo || null,
+          g081_photo: formData.g081Photo || undefined,
           lastEditedAt: serverTimestamp(),
           editingBy: null,
           editingByName: null,
           editingSince: null,
+        });
+        await writeAuditLog('logs', editingLogId, 'update', {
+          summary: `Log ${editingLogId} updated: ${formData.tail_number} — ${formData.discrepancy.slice(0, 80)}`,
         });
       } else {
         const newLog: MaintenanceLog = {
@@ -179,10 +183,13 @@ export const MaintenanceLogs: React.FC = () => {
           timestamp: serverTimestamp(),
           isDemo: isDemoMode,
           isArchived: false,
-          g081_photo: formData.g081Photo || null,
+          g081_photo: formData.g081Photo || undefined,
           ...(formData.g081Photo ? { g081_status: 'pending' as const } : {}),
         };
         const docRef = await addDoc(collection(db, 'logs'), newLog);
+        await writeAuditLog('logs', docRef.id, 'create', {
+          summary: `Log created: ${newLog.tail_number} — ${newLog.discrepancy.slice(0, 80)}`,
+        });
         console.info('[logs] created', {
           id: docRef.id,
           amuId: newLog.amuId,
@@ -266,11 +273,13 @@ export const MaintenanceLogs: React.FC = () => {
   };
 
   const handleDeleteLog = async (logId: string) => {
+    if (!logId) return;
     if (isDemoMode) return;
     if (!window.confirm('Are you sure you want to delete this log? This action is irreversible.'))
       return;
     try {
       await deleteDoc(doc(db, 'logs', logId));
+      await writeAuditLog('logs', logId, 'delete', { summary: 'Maintenance log deleted' });
     } catch (e) {
       handleFirestoreError(e, OperationType.DELETE, 'logs');
     }
@@ -281,10 +290,15 @@ export const MaintenanceLogs: React.FC = () => {
       setDemoArchiveOverrides((prev) => ({ ...prev, [logId]: archive }));
       return;
     }
+    if (archive && !window.confirm('Archive this log? It will be moved to the archive view.'))
+      return;
     try {
       await updateDoc(doc(db, 'logs', logId), {
         isArchived: archive,
         archivedAt: archive ? serverTimestamp() : null,
+      });
+      await writeAuditLog('logs', logId, archive ? 'archive' : 'restore', {
+        summary: `Log ${archive ? 'archived' : 'restored'}: ${logId}`,
       });
     } catch (e) {
       handleFirestoreError(e, OperationType.UPDATE, 'logs');

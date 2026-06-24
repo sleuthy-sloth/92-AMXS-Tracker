@@ -11,6 +11,11 @@ vi.mock('./gemini', () => ({
     if (!key) throw new Error('GENAI_MIL_API_KEY not configured.');
     return key;
   },
+  getOpenRouterApiKey: () => {
+    const key = process.env.OPENROUTER_API_KEY;
+    if (!key) throw new Error('OPENROUTER_API_KEY not configured.');
+    return key;
+  },
 }));
 
 const Schema = z.array(z.object({ id: z.number() }));

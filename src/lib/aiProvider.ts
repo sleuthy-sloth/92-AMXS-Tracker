@@ -1,12 +1,24 @@
 import { z } from 'zod';
-import { isGenAIMilConfigured, isOpenRouterConfigured, getGenAIMilApiKey } from './gemini';
+import {
+  isGenAIMilConfigured,
+  isOpenRouterConfigured,
+  getGenAIMilApiKey,
+  getOpenRouterApiKey,
+} from './gemini';
 export { isOpenRouterConfigured };
 import { safeParse } from './aiSchemas';
 import { withRetry, AIRetryError, classifyError } from './aiRetry';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import type { HttpsCallableResult } from 'firebase/functions';
 
 // Provider-agnostic JSON generation with automatic GenAI.mil → OpenRouter
-// fallback. API keys are injected at build time from .env.local (dev) or
-// GitHub Secrets (CI/CD). The client calls AI providers directly.
+// fallback.
+//
+// PRODUCTION: API keys are handled server-side via Cloud Functions proxy
+// (functions/src/index.ts). Deploy with: firebase deploy --only functions
+//
+// DEVELOPMENT: Set VITE_GENAI_MIL_API_KEY and VITE_OPENROUTER_API_KEY in
+// .env.local for direct client-side API calls (no proxy needed).
 
 export type AIProvider = 'genai-mil' | 'openrouter';
 
@@ -39,6 +51,148 @@ const DEFAULT_OPENROUTER_MODEL = 'google/gemma-4-31b-it:free';
 const DEFAULT_OPENROUTER_FALLBACK_MODEL = 'nvidia/nemotron-nano-12b-2-vl:free';
 // Tool calling: Gemma 4 31B supports native function calling and multimodal input.
 const DEFAULT_OPENROUTER_TOOLS_MODEL = 'google/gemma-4-31b-it:free';
+
+// ─── Cloud Functions proxy (production fallback) ───────────────────────
+
+let proxyCallable: ReturnType<typeof httpsCallable> | null = null;
+
+function getProxyCallable(): ReturnType<typeof httpsCallable> {
+  if (!proxyCallable) {
+    try {
+      const functions = getFunctions();
+      proxyCallable = httpsCallable(functions, 'proxyAI');
+    } catch {
+      // Firebase not initialized or functions unavailable
+    }
+  }
+  return proxyCallable!;
+}
+
+function isCloudFunctionsAvailable(): boolean {
+  try {
+    return !!getProxyCallable();
+  } catch {
+    return false;
+  }
+}
+
+interface ProxyCallResult {
+  choices?: Array<{
+    message?: {
+      content?: string | null;
+      role?: string;
+      tool_calls?: Array<{
+        id: string;
+        type: string;
+        function: { name: string; arguments: string };
+      }>;
+    };
+    finish_reason?: string;
+  }>;
+  error?: string;
+}
+
+async function callProxy<T>(opts: GenerateJSONOptions<T>): Promise<{ data: T | null } | null> {
+  const proxyFn = getProxyCallable();
+  if (!proxyFn) return null;
+
+  // Build messages from opts
+  const userContent = opts.imageBase64
+    ? [
+        { type: 'text' as const, text: opts.prompt },
+        {
+          type: 'image_url' as const,
+          image_url: {
+            url: `data:${opts.imageMimeType || 'image/jpeg'};base64,${opts.imageBase64}`,
+          },
+        },
+      ]
+    : opts.prompt;
+
+  const messages = [
+    {
+      role: 'system' as const,
+      content:
+        'Respond with a single JSON value matching the requested shape. Do not wrap it in markdown fences or commentary.',
+    },
+    { role: 'user' as const, content: userContent },
+  ];
+
+  // Try GenAI.mil first through the proxy
+  const genaiResult = await attemptProxyCall<T>(proxyFn, 'genai-mil', messages, opts);
+  if (genaiResult !== null) return genaiResult;
+
+  // Fallback to OpenRouter through the proxy
+  const orResult = await attemptProxyCall<T>(proxyFn, 'openrouter', messages, opts);
+  if (orResult !== null) return orResult;
+
+  return null;
+}
+
+async function attemptProxyCall<T>(
+  proxyFn: ReturnType<typeof httpsCallable>,
+  provider: 'genai-mil' | 'openrouter',
+  messages: Array<{ role: string; content: string | Array<unknown> }>,
+  opts: GenerateJSONOptions<T>
+): Promise<{ data: T | null } | null> {
+  try {
+    const result = (await proxyFn({
+      provider,
+      model:
+        provider === 'genai-mil'
+          ? (opts.geminiModel ?? DEFAULT_GENAI_MIL_MODEL)
+          : (opts.openRouterModel ?? DEFAULT_OPENROUTER_MODEL),
+      messages,
+      temperature: opts.temperature ?? 0.1,
+      ...(opts.schema ? { response_format: { type: 'json_object' } } : {}),
+    })) as HttpsCallableResult<ProxyCallResult>;
+
+    const responseBody = result.data;
+    if (!responseBody.choices?.[0]?.message?.content) {
+      return null;
+    }
+
+    const raw = responseBody.choices[0].message.content;
+    const parsed = safeParse(opts.schema, raw, `${opts.context}/${provider}/proxy`);
+    return { data: parsed };
+  } catch {
+    // Proxy call failed — try next provider or return null
+    return null;
+  }
+}
+
+/**
+ * Generate text via Cloud Functions proxy.
+ * Used as production fallback when no local API keys are available.
+ */
+async function generateTextViaProxy(params: {
+  systemPrompt: string;
+  userPrompt: string;
+  signal?: AbortSignal;
+  model?: string;
+  temperature?: number;
+}): Promise<string> {
+  const proxyFn = getProxyCallable();
+  if (!proxyFn) {
+    throw new Error('Cloud Functions proxy unavailable');
+  }
+
+  const result = (await proxyFn({
+    provider: 'openrouter',
+    model: params.model ?? DEFAULT_OPENROUTER_MODEL,
+    messages: [
+      { role: 'system', content: params.systemPrompt },
+      { role: 'user', content: params.userPrompt },
+    ],
+    temperature: params.temperature ?? 0.2,
+  })) as HttpsCallableResult<ProxyCallResult>;
+
+  const content = result.data?.choices?.[0]?.message?.content;
+  if (typeof content !== 'string' || !content.trim()) {
+    throw new Error('Cloud Functions proxy returned empty content');
+  }
+  return content;
+}
 
 // OpenAI-compatible response types
 interface OpenAICompatChoice {
@@ -222,7 +376,7 @@ async function callGenAIMil<T>(opts: GenerateJSONOptions<T>): Promise<T | null> 
           { signal }
         );
 
-        const raw = json.choices?.[0]?.message?.content;
+        const raw: string | undefined = json.choices?.[0]?.message?.content ?? undefined;
         return safeParse(opts.schema, raw, opts.context);
       } catch (err) {
         // Special-case key-lock: 401 with unlock_url should fall back to OpenRouter.
@@ -254,7 +408,7 @@ async function callGenAIMil<T>(opts: GenerateJSONOptions<T>): Promise<T | null> 
 }
 
 async function callOpenRouter<T>(opts: GenerateJSONOptions<T>): Promise<T | null> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
+  const apiKey = getOpenRouterApiKey();
   if (!apiKey) throw new Error('OPENROUTER_API_KEY is not configured');
 
   return withRetry(
@@ -296,7 +450,7 @@ async function callOpenRouter<T>(opts: GenerateJSONOptions<T>): Promise<T | null
         }
       );
 
-      const raw = json.choices?.[0]?.message?.content;
+      const raw: string | undefined = json.choices?.[0]?.message?.content ?? undefined;
       return safeParse(opts.schema, raw, `${opts.context}/openrouter`);
     },
     { signal: opts.signal }
@@ -306,11 +460,27 @@ async function callOpenRouter<T>(opts: GenerateJSONOptions<T>): Promise<T | null
 export async function generateJSONWithFallback<T>(
   opts: GenerateJSONOptions<T>
 ): Promise<GenerateJSONResult<T>> {
-  if (!isGenAIMilConfigured() && !isOpenRouterConfigured()) {
-    throw new Error('No AI provider configured (set GENAI_MIL_API_KEY or OPENROUTER_API_KEY).');
+  const hasLocalGenAI = isGenAIMilConfigured();
+  const hasLocalOpenRouter = isOpenRouterConfigured();
+  const hasProxy = isCloudFunctionsAvailable();
+
+  if (!hasLocalGenAI && !hasLocalOpenRouter) {
+    // No local keys — try the Cloud Functions proxy
+    if (hasProxy) {
+      const result = await callProxy(opts);
+      if (result && result.data !== null) {
+        return { data: result.data, source: 'genai-mil' };
+      }
+      throw new Error(
+        'AI provider unavailable. Deploy Cloud Functions with: firebase deploy --only functions'
+      );
+    }
+    throw new Error(
+      'No AI provider configured (set VITE_GENAI_MIL_API_KEY or VITE_OPENROUTER_API_KEY in .env.local for local dev).'
+    );
   }
 
-  if (isGenAIMilConfigured() && !isGeminiOnCooldown()) {
+  if (hasLocalGenAI && !isGeminiOnCooldown()) {
     try {
       const data = await callGenAIMil(opts);
       return { data, source: 'genai-mil' };
@@ -494,8 +664,15 @@ export async function generateTextWithOpenRouter(params: {
   model?: string;
   temperature?: number;
 }): Promise<string> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) throw new Error('OPENROUTER_API_KEY is not configured');
+  const apiKey = getOpenRouterApiKey();
+
+  // If no local key, try the Cloud Functions proxy for text generation
+  if (!apiKey) {
+    if (isCloudFunctionsAvailable()) {
+      return generateTextViaProxy(params);
+    }
+    throw new Error('OPENROUTER_API_KEY is not configured');
+  }
 
   return withRetry(
     async (signal) => {
@@ -538,7 +715,7 @@ export async function runOpenRouterWithTools(params: {
   model?: string;
   temperature?: number;
 }): Promise<string> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
+  const apiKey = getOpenRouterApiKey();
   if (!apiKey) throw new Error('OPENROUTER_API_KEY is not configured');
 
   const model = params.model ?? DEFAULT_OPENROUTER_TOOLS_MODEL;

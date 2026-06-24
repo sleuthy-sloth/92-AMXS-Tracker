@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { History as HistoryIcon, Search, Flame } from 'lucide-react';
-import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
 import { motion } from 'motion/react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { UserProfile, MaintenanceLog, TrainingRecord, DIFMLog } from '../types';
@@ -54,7 +54,11 @@ export const Dashboard: React.FC = () => {
     if (profile.role === 'leadership' || profile.amuId === 'ALL' || profile.shopId === 'ALL') {
       const queryRef = collection(db, 'logs');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const constraints: any[] = [where('isDemo', '==', false), orderBy('timestamp', 'desc')];
+      const constraints: any[] = [
+        where('isDemo', '==', false),
+        orderBy('timestamp', 'desc'),
+        limit(100),
+      ];
 
       if (profile.role === 'leadership') {
         if (profile.amuId !== 'ALL' && profile.amuId !== 'NONE') {
@@ -75,7 +79,8 @@ export const Dashboard: React.FC = () => {
         where('amuId', '==', profile.amuId),
         where('shopId', '==', profile.shopId),
         where('isDemo', '==', false),
-        orderBy('timestamp', 'desc')
+        orderBy('timestamp', 'desc'),
+        limit(100)
       );
     }
 
@@ -102,7 +107,7 @@ export const Dashboard: React.FC = () => {
     const unsubPersonnel = onSnapshot(
       qPersonnel,
       (snap) => {
-        setFirestorePersonnel(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as UserProfile));
+        setFirestorePersonnel(snap.docs.map((d) => ({ uid: d.id, ...d.data() }) as UserProfile));
       },
       (error) => handleFirestoreError(error, OperationType.LIST, 'users')
     );
@@ -203,8 +208,8 @@ export const Dashboard: React.FC = () => {
               exportTurnoverToPDF(
                 logs,
                 difm,
-                profile.shopId || 'ALL',
-                profile.amuId || 'ALL',
+                profile?.shopId || 'ALL',
+                profile?.amuId || 'ALL',
                 'Days'
               )
             }
@@ -217,7 +222,7 @@ export const Dashboard: React.FC = () => {
           </button>
           <button
             onClick={() =>
-              exportRedBallWeeklyPDF(logs, profile.shopId || 'ALL', profile.amuId || 'ALL')
+              exportRedBallWeeklyPDF(logs, profile?.shopId || 'ALL', profile?.amuId || 'ALL')
             }
             className="sleek-button flex-1 lg:flex-none bg-safety-orange text-white hover:bg-orange-600 flex items-center justify-center gap-3 px-8 group"
           >

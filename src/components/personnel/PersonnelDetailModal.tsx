@@ -24,6 +24,7 @@ export const PersonnelDetailModal: React.FC<PersonnelDetailModalProps> = ({
       active: 'bg-emerald-50 text-emerald-700 border-emerald-200',
       pending: 'bg-amber-50 text-amber-700 border-amber-200',
       rejected: 'bg-red-50 text-red-700 border-red-200',
+      inactive: 'bg-gray-50 text-gray-700 border-gray-200',
     };
     return (
       <span

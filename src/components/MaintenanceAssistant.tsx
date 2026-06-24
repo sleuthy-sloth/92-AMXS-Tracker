@@ -136,7 +136,9 @@ export const MaintenanceAssistant: React.FC = () => {
         {
           role: 'assistant',
           content:
-            'SYSTEM OFFLINE: No AI provider configured. Set `GENAI_MIL_API_KEY` and/or `OPENROUTER_API_KEY` in `.env.local` (dev) or as GitHub repository secrets (CI/CD) and redeploy.',
+            'SYSTEM OFFLINE: No AI provider configured. ' +
+            'For production, deploy the Cloud Functions proxy (functions/src/index.ts). ' +
+            'For local development, set VITE_GENAI_MIL_API_KEY and/or VITE_OPENROUTER_API_KEY in `.env.local`.',
         },
       ]);
       setIsThinking(false);

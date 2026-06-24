@@ -10,14 +10,14 @@ export interface UseTrainingUploadReturn {
   setIsUploading: (value: boolean) => void;
   uploadProgress: number;
   handleFileUpload: (files: FileList) => Promise<void>;
-  fileInputRef: React.RefObject<HTMLInputElement>;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
 }
 
 export function useTrainingUpload(): UseTrainingUploadReturn {
   const { profile, isDemoMode } = useAuth();
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleFileUpload = async (files: FileList) => {
     if (!profile || isDemoMode) {

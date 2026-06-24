@@ -24,7 +24,8 @@ import {
 } from 'firebase/firestore';
 import { ref as storageRef, deleteObject } from 'firebase/storage';
 import { motion, AnimatePresence } from 'motion/react';
-import { db, storage, handleFirestoreError, OperationType } from '../firebase';
+import { db, handleFirestoreError, OperationType, storage } from '../firebase';
+import { writeAuditLog } from '../lib/auditLog';
 import type { ReferenceDoc } from '../types';
 import { useAuth } from '../contexts/AuthContextInstance';
 import { cn, tsToDate } from '../lib/utils';
@@ -121,7 +122,8 @@ export const ReferenceDocs: React.FC = () => {
     [docs, searchQuery]
   );
 
-  const handleDelete = async (docId: string, storagePath: string) => {
+  const handleDeleteDocument = async (docId: string, storagePath: string) => {
+    if (!docId) return;
     if (!window.confirm('Delete this document? This cannot be undone.')) return;
     try {
       try {
@@ -130,6 +132,9 @@ export const ReferenceDocs: React.FC = () => {
         // File may not exist in storage anymore — still delete the record
       }
       await deleteDoc(doc(db, 'reference_docs', docId));
+      await writeAuditLog('reference_docs', docId, 'delete', {
+        summary: 'Reference document deleted',
+      });
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `reference_docs/${docId}`);
     }
@@ -319,7 +324,7 @@ export const ReferenceDocs: React.FC = () => {
                         <button
                           onClick={() => {
                             if (docItem.id && docItem.storagePath) {
-                              handleDelete(docItem.id, docItem.storagePath);
+                              handleDeleteDocument(docItem.id, docItem.storagePath);
                             }
                           }}
                           className="p-2 border border-transparent hover:border-outline text-slate-400 hover:text-safety-orange transition-all"

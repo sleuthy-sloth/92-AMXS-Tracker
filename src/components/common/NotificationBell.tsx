@@ -1,5 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { query, collection, where, orderBy, limit, onSnapshot, doc, updateDoc, writeBatch } from 'firebase/firestore';
+import {
+  query,
+  collection,
+  where,
+  orderBy,
+  limit,
+  onSnapshot,
+  doc,
+  updateDoc,
+  writeBatch,
+} from 'firebase/firestore';
 import { Bell, BellDot, ShieldAlert, Package, Clock, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
@@ -26,9 +36,9 @@ export const NotificationBell: React.FC = () => {
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const notifs = snapshot.docs.map(doc => ({
+      const notifs = snapshot.docs.map((doc) => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
       })) as Notification[];
       setNotifications(notifs);
     });
@@ -46,7 +56,7 @@ export const NotificationBell: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   const markAsRead = async (notifId: string) => {
     try {
@@ -59,11 +69,12 @@ export const NotificationBell: React.FC = () => {
   const clearAllNotifications = async () => {
     if (notifications.length === 0) return;
     if (!window.confirm('Clear all notification history?')) return;
-    
+
     try {
       const batch = writeBatch(db);
-      notifications.forEach(notif => {
-        batch.delete(doc(db, 'notifications', notif.id!));
+      notifications.forEach((notif) => {
+        if (!notif.id) return; // skip items without an ID
+        batch.delete(doc(db, 'notifications', notif.id));
       });
       await batch.commit();
       setIsOpen(false);
@@ -74,16 +85,20 @@ export const NotificationBell: React.FC = () => {
 
   const getIcon = (type: NotificationType) => {
     switch (type) {
-      case 'red-ball': return <ShieldAlert className="w-4 h-4 text-safety-orange" />;
-      case 'parts': return <Package className="w-4 h-4 text-primary" />;
-      case 'training': return <Clock className="w-4 h-4 text-caution-yellow" />;
-      default: return <Bell className="w-4 h-4 text-slate-400" />;
+      case 'red-ball':
+        return <ShieldAlert className="w-4 h-4 text-safety-orange" />;
+      case 'parts':
+        return <Package className="w-4 h-4 text-primary" />;
+      case 'training':
+        return <Clock className="w-4 h-4 text-caution-yellow" />;
+      default:
+        return <Bell className="w-4 h-4 text-slate-400" />;
     }
   };
 
   return (
     <div className="relative" ref={dropdownRef}>
-      <button 
+      <button
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2.5 bg-slate-100 hover:bg-slate-200 transition-colors border border-outline group"
         title="Operational Alerts"
@@ -102,7 +117,7 @@ export const NotificationBell: React.FC = () => {
 
       <AnimatePresence>
         {isOpen && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
@@ -112,7 +127,7 @@ export const NotificationBell: React.FC = () => {
               <span className="tech-label text-primary">Operational Alerts</span>
               <div className="flex items-center gap-3">
                 {notifications.length > 0 && (
-                  <button 
+                  <button
                     onClick={clearAllNotifications}
                     className="p-1.5 hover:bg-white text-slate-400 hover:text-safety-orange transition-all border border-transparent hover:border-outline"
                     title="Clear All"
@@ -120,7 +135,11 @@ export const NotificationBell: React.FC = () => {
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 )}
-                {unreadCount > 0 && <span className="text-[8px] font-black uppercase text-slate-400 px-2 py-0.5 bg-white border border-outline">{unreadCount} New</span>}
+                {unreadCount > 0 && (
+                  <span className="text-[8px] font-black uppercase text-slate-400 px-2 py-0.5 bg-white border border-outline">
+                    {unreadCount} New
+                  </span>
+                )}
               </div>
             </div>
 
@@ -128,40 +147,48 @@ export const NotificationBell: React.FC = () => {
               {notifications.length === 0 ? (
                 <div className="p-10 text-center space-y-3">
                   <Bell className="w-8 h-8 text-slate-200 mx-auto" />
-                  <p className="tech-label text-[9px] text-slate-400">All Systems Nominal // No Active Alerts</p>
+                  <p className="tech-label text-[9px] text-slate-400">
+                    All Systems Nominal // No Active Alerts
+                  </p>
                 </div>
               ) : (
                 notifications.map((notif) => (
-                  <div 
+                  <div
                     key={notif.id}
                     className={cn(
-                      "p-4 hover:bg-slate-50 transition-colors cursor-pointer relative",
-                      !notif.isRead && "bg-primary/5"
+                      'p-4 hover:bg-slate-50 transition-colors cursor-pointer relative',
+                      !notif.isRead && 'bg-primary/5'
                     )}
                     onClick={() => {
                       if (!notif.isRead) markAsRead(notif.id!);
                     }}
                   >
-                    {!notif.isRead && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>}
+                    {!notif.isRead && (
+                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
+                    )}
                     <div className="flex gap-3">
                       <div className="mt-0.5">{getIcon(notif.type)}</div>
                       <div className="flex-1 space-y-1">
                         <div className="flex justify-between items-start gap-2">
-                          <p className="font-black text-[10px] uppercase tracking-tight text-slate-900 leading-tight">{notif.title}</p>
+                          <p className="font-black text-[10px] uppercase tracking-tight text-slate-900 leading-tight">
+                            {notif.title}
+                          </p>
                           <span className="text-[8px] font-mono text-slate-400 whitespace-nowrap">
                             {notif.timestamp ? format(tsToDate(notif.timestamp), 'HH:mm') : '...'}
                           </span>
                         </div>
-                        <p className="text-[10px] text-slate-500 leading-relaxed font-medium line-clamp-2">{notif.message}</p>
+                        <p className="text-[10px] text-slate-500 leading-relaxed font-medium line-clamp-2">
+                          {notif.message}
+                        </p>
                       </div>
                     </div>
                   </div>
                 ))
               )}
             </div>
-            
+
             <div className="p-3 bg-slate-50 border-t border-outline text-center">
-              <button 
+              <button
                 onClick={() => setIsOpen(false)}
                 className="tech-label text-[8px] hover:text-primary transition-colors uppercase tracking-[0.2em]"
               >

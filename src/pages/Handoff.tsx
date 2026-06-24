@@ -14,6 +14,7 @@ import {
   limit,
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
+import { writeAuditLog } from '../lib/auditLog';
 import { useAuth } from '../contexts/AuthContextInstance';
 import { ShiftType } from '../types';
 import { format } from 'date-fns';
@@ -99,6 +100,9 @@ export const Handoff: React.FC = () => {
         createdAt: serverTimestamp(),
         items,
       });
+      await writeAuditLog('handoffs', null, 'create', {
+        summary: `Handoff created: ${newFromShift} → ${newToShift} by ${profile.name} (${items.length} items)`,
+      });
       setNewItems('');
     } catch (err) {
       console.error('Failed to create handoff:', err);
@@ -121,16 +125,19 @@ export const Handoff: React.FC = () => {
   };
 
   const deleteHandoff = async (handoffId: string) => {
+    if (!handoffId) return;
     if (!profile) return;
     if (!window.confirm('Delete this entire handoff block? This cannot be undone.')) return;
     try {
       await deleteDoc(doc(db, 'handoffs', handoffId));
+      await writeAuditLog('handoffs', handoffId, 'delete', { summary: 'Handoff block deleted' });
     } catch (err) {
       handleFirestoreError(err, OperationType.DELETE, `handoffs/${handoffId}`);
     }
   };
 
   const deleteHandoffItem = async (handoff: HandoffDoc, itemId: string) => {
+    if (!handoff?.id || !itemId) return;
     if (!profile) return;
     if (!window.confirm('Delete this handoff item?')) return;
     try {

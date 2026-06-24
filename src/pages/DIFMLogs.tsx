@@ -23,6 +23,7 @@ import {
 } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
+import { writeAuditLog } from '../lib/auditLog';
 import { DIFMLog } from '../types';
 import { useAuth } from '../contexts/AuthContextInstance';
 import { MOCK_DIFM } from '../mockData';
@@ -121,13 +122,16 @@ export const DIFMLogs: React.FC = () => {
 
     setLoading(true);
     try {
-      await addDoc(collection(db, 'difm'), {
+      const docRef = await addDoc(collection(db, 'difm'), {
         ...formData,
         shopId: profile.shopId,
         amuId: profile.amuId,
         technician_name: profile.name,
         timestamp: serverTimestamp(),
         isDemo: false,
+      });
+      await writeAuditLog('difm', docRef.id, 'create', {
+        summary: `DIFM track created: ${formData.tail_number} — ${formData.discrepancy.slice(0, 80)}`,
       });
       setIsModalOpen(false);
       setFormData({
@@ -149,6 +153,9 @@ export const DIFMLogs: React.FC = () => {
     try {
       const docRef = doc(db, 'difm', id);
       await updateDoc(docRef, updates);
+      await writeAuditLog('difm', id, 'update', {
+        summary: `DIFM track updated: status=${updates.status || 'unchanged'}, pipeline=${updates.pipeline_status || 'unchanged'}`,
+      });
 
       if (updates.pipeline_status === 'received' && !isDemoMode) {
         const log = logs.find((l) => l.id === id);
@@ -168,9 +175,11 @@ export const DIFMLogs: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
+    if (!id) return; // safety: guard against undefined/null
     if (!window.confirm('Confirm removal of this DIFM track?')) return;
     try {
       await deleteDoc(doc(db, 'difm', id));
+      await writeAuditLog('difm', id, 'delete', { summary: 'DIFM track deleted' });
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `difm/${id}`);
     }
