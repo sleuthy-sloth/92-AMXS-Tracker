@@ -1,6 +1,5 @@
 import { generateJSONWithFallback } from '../lib/aiProvider';
 import {
-  safeParse,
   ScannedLogSchema,
   ScannedLogBookSchema,
   TrainingReportSchema,
